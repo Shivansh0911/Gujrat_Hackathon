@@ -1,0 +1,5 @@
+-r requirements.txt
+
+pytest==8.3.3       # MIT
+pytest-timeout==2.3.1  # MIT — used to assert the plate regex cannot backtrack (§7.3 ReDoS)
+ruff==0.6.9         # MIT

@@ -1,0 +1,9 @@
+# Pinned exactly — §0 forbids unpinned dependencies.
+# Licence audit (§12): every entry below is Apache-2.0, MIT, BSD or PSF.
+# No AGPL / SSPL / BUSL / non-commercial.
+
+opencv-python-headless==4.10.0.84   # Apache-2.0. Headless: no GUI deps in containers.
+numpy==1.26.4                       # BSD-3-Clause
+requests==2.32.3                    # Apache-2.0
+pydantic==2.9.2                     # MIT
+pydantic-settings==2.5.2            # MIT
