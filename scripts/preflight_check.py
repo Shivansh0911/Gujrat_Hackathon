@@ -29,7 +29,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
-from services.common import redact  # noqa: E402
+from services.common import evidence, redact  # noqa: E402
 from services.common.catalogue import CameraDescriptor, fetch_catalogue  # noqa: E402
 from services.common.config import get_settings  # noqa: E402
 from services.common.cv_env import RTSP_TRANSPORT, capture_options  # noqa: E402
@@ -390,6 +390,47 @@ def check_8_scene_discontinuity(cameras: list[CameraDescriptor], seconds: float)
     return Check(8, "Behaviour is sane across a scene discontinuity", passed, detail, "live")
 
 
+def _preflight_markdown(checks: list[Check], settings, passed: int) -> str:
+    """Human-readable companion to the JSON evidence record."""
+    prov = evidence.provenance()
+    lines = [
+        "# Preflight — organiser's §2.4 pre-submission checklist",
+        "",
+        f"**Result: {passed}/{len(checks)} checks passed.**",
+        "",
+        f"- **Gateway:** `{settings.gateway_host}`",
+        f"- **Catalogue:** `{settings.catalogue_url}`",
+        f"- **Transport:** {'RTSP over TCP' if RTSP_AVAILABLE else f'HLS (RTSP :{settings.gateway_rtsp_port} unreachable from this network)'}",
+        f"- **Commit:** `{prov['git_sha']}`"
+        f"{' — **working tree dirty**, this artefact does not correspond to a commit' if prov['git_tree_dirty'] else ''}",
+        f"- **Branch:** `{prov['git_branch']}`",
+        f"- **Python:** {prov['python']} on {prov['platform']}",
+        "",
+        "Every check marked *live* was exercised against the running gateway: a capture",
+        "opened, a feed interrupted, a hard scene cut fed to the detector. Checks marked",
+        "*static* are assertions over this repository's source. Nothing here reports a",
+        "pass on the strength of a code comment.",
+        "",
+        "| # | Result | How | Check |",
+        "|---:|---|---|---|",
+    ]
+    for c in checks:
+        lines.append(
+            f"| {c.number} | {'✅ PASS' if c.passed else '❌ FAIL'} | {c.method} | {c.name} |"
+        )
+    lines += ["", "## Measured values behind each check", ""]
+    for c in checks:
+        lines += [
+            f"### {c.number}. {c.name}",
+            "",
+            f"**{'PASS' if c.passed else 'FAIL'}** ({c.method})",
+            "",
+            f"{c.detail}",
+            "",
+        ]
+    return "\n".join(lines) + "\n"
+
+
 # ------------------------------------------------------------------------ main
 
 
@@ -397,6 +438,11 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--seconds", type=float, default=10.0, help="live window per check")
     ap.add_argument("--out", type=Path, default=REPO_ROOT / "reports" / "preflight.json")
+    ap.add_argument(
+        "--emit-evidence",
+        action="store_true",
+        help="write a dated, immutable record to reports/evidence/ for submission",
+    )
     ap.add_argument("--verbose", action="store_true")
     args = ap.parse_args()
 
@@ -474,6 +520,24 @@ def main() -> int:
     passed = sum(1 for c in checks if c.passed)
     print("-" * (width + 24))
     print(f"{passed}/{len(checks)} checks passed\n")
+
+    if args.emit_evidence:
+        json_path, md_path = evidence.write(
+            "preflight",
+            {
+                "gateway_host": settings.gateway_host,
+                "catalogue_url": settings.catalogue_url,
+                "rtsp_port_reachable": RTSP_AVAILABLE,
+                "transport_used": "rtsp" if RTSP_AVAILABLE else "hls",
+                "cameras_catalogued": len(cameras),
+                "cameras_live_flagged": len(live),
+                "checks": [c.__dict__ for c in checks],
+                "passed": passed,
+                "total": len(checks),
+            },
+            _preflight_markdown(checks, settings, passed),
+        )
+        print(f"evidence written: {json_path.name} and {md_path.name}\n")
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(

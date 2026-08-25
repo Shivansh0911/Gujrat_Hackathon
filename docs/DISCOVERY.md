@@ -137,6 +137,49 @@ signal; the histogram is corroboration for the marginal band only. Retuned to de
 cut on overwhelming pixel change alone, or on both signals agreeing. Now detected at
 `hist_corr=0.48, mad=62.7`, with zero false positives across 40 consecutive frames.
 
+## Finding 9 — the catalogue's `live` flag is a claim, not a health signal
+
+**2026-08-25T16:31:46Z — 16:47:00Z (ongoing at time of writing).**
+
+`GET /api/ingest` returned **HTTP 200 with all 30 cameras flagged `live: true`**, while
+**every** `GET /live/stream/<id>/index.m3u8?cookieCheck=1` returned **HTTP 502 Bad
+Gateway**, and later stopped responding altogether. Reproduced independently with
+`curl 8.7.1` and with OpenCV 4.10.0/FFmpeg. The same code decoded frames from these
+cameras at 05:31Z the same day, so this is gateway state, not a regression on our side.
+
+The control plane and the media plane fail independently. This is not a quirk of one
+gateway — it is the normal condition of any federated estate, where an inventory record
+asserts a camera exists and only a probe establishes that it works.
+
+Consequences now baked into the design:
+
+- **Registry health is derived from probing, never from the catalogue.** `camera.live`
+  as reported upstream is stored as a declared attribute alongside `health_state`, in
+  exactly the way `declared_fps` sits alongside `measured_fps`.
+- A camera advertised as live but not servable transitions to `DEGRADED`/`UNREACHABLE`
+  on probe evidence, and the divergence between declared and observed is itself a
+  reportable signal on the Health screen.
+- `scripts/await_gateway.py` treats readiness as "a playlist actually served", not "the
+  catalogue says live".
+
+Raised with the organisers in `docs/SUPPORT_QUERY.md` (Issue 2), since the divergence
+may be masking the fault from their own monitoring.
+
+## Finding 10 — RTSP/WHEP unreachability re-measured and confirmed
+
+**2026-08-25T16:46Z.** Re-verified with fresh DNS and TCP evidence for the support query:
+
+```
+live.corp8.cloud -> 104.21.59.42, 172.67.213.199   (both Cloudflare ranges)
+  :443  OPEN      :80   OPEN
+  :8554 TIMEOUT   :8889 TIMEOUT
+```
+
+Two Cloudflare edge addresses, not one. HTTP(S) ports open, media ports closed, from a
+connection with no outbound filtering. This is how the gateway is published, not a local
+firewall — recorded as ADR 0002, and the question of whether a direct origin exists is
+put to the organisers in `docs/SUPPORT_QUERY.md` (Issue 1).
+
 ## Local evaluation hardware
 
 Python 3.12.5, Docker 29.7.2, Node 20.14, **NVIDIA RTX 4050 Laptop, 6 GB VRAM**.

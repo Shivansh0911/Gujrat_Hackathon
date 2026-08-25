@@ -3,3 +3,7 @@
 pytest==8.3.3       # MIT
 pytest-timeout==2.3.1  # MIT — used to assert the plate regex cannot backtrack (§7.3 ReDoS)
 ruff==0.6.9         # MIT
+mypy==1.11.2        # MIT
+pytest-cov==5.0.0   # MIT
+pip-audit==2.7.3    # Apache-2.0
+cyclonedx-bom==4.6.1  # Apache-2.0

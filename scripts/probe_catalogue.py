@@ -16,26 +16,63 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import logging
+import os
 import sys
+import tempfile
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
-from services.common import redact  # noqa: E402
+from services.common import evidence, redact  # noqa: E402
 from services.common.catalogue import CameraDescriptor, fetch_catalogue  # noqa: E402
 from services.common.config import get_settings  # noqa: E402
 from services.common.stream_client import StreamSession  # noqa: E402
 from services.common.transport import port_reachable, select_transport  # noqa: E402
 
 log = logging.getLogger("probe")
+
+
+@contextlib.contextmanager
+def capture_stderr_fd():
+    """Capture writes to file descriptor 2, including those from libav's C code.
+
+    FFmpeg's decoder messages ("Error constructing the frame RPS", "Could not find ref
+    with POC") are emitted from C to fd 2 and are invisible to `contextlib.redirect_stderr`,
+    which only rebinds the Python-level `sys.stderr` object. Recording them is the whole
+    point of the evidence run: §2.2 says these messages are expected at join and must not
+    be fatal, and the only way to show a jury we handled them is to show what arrived.
+
+    fd-level redirection is process-wide, so this is only correct under --sequential.
+    In concurrent mode messages cannot be attributed to a camera and are not collected.
+    """
+    saved = os.dup(2)
+    tmp = tempfile.TemporaryFile(mode="w+b")
+    try:
+        sys.stderr.flush()
+        os.dup2(tmp.fileno(), 2)
+        yield tmp
+    finally:
+        sys.stderr.flush()
+        os.dup2(saved, 2)
+        os.close(saved)
+
+
+def _read_captured(tmp) -> list[str]:
+    tmp.seek(0)
+    raw = tmp.read().decode("utf-8", errors="replace")
+    tmp.close()
+    # Keep every line: a jury asking "what did the decoder actually say?" is entitled
+    # to the unfiltered answer, and redaction still runs over it before it is written.
+    return [ln.rstrip() for ln in raw.splitlines() if ln.strip()]
 
 
 @dataclass
@@ -56,6 +93,8 @@ class ProbeResult:
     max_gap_ms: float
     join_warnings: int
     discontinuities: int
+    # Populated only under --sequential; see capture_stderr_fd().
+    decoder_messages: list[str] = field(default_factory=list)
 
     @property
     def fps_disagrees(self) -> bool:
@@ -145,6 +184,16 @@ def main() -> int:
         default=REPO_ROOT / "reports" / "probe_catalogue.json",
         help="where to write the machine-readable report",
     )
+    ap.add_argument(
+        "--sequential",
+        action="store_true",
+        help="probe one camera at a time so decoder messages can be attributed to it",
+    )
+    ap.add_argument(
+        "--emit-evidence",
+        action="store_true",
+        help="write a dated, immutable record to reports/evidence/ for submission",
+    )
     ap.add_argument("--verbose", action="store_true")
     args = ap.parse_args()
 
@@ -172,14 +221,32 @@ def main() -> int:
     )
 
     results: list[ProbeResult] = []
-    # Bounded concurrency: each connected client gets its own copy of the stream, so
-    # an unbounded fan-out is a load test against infrastructure we do not own (§2.2).
-    with ThreadPoolExecutor(max_workers=settings.max_concurrent_captures) as pool:
-        futures = {
-            pool.submit(probe_one, c, args.seconds, rtsp_available): c for c in cameras
-        }
-        for fut in as_completed(futures):
-            results.append(fut.result())
+    if args.sequential:
+        # One at a time so fd-level stderr capture can be attributed to a camera.
+        # Slower, but this is the evidence run -- accuracy beats wall-clock.
+        for cam in cameras:
+            with capture_stderr_fd() as cap:
+                result = probe_one(cam, args.seconds, rtsp_available)
+            result.decoder_messages = [
+                redact.redact(m) for m in _read_captured(cap)
+            ]
+            log.info(
+                "camera %s: %d frames, %d decoder message(s)",
+                result.external_id,
+                result.frames,
+                len(result.decoder_messages),
+            )
+            results.append(result)
+    else:
+        # Bounded concurrency: each connected client gets its own copy of the stream, so
+        # an unbounded fan-out is a load test against infrastructure we do not own (§2.2).
+        with ThreadPoolExecutor(max_workers=settings.max_concurrent_captures) as pool:
+            futures = {
+                pool.submit(probe_one, c, args.seconds, rtsp_available): c
+                for c in cameras
+            }
+            for fut in as_completed(futures):
+                results.append(fut.result())
 
     results.sort(key=lambda r: int(r.external_id) if r.external_id.isdigit() else 0)
 
@@ -225,7 +292,94 @@ def main() -> int:
         encoding="utf-8",
     )
     log.info("report written: %s", args.out)
+
+    if args.emit_evidence:
+        json_path, md_path = evidence.write(
+            "catalogue-probe",
+            {
+                "catalogue_url": settings.catalogue_url,
+                "gateway_host": settings.gateway_host,
+                "rtsp_port_reachable": rtsp_available,
+                "probe_seconds": args.seconds,
+                "sequential": args.sequential,
+                "cameras_catalogued": len(cameras),
+                "cameras_producing_frames": len(live),
+                "cameras_with_declared_properties": len(cameras) - len(unknown_declared),
+                "cameras_fps_disagreeing": len(disagree),
+                "results": [asdict(r) for r in results],
+            },
+            _markdown_report(results, settings, rtsp_available, args),
+        )
+        log.info("evidence written: %s and %s", json_path.name, md_path.name)
+
     return 0 if live else 1
+
+
+def _markdown_report(results, settings, rtsp_available: bool, args) -> str:
+    """Human-readable companion to the JSON record."""
+    live = [r for r in results if r.ok]
+    disagree = [r for r in live if r.fps_disagrees]
+    prov = evidence.provenance()
+
+    lines = [
+        "# Catalogue probe — measured stream properties",
+        "",
+        f"- **Gateway:** `{settings.gateway_host}`",
+        f"- **Catalogue:** `{settings.catalogue_url}`",
+        f"- **RTSP :{settings.gateway_rtsp_port} reachable:** "
+        f"{'yes' if rtsp_available else 'no — all cameras probed over HLS'}",
+        f"- **Sample window:** {args.seconds:.0f}s per camera"
+        f"{', sequential' if args.sequential else ', concurrent'}",
+        f"- **Commit:** `{prov['git_sha']}`"
+        f"{' (working tree dirty)' if prov['git_tree_dirty'] else ''}",
+        "",
+        "## Why this exists",
+        "",
+        "The catalogue reports `codec: \"\"`, `0x0` and `fps: 0.0` for most cameras, and",
+        "where it does declare an FPS that figure is a declaration, not a measurement.",
+        "§2.2 forbids using declared FPS for timing, so every property below marked",
+        "*measured* was derived from PTS deltas on real decoded frames.",
+        "",
+        f"**{len(live)}/{len(results)} cameras produced frames.** "
+        f"{len(disagree)} had a declared FPS that was absent or more than 15% from measured.",
+        "",
+        "| id | location | via | codec | resolution (declared → measured) | fps (declared → measured) | TTFF | decoder msgs |",
+        "|---:|---|---|---|---|---|---:|---:|",
+    ]
+    for r in results:
+        codec = f"{r.declared_codec or '—'} / {r.measured_fourcc or '—'}"
+        res = f"{r.declared_res or '—'} → {r.measured_res or '—'}"
+        fps = f"{r.declared_fps or '—'} → {r.measured_fps or '—'}"
+        if r.fps_disagrees:
+            fps += " ⚠"
+        ttff = f"{r.join_latency_s:.2f}s" if r.join_latency_s else "—"
+        status = "" if r.ok else f" **FAIL: {r.error}**"
+        lines.append(
+            f"| {r.external_id} | {r.location_text}{status} | {r.transport} | {codec} "
+            f"| {res} | {fps} | {ttff} | {len(r.decoder_messages)} |"
+        )
+
+    noisy = [r for r in results if r.decoder_messages]
+    if noisy:
+        lines += [
+            "",
+            "## Decoder messages observed during join",
+            "",
+            "§2.2: these are expected when attaching mid-stream before the first IDR and",
+            "must not be treated as fatal. They are reproduced verbatim (credentials",
+            "redacted) as evidence that they occurred and were absorbed.",
+            "",
+        ]
+        for r in noisy:
+            lines.append(f"### Camera {r.external_id} — {r.location_text}")
+            lines.append("")
+            lines.append("```")
+            lines.extend(r.decoder_messages[:40])
+            if len(r.decoder_messages) > 40:
+                lines.append(f"... {len(r.decoder_messages) - 40} further line(s)")
+            lines.append("```")
+            lines.append("")
+    return "\n".join(lines) + "\n"
 
 
 if __name__ == "__main__":

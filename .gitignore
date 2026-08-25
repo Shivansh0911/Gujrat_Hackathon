@@ -26,8 +26,12 @@ dist/
 data/evidence/
 data/snapshots/
 *.log
+
+# Ad-hoc report runs stay local; the dated evidence records in reports/evidence/ are
+# committed deliberately -- they are the artefacts the submission is scored on.
 reports/*.json
 !reports/.gitkeep
+!reports/evidence/
 
 # OS / editor
 .DS_Store
