@@ -183,6 +183,18 @@ def main() -> int:
             session.commit()
             source.close()
 
+            # Record what the source actually delivered. The Health screen's
+            # declared-versus-measured column is only meaningful if the measured
+            # side is populated from a real decode rather than left null.
+            caps = source.probe()
+            camera.codec = caps.codec
+            camera.resolution_w, camera.resolution_h = caps.width, caps.height
+            camera.declared_fps = caps.declared_fps
+            camera.measured_fps = caps.measured_fps
+            camera.transport = caps.transport
+            camera.last_seen_at = datetime.now(timezone.utc)
+            session.commit()
+
             st = pipeline.stats
             print(
                 f"  {camera.camera_ref}  T+{offset_min:>3}min  "
