@@ -157,7 +157,7 @@ It probably will be. Nothing above depends on it.
 - `docs/SUPPORT_QUERY.md` contains the fault report already prepared for the
   organisers, including the DNS and port-reachability evidence.
 
-If the gateway **does** recover, run `python scripts/probe_catalogue.py --sequential
+If the gateway **does** recover, run `python backend/scripts/probe_catalogue.py --sequential
 --emit-evidence` to capture live properties, then extend ingest across the catalogue.
 
 ---

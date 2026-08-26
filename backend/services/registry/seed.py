@@ -17,19 +17,20 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(REPO_ROOT))
+BACKEND_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(BACKEND_ROOT))
 
 from sqlalchemy import func, select  # noqa: E402
 
 from services.api.db import get_sessionmaker  # noqa: E402
 from services.common import redact  # noqa: E402
+from services.common.paths import SEED_DIR  # noqa: E402
 from services.registry.enums import CameraStatus, GeomSource, SourceType  # noqa: E402
 from services.registry.models import Camera, Department  # noqa: E402
 
 log = logging.getLogger("seed")
 
-SEED_CSV = REPO_ROOT / "data" / "seed" / "camera_geo.csv"
+SEED_CSV = SEED_DIR / "camera_geo.csv"
 
 # The five departments present in the evaluation dataset, plus HOME as the default
 # owner for gateway cameras whose department the catalogue does not state.

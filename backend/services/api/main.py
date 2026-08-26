@@ -74,7 +74,9 @@ def evidence_crop(name: str) -> FileResponse:
     """
     from pathlib import Path
 
-    crop_dir = (Path(__file__).resolve().parents[2] / "data" / "evidence" / "crops").resolve()
+    from services.common.paths import CROPS_DIR
+
+    crop_dir = CROPS_DIR.resolve()
     candidate = (crop_dir / Path(name).name).resolve()
     if crop_dir not in candidate.parents or not candidate.is_file():
         raise HTTPException(status_code=404, detail="crop not found")

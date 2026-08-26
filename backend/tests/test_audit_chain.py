@@ -21,11 +21,19 @@ DB_URL = os.environ.get("SETU_DATABASE_URL")
 
 
 def _read_db_url() -> str | None:
+    """Database URL from the environment, falling back to the project .env.
+
+    The .env location comes from services.common.paths rather than being derived
+    here: when the backend moved into backend/, a locally-computed path silently
+    pointed at a file that no longer existed and every audit test skipped instead of
+    failing -- a green run that had verified nothing.
+    """
     if DB_URL:
         return DB_URL
-    env = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env")
-    if os.path.exists(env):
-        for line in open(env, encoding="utf-8"):
+    from services.common.paths import ENV_FILE
+
+    if ENV_FILE.exists():
+        for line in ENV_FILE.read_text(encoding="utf-8").splitlines():
             if line.startswith("SETU_DATABASE_URL="):
                 return line.split("=", 1)[1].strip()
     return None

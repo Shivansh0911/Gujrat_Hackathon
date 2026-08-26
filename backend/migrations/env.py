@@ -15,8 +15,8 @@ from pathlib import Path
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(REPO_ROOT))
+BACKEND_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(BACKEND_ROOT))
 
 from services.registry.models import Base  # noqa: E402
 
@@ -29,7 +29,9 @@ _url = os.environ.get("SETU_DATABASE_URL")
 if not _url:
     # Fall back to .env so `alembic upgrade head` works the same way `make migrate`
     # does, without requiring the caller to export the variable by hand.
-    env_file = REPO_ROOT / ".env"
+    from services.common.paths import ENV_FILE
+
+    env_file = ENV_FILE
     if env_file.exists():
         for line in env_file.read_text(encoding="utf-8").splitlines():
             if line.startswith("SETU_DATABASE_URL="):

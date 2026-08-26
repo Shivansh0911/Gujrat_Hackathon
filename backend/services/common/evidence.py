@@ -21,8 +21,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-EVIDENCE_DIR = REPO_ROOT / "reports" / "evidence"
+from services.common.paths import EVIDENCE_DIR, PROJECT_ROOT
+
+# Git provenance is read from the project root, which is the repository -- the
+# backend/ subtree is not a repository of its own.
+REPO_ROOT = PROJECT_ROOT
 
 
 def _git(*args: str) -> str | None:

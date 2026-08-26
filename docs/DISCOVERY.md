@@ -30,7 +30,7 @@ Consequences, all implemented in M0:
   measurement; propagating it would let a downstream batcher size a tensor to nothing
   and fail a long way from the cause.
 - `CameraDescriptor.properties_known` marks which cameras must be probed.
-- `scripts/probe_catalogue.py` establishes codec, resolution and **`measured_fps` from
+- `backend/scripts/probe_catalogue.py` establishes codec, resolution and **`measured_fps` from
   PTS deltas** for every camera, and writes a report contrasting declared with measured.
 
 This is the organiser's own "never trust the reported frame rate" warning appearing as
@@ -83,7 +83,7 @@ TCP connect: 443 succeeds, 8554 and 8889 both fail. This is not a local firewall
 is a property of how the gateway is published.
 
 §2.2 anticipates exactly this ("if port 8554 is blocked on the network, fall back to
-the HLS endpoint"), so `services/common/transport.py` decides transport per camera by
+the HLS endpoint"), so `backend/services/common/transport.py` decides transport per camera by
 probing, never by assumption. RTSP is still attempted first and TCP is still forced,
 because on the Grand Finale network or against a departmental VMS it will be available
 and is the better path.
@@ -159,7 +159,7 @@ Consequences now baked into the design:
 - A camera advertised as live but not servable transitions to `DEGRADED`/`UNREACHABLE`
   on probe evidence, and the divergence between declared and observed is itself a
   reportable signal on the Health screen.
-- `scripts/await_gateway.py` treats readiness as "a playlist actually served", not "the
+- `backend/scripts/await_gateway.py` treats readiness as "a playlist actually served", not "the
   catalogue says live".
 
 Raised with the organisers in `docs/SUPPORT_QUERY.md` (Issue 2), since the divergence

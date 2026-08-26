@@ -25,7 +25,13 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 # The single permitted read: StreamSession._open() records the declared FPS purely so
 # the platform can display it beside measured_fps and demonstrate the discrepancy the
 # organiser's own integration guide warns about. It feeds no timing path.
-EXPECTED_READS = 1
+# Two permitted reads, both reference-only and both marked as such on the line:
+#   services/common/stream_client.py  - declared rate of a live gateway stream
+#   services/ingest/file_source.py    - declared rate of a local own-feed clip
+# Each exists solely so the platform can display declared beside measured. Neither
+# feeds a timing path. Raising this number is a reviewed decision, which is why the
+# guard fails until it is done in the same commit as the new read.
+EXPECTED_READS = 2
 
 # This file necessarily contains the literal; the preflight prints it in a report.
 EXEMPT_FILENAMES = {"check_fps_guard.py", "preflight_check.py"}

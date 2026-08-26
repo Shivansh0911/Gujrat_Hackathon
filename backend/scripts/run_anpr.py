@@ -18,8 +18,11 @@ import time
 from collections import Counter
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(REPO_ROOT))
+# backend/ on the path so `services.*` imports resolve however this is launched.
+BACKEND_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(BACKEND_ROOT))
+
+from services.common.paths import PROJECT_ROOT as REPO_ROOT  # noqa: E402
 
 from services.analytics.anpr import (  # noqa: E402
     AnprPipeline,

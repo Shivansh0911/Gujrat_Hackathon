@@ -8,28 +8,55 @@ Registry & GIS Mapping) as an *active control plane*, Model 3 federation as the
 backbone, Model 4's analytics and evidence plane, with Model 2 direct-connect
 implemented as one adapter type inside the federation layer.
 
+## Repository layout
+
+```
+backend/            Python services, migrations, scripts and tests
+  services/
+    api/            FastAPI app, routers, auth, hash-chained audit
+    analytics/      ANPR pipeline, plate grammar, watchlist matcher, persistence
+    ingest/         CameraSource protocol, FileSource, GatewaySource
+    registry/       SQLAlchemy models, camera lifecycle, seed loader
+    common/         transport, stream client, SSRF guard, redaction, paths
+  migrations/       Alembic, reversibility tested
+  scripts/          preflight, catalogue probe, geocoding, ANPR runner, demo seeding
+  tests/            126 tests
+frontend/           React 18 + TypeScript console (five screens)
+data/               seeds, own-feed footage, evidence crops  (shared)
+docs/               runbook, discovery record, ADRs, screenshots
+reports/evidence/   dated, committed evidence records
+```
+
+Backend and frontend are separate trees but one project: `data/`, `docs/` and
+`reports/` sit above both because the console serves evidence crops the pipeline
+writes, and the evidence records belong to the submission rather than to either tree.
+
+Filesystem locations are defined once in `backend/services/common/paths.py`. Nothing
+computes its own `Path(__file__).parents[N]` — that constant depends on how deep a
+file sits, so moving a file silently changes it and nothing verifies the result.
+
 ## Status — Milestone 0 complete
 
 Foundation and feed-contract compliance. What exists and works today:
 
 | Component | Purpose |
 |---|---|
-| `services/common/cv_env.py` | Sole cv2 import point; forces RTSP-over-TCP before the FFmpeg backend reads its options. |
-| `services/common/config.py` | Environment-driven settings. No host, port or secret in source. |
-| `services/common/redact.py` | Root-logger filter scrubbing credentials and upstream stream URLs. |
-| `services/common/catalogue.py` | `/api/ingest` client. Normalises the catalogue's `0`/`""` sentinels to `None`. |
-| `services/common/transport.py` | Per-camera transport selection, RTSP→HLS fallback, HLS variant resolution. |
-| `services/common/stream_client.py` | `StreamSession`: PTS-only timing, backoff reconnect, join tolerance, measured FPS. |
-| `services/common/scene_cut.py` | Two-signal scene-discontinuity detector for the recording loop point. |
-| `scripts/probe_catalogue.py` | Measures real codec/resolution/FPS per camera; reconciles against the catalogue. |
-| `scripts/preflight_check.py` | Verifies the organiser's §2.4 checklist empirically. CI gate. |
+| `backend/services/common/cv_env.py` | Sole cv2 import point; forces RTSP-over-TCP before the FFmpeg backend reads its options. |
+| `backend/services/common/config.py` | Environment-driven settings. No host, port or secret in source. |
+| `backend/services/common/redact.py` | Root-logger filter scrubbing credentials and upstream stream URLs. |
+| `backend/services/common/catalogue.py` | `/api/ingest` client. Normalises the catalogue's `0`/`""` sentinels to `None`. |
+| `backend/services/common/transport.py` | Per-camera transport selection, RTSP→HLS fallback, HLS variant resolution. |
+| `backend/services/common/stream_client.py` | `StreamSession`: PTS-only timing, backoff reconnect, join tolerance, measured FPS. |
+| `backend/services/common/scene_cut.py` | Two-signal scene-discontinuity detector for the recording loop point. |
+| `backend/scripts/probe_catalogue.py` | Measures real codec/resolution/FPS per camera; reconciles against the catalogue. |
+| `backend/scripts/preflight_check.py` | Verifies the organiser's §2.4 checklist empirically. CI gate. |
 | `data/seed/camera_geo.csv` | Camera coordinates — team-supplied, never inferred. |
 
 ## Setup
 
 ```bash
 python -m venv .venv
-.venv/Scripts/python -m pip install -r requirements-dev.txt   # Linux/macOS: .venv/bin/python
+.venv/Scripts/python -m pip install -r backend/requirements-dev.txt   # Linux/macOS: .venv/bin/python
 cp .env.example .env        # then set SETU_GATEWAY_HOST
 ```
 
@@ -38,8 +65,8 @@ second gateway, and a default would be a hardcoded host by another name.
 
 ```bash
 .venv/Scripts/python -m pytest tests -q            # unit tests, no network
-.venv/Scripts/python scripts/preflight_check.py    # §2.4 checklist against the live feed
-.venv/Scripts/python scripts/probe_catalogue.py    # declared-vs-measured stream properties
+.venv/Scripts/python backend/scripts/preflight_check.py    # §2.4 checklist against the live feed
+.venv/Scripts/python backend/scripts/probe_catalogue.py    # declared-vs-measured stream properties
 ```
 
 ## Two findings that shaped this milestone
@@ -80,4 +107,4 @@ properties are measured, not read.
 ## Licensing
 
 Every dependency is Apache-2.0, MIT, BSD or PSF. No AGPL, SSPL, BUSL or
-non-commercial licences. Versions are pinned exactly in `requirements.txt`.
+non-commercial licences. Versions are pinned exactly in `backend/requirements.txt`.

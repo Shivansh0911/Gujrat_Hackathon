@@ -26,8 +26,11 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(REPO_ROOT))
+# backend/ on the path so `services.*` imports resolve however this is launched.
+BACKEND_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(BACKEND_ROOT))
+
+from services.common.paths import PROJECT_ROOT as REPO_ROOT  # noqa: E402
 
 from services.common import evidence, redact  # noqa: E402
 from services.common.catalogue import CameraDescriptor, fetch_catalogue  # noqa: E402

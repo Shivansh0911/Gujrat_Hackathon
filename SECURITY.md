@@ -48,7 +48,7 @@ These are rejected in review regardless of context:
 
 Upstream camera URLs and credentials never leave the adapter process. `open_stream()`
 returns an opaque handle, never a URL. Credentials are never returned by an API, never
-sent to the browser and never logged: `services/common/redact.py` installs a filter on
+sent to the browser and never logged: `backend/services/common/redact.py` installs a filter on
 every log handler that masks URL userinfo, bare `rtsp://` URLs and known credential keys
 before a record reaches any sink. The browser requests a stream by camera id; the
 platform checks authorisation and mints a short-lived signed playback token.
