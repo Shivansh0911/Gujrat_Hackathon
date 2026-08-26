@@ -32,8 +32,32 @@ def _read_db_url() -> str | None:
 
 
 _URL = _read_db_url()
+
+
+def _reachable(url: str | None) -> bool:
+    """A configured-but-unreachable database must skip, not error in a fixture.
+
+    Docker is not always running on a developer machine. Erroring six fixtures with a
+    socket traceback hides which tests genuinely failed; skipping with a clear reason
+    keeps the suite readable.
+    """
+    if not url:
+        return False
+    try:
+        from sqlalchemy import create_engine, text
+
+        engine = create_engine(url, connect_args={"connect_timeout": 3})
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        engine.dispose()
+        return True
+    except Exception:
+        return False
+
+
 pytestmark = pytest.mark.skipif(
-    not _URL, reason="SETU_DATABASE_URL not configured; audit chain needs real Postgres"
+    not _reachable(_URL),
+    reason="Postgres not reachable; audit chain tests need the docker-compose database",
 )
 
 

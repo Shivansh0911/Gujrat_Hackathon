@@ -42,6 +42,7 @@ Thumbs.db
 # Own-feed footage is data, not source.
 data/own_feed/*
 !data/own_feed/README.md
+!data/own_feed/SOURCE.md
 
 # Test fixtures are generated, not authored.
 tests/fixtures/*.mp4
