@@ -107,7 +107,7 @@ watchlist:  ## Seed a representative watchlist from plates present in the footag
 
 # ---------------------------------------------------------------- demo
 
-demo: up migrate seed  ## Full demo from a clean checkout. Works with the gateway down.
+demo: up migrate app-role seed  ## Full demo from a clean checkout. Works with the gateway down.
 	@echo ""
 	@echo "==> ingesting own-feed footage across replay cameras"
 	$(BE) ../$(PY) scripts/seed_demo.py --reset
@@ -129,3 +129,20 @@ demo: up migrate seed  ## Full demo from a clean checkout. Works with the gatewa
 demo-reset:  ## Clear detections and alerts, then re-ingest
 	$(BE) ../$(PY) scripts/seed_demo.py --reset
 	$(BE) ../$(PY) scripts/seed_watchlist.py --reset
+
+# ---------------------------------------------------------------- evidence
+
+ground-truth:  ## Write the ANPR annotation sheet for a human to fill in
+	$(BE) ../$(PY) scripts/ground_truth.py annotate
+
+accuracy:  ## Score ANPR against the human annotations
+	$(BE) ../$(PY) scripts/ground_truth.py score --emit-evidence
+
+benchmark:  ## Measure journey latency, decode-to-alert and throughput
+	$(BE) ../$(PY) scripts/benchmark.py --emit-evidence
+
+detection-report:  ## Detected vehicles and plates with timestamps (CSV + PDF)
+	$(BE) ../$(PY) scripts/detection_report.py --emit-evidence
+
+app-role:  ## Create the unprivileged database role that RLS depends on
+	$(BE) ../$(PY) scripts/create_app_role.py

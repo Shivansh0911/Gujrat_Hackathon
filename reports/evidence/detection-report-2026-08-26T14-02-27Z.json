@@ -1,0 +1,581 @@
+{
+  "kind": "detection-report",
+  "generated_at": "2026-08-26T14-02-27Z",
+  "provenance": {
+    "git_sha": "05803ac300d4a9a5c28b086fc5c516e9b0ca8e65",
+    "git_tree_dirty": true,
+    "git_branch": "main",
+    "python": "3.12.5",
+    "platform": "Windows-11-10.0.26200-SP0"
+  },
+  "detections": 56,
+  "cameras": 4,
+  "grammar_valid": 32,
+  "distinct_plates": 8,
+  "from_gateway": 0,
+  "gateway_note": "Gateway status: the Government-provided feed at live.corp8.cloud returned HTTP 502 on every media playlist throughout the build, so no detections in this report originate from it. Its catalogue endpoint remained reachable. The fault was reported to the organisers; see docs/SUPPORT_QUERY.md. Every row here comes from our own-feed footage processed through the identical pipeline.",
+  "csv_file": "detections-2026-08-26T14-02-27Z.csv",
+  "pdf_file": "detections-2026-08-26T14-02-27Z.pdf",
+  "rows": [
+    {
+      "observed_at_utc": "2026-08-26T01:33:55.732879+00:00",
+      "camera_ref": "REPLAY-01",
+      "plate": "0ADA811",
+      "grammar_valid": false,
+      "corrections": 0,
+      "confidence": 0.608,
+      "pts_ms": 14814,
+      "source_type": "file"
+    },
+    {
+      "observed_at_utc": "2026-08-26T01:33:56.333431+00:00",
+      "camera_ref": "REPLAY-01",
+      "plate": "KA23AA441",
+      "grammar_valid": true,
+      "corrections": 1,
+      "confidence": 0.588,
+      "pts_ms": 15414,
+      "source_type": "file"
+    },
+    {
+      "observed_at_utc": "2026-08-26T01:33:56.533615+00:00",
+      "camera_ref": "REPLAY-01",
+      "plate": "KA25AB144",
+      "grammar_valid": true,
+      "corrections": 0,
+      "confidence": 0.902,
+      "pts_ms": 15614,
+      "source_type": "file"
+    },
+    {
+      "observed_at_utc": "2026-08-26T01:33:56.733799+00:00",
+      "camera_ref": "REPLAY-01",
+      "plate": "KA25SB512",
+      "grammar_valid": true,
+      "corrections": 2,
+      "confidence": 0.704,
+      "pts_ms": 15815,
+      "source_type": "file"
+    },
+    {
+      "observed_at_utc": "2026-08-26T01:33:56.933983+00:00",
+      "camera_ref": "REPLAY-01",
+      "plate": "KA25SB542",
+      "grammar_valid": true,
+      "corrections": 1,
+      "confidence": 0.785,
+      "pts_ms": 16015,
+      "source_type": "file"
+    },
+    {
+      "observed_at_utc": "2026-08-26T01:33:59.736559+00:00",
+      "camera_ref": "REPLAY-01",
+      "plate": "4121A1111",
+      "grammar_valid": false,
+      "corrections": 0,
+      "confidence": 0.609,
+      "pts_ms": 18817,
+      "source_type": "file"
+    },
+    {
+      "observed_at_utc": "2026-08-26T01:33:59.936743+00:00",
+      "camera_ref": "REPLAY-01",
+      "plate": "442511166",
+      "grammar_valid": false,
+      "corrections": 0,
+      "confidence": 0.597,
+      "pts_ms": 19017,
+      "source_type": "file"
+    },
+    {
+      "observed_at_utc": "2026-08-26T01:34:00.136927+00:00",
+      "camera_ref": "REPLAY-01",
+      "plate": "44236B116",
+      "grammar_valid": false,
+      "corrections": 0,
+      "confidence": 0.645,
+      "pts_ms": 19218,
+      "source_type": "file"
+    },
+    {
+      "observed_at_utc": "2026-08-26T01:34:00.337111+00:00",
+      "camera_ref": "REPLAY-01",
+      "plate": "442E61116",
+      "grammar_valid": false,
+      "corrections": 0,
+      "confidence": 0.714,
+      "pts_ms": 19418,
+      "source_type": "file"
+    },
+    {
+      "observed_at_utc": "2026-08-26T01:34:00.537295+00:00",
+      "camera_ref": "REPLAY-01",
+      "plate": "442E61116",
+      "grammar_valid": false,
+      "corrections": 0,
+      "confidence": 0.631,
+      "pts_ms": 19618,
+      "source_type": "file"
+    },
+    {
+      "observed_at_utc": "2026-08-26T01:34:00.737479+00:00",
+      "camera_ref": "REPLAY-01",
+      "plate": "KA25AI116",
+      "grammar_valid": true,
+      "corrections": 2,
+      "confidence": 0.781,
+      "pts_ms": 19818,
+      "source_type": "file"
+    },
+    {
+      "observed_at_utc": "2026-08-26T01:34:00.937663+00:00",
+      "camera_ref": "REPLAY-01",
+      "plate": "KA25SA116",
+      "grammar_valid": true,
+      "corrections": 2,
+      "confidence": 0.801,
+      "pts_ms": 20018,
+      "source_type": "file"
+    },
+    {
+      "observed_at_utc": "2026-08-26T01:34:01.137847+00:00",
+      "camera_ref": "REPLAY-01",
+      "plate": "KL26GI116",
+      "grammar_valid": true,
+      "corrections": 2,
+      "confidence": 0.741,
+      "pts_ms": 20219,
+      "source_type": "file"
+    },
+    {
+      "observed_at_utc": "2026-08-26T01:34:07.743919+00:00",
+      "camera_ref": "REPLAY-01",
+      "plate": "KA25AB551",
+      "grammar_valid": true,
+      "corrections": 1,
+      "confidence": 0.611,
+      "pts_ms": 26825,
+      "source_type": "file"
+    },
+    {
+      "observed_at_utc": "2026-08-26T03:13:55.732879+00:00",
+      "camera_ref": "REPLAY-02",
+      "plate": "0ADA811",
+      "grammar_valid": false,
+      "corrections": 0,
+      "confidence": 0.608,
+      "pts_ms": 14814,
+      "source_type": "file"
+    },
+    {
+      "observed_at_utc": "2026-08-26T03:13:56.333431+00:00",
+      "camera_ref": "REPLAY-02",
+      "plate": "KA23AA441",
+      "grammar_valid": true,
+      "corrections": 1,
+      "confidence": 0.588,
+      "pts_ms": 15414,
+      "source_type": "file"
+    },
+    {
+      "observed_at_utc": "2026-08-26T03:13:56.533615+00:00",
+      "camera_ref": "REPLAY-02",
+      "plate": "KA25AB144",
+      "grammar_valid": true,
+      "corrections": 0,
+      "confidence": 0.902,
+      "pts_ms": 15614,
+      "source_type": "file"
+    },
+    {
+      "observed_at_utc": "2026-08-26T03:13:56.733799+00:00",
+      "camera_ref": "REPLAY-02",
+      "plate": "KA25SB512",
+      "grammar_valid": true,
+      "corrections": 2,
+      "confidence": 0.704,
+      "pts_ms": 15815,
+      "source_type": "file"
+    },
+    {
+      "observed_at_utc": "2026-08-26T03:13:56.933983+00:00",
+      "camera_ref": "REPLAY-02",
+      "plate": "KA25SB542",
+      "grammar_valid": true,
+      "corrections": 1,
+      "confidence": 0.785,
+      "pts_ms": 16015,
+      "source_type": "file"
+    },
+    {
+      "observed_at_utc": "2026-08-26T03:13:59.736559+00:00",
+      "camera_ref": "REPLAY-02",
+      "plate": "4121A1111",
+      "grammar_valid": false,
+      "corrections": 0,
+      "confidence": 0.609,
+      "pts_ms": 18817,
+      "source_type": "file"
+    },
+    {
+      "observed_at_utc": "2026-08-26T03:13:59.936743+00:00",
+      "camera_ref": "REPLAY-02",
+      "plate": "442511166",
+      "grammar_valid": false,
+      "corrections": 0,
+      "confidence": 0.597,
+      "pts_ms": 19017,
+      "source_type": "file"
+    },
+    {
+      "observed_at_utc": "2026-08-26T03:14:00.136927+00:00",
+      "camera_ref": "REPLAY-02",
+      "plate": "44236B116",
+      "grammar_valid": false,
+      "corrections": 0,
+      "confidence": 0.645,
+      "pts_ms": 19218,
+      "source_type": "file"
+    },
+    {
+      "observed_at_utc": "2026-08-26T03:14:00.337111+00:00",
+      "camera_ref": "REPLAY-02",
+      "plate": "442E61116",
+      "grammar_valid": false,
+      "corrections": 0,
+      "confidence": 0.714,
+      "pts_ms": 19418,
+      "source_type": "file"
+    },
+    {
+      "observed_at_utc": "2026-08-26T03:14:00.537295+00:00",
+      "camera_ref": "REPLAY-02",
+      "plate": "442E61116",
+      "grammar_valid": false,
+      "corrections": 0,
+      "confidence": 0.631,
+      "pts_ms": 19618,
+      "source_type": "file"
+    },
+    {
+      "observed_at_utc": "2026-08-26T03:14:00.737479+00:00",
+      "camera_ref": "REPLAY-02",
+      "plate": "KA25AI116",
+      "grammar_valid": true,
+      "corrections": 2,
+      "confidence": 0.781,
+      "pts_ms": 19818,
+      "source_type": "file"
+    },
+    {
+      "observed_at_utc": "2026-08-26T03:14:00.937663+00:00",
+      "camera_ref": "REPLAY-02",
+      "plate": "KA25SA116",
+      "grammar_valid": true,
+      "corrections": 2,
+      "confidence": 0.801,
+      "pts_ms": 20018,
+      "source_type": "file"
+    },
+    {
+      "observed_at_utc": "2026-08-26T03:14:01.137847+00:00",
+      "camera_ref": "REPLAY-02",
+      "plate": "KL26GI116",
+      "grammar_valid": true,
+      "corrections": 2,
+      "confidence": 0.741,
+      "pts_ms": 20219,
+      "source_type": "file"
+    },
+    {
+      "observed_at_utc": "2026-08-26T03:14:07.743919+00:00",
+      "camera_ref": "REPLAY-02",
+      "plate": "KA25AB551",
+      "grammar_valid": true,
+      "corrections": 1,
+      "confidence": 0.611,
+      "pts_ms": 26825,
+      "source_type": "file"
+    },
+    {
+      "observed_at_utc": "2026-08-26T06:33:55.732879+00:00",
+      "camera_ref": "REPLAY-03",
+      "plate": "0ADA811",
+      "grammar_valid": false,
+      "corrections": 0,
+      "confidence": 0.608,
+      "pts_ms": 14814,
+      "source_type": "file"
+    },
+    {
+      "observed_at_utc": "2026-08-26T06:33:56.333431+00:00",
+      "camera_ref": "REPLAY-03",
+      "plate": "KA23AA441",
+      "grammar_valid": true,
+      "corrections": 1,
+      "confidence": 0.588,
+      "pts_ms": 15414,
+      "source_type": "file"
+    },
+    {
+      "observed_at_utc": "2026-08-26T06:33:56.533615+00:00",
+      "camera_ref": "REPLAY-03",
+      "plate": "KA25AB144",
+      "grammar_valid": true,
+      "corrections": 0,
+      "confidence": 0.902,
+      "pts_ms": 15614,
+      "source_type": "file"
+    },
+    {
+      "observed_at_utc": "2026-08-26T06:33:56.733799+00:00",
+      "camera_ref": "REPLAY-03",
+      "plate": "KA25SB512",
+      "grammar_valid": true,
+      "corrections": 2,
+      "confidence": 0.704,
+      "pts_ms": 15815,
+      "source_type": "file"
+    },
+    {
+      "observed_at_utc": "2026-08-26T06:33:56.933983+00:00",
+      "camera_ref": "REPLAY-03",
+      "plate": "KA25SB542",
+      "grammar_valid": true,
+      "corrections": 1,
+      "confidence": 0.785,
+      "pts_ms": 16015,
+      "source_type": "file"
+    },
+    {
+      "observed_at_utc": "2026-08-26T06:33:59.736559+00:00",
+      "camera_ref": "REPLAY-03",
+      "plate": "4121A1111",
+      "grammar_valid": false,
+      "corrections": 0,
+      "confidence": 0.609,
+      "pts_ms": 18817,
+      "source_type": "file"
+    },
+    {
+      "observed_at_utc": "2026-08-26T06:33:59.936743+00:00",
+      "camera_ref": "REPLAY-03",
+      "plate": "442511166",
+      "grammar_valid": false,
+      "corrections": 0,
+      "confidence": 0.597,
+      "pts_ms": 19017,
+      "source_type": "file"
+    },
+    {
+      "observed_at_utc": "2026-08-26T06:34:00.136927+00:00",
+      "camera_ref": "REPLAY-03",
+      "plate": "44236B116",
+      "grammar_valid": false,
+      "corrections": 0,
+      "confidence": 0.645,
+      "pts_ms": 19218,
+      "source_type": "file"
+    },
+    {
+      "observed_at_utc": "2026-08-26T06:34:00.337111+00:00",
+      "camera_ref": "REPLAY-03",
+      "plate": "442E61116",
+      "grammar_valid": false,
+      "corrections": 0,
+      "confidence": 0.714,
+      "pts_ms": 19418,
+      "source_type": "file"
+    },
+    {
+      "observed_at_utc": "2026-08-26T06:34:00.537295+00:00",
+      "camera_ref": "REPLAY-03",
+      "plate": "442E61116",
+      "grammar_valid": false,
+      "corrections": 0,
+      "confidence": 0.631,
+      "pts_ms": 19618,
+      "source_type": "file"
+    },
+    {
+      "observed_at_utc": "2026-08-26T06:34:00.737479+00:00",
+      "camera_ref": "REPLAY-03",
+      "plate": "KA25AI116",
+      "grammar_valid": true,
+      "corrections": 2,
+      "confidence": 0.781,
+      "pts_ms": 19818,
+      "source_type": "file"
+    },
+    {
+      "observed_at_utc": "2026-08-26T06:34:00.937663+00:00",
+      "camera_ref": "REPLAY-03",
+      "plate": "KA25SA116",
+      "grammar_valid": true,
+      "corrections": 2,
+      "confidence": 0.801,
+      "pts_ms": 20018,
+      "source_type": "file"
+    },
+    {
+      "observed_at_utc": "2026-08-26T06:34:01.137847+00:00",
+      "camera_ref": "REPLAY-03",
+      "plate": "KL26GI116",
+      "grammar_valid": true,
+      "corrections": 2,
+      "confidence": 0.741,
+      "pts_ms": 20219,
+      "source_type": "file"
+    },
+    {
+      "observed_at_utc": "2026-08-26T06:34:07.743919+00:00",
+      "camera_ref": "REPLAY-03",
+      "plate": "KA25AB551",
+      "grammar_valid": true,
+      "corrections": 1,
+      "confidence": 0.611,
+      "pts_ms": 26825,
+      "source_type": "file"
+    },
+    {
+      "observed_at_utc": "2026-08-26T07:13:55.732879+00:00",
+      "camera_ref": "REPLAY-04",
+      "plate": "0ADA811",
+      "grammar_valid": false,
+      "corrections": 0,
+      "confidence": 0.608,
+      "pts_ms": 14814,
+      "source_type": "file"
+    },
+    {
+      "observed_at_utc": "2026-08-26T07:13:56.333431+00:00",
+      "camera_ref": "REPLAY-04",
+      "plate": "KA23AA441",
+      "grammar_valid": true,
+      "corrections": 1,
+      "confidence": 0.588,
+      "pts_ms": 15414,
+      "source_type": "file"
+    },
+    {
+      "observed_at_utc": "2026-08-26T07:13:56.533615+00:00",
+      "camera_ref": "REPLAY-04",
+      "plate": "KA25AB144",
+      "grammar_valid": true,
+      "corrections": 0,
+      "confidence": 0.902,
+      "pts_ms": 15614,
+      "source_type": "file"
+    },
+    {
+      "observed_at_utc": "2026-08-26T07:13:56.733799+00:00",
+      "camera_ref": "REPLAY-04",
+      "plate": "KA25SB512",
+      "grammar_valid": true,
+      "corrections": 2,
+      "confidence": 0.704,
+      "pts_ms": 15815,
+      "source_type": "file"
+    },
+    {
+      "observed_at_utc": "2026-08-26T07:13:56.933983+00:00",
+      "camera_ref": "REPLAY-04",
+      "plate": "KA25SB542",
+      "grammar_valid": true,
+      "corrections": 1,
+      "confidence": 0.785,
+      "pts_ms": 16015,
+      "source_type": "file"
+    },
+    {
+      "observed_at_utc": "2026-08-26T07:13:59.736559+00:00",
+      "camera_ref": "REPLAY-04",
+      "plate": "4121A1111",
+      "grammar_valid": false,
+      "corrections": 0,
+      "confidence": 0.609,
+      "pts_ms": 18817,
+      "source_type": "file"
+    },
+    {
+      "observed_at_utc": "2026-08-26T07:13:59.936743+00:00",
+      "camera_ref": "REPLAY-04",
+      "plate": "442511166",
+      "grammar_valid": false,
+      "corrections": 0,
+      "confidence": 0.597,
+      "pts_ms": 19017,
+      "source_type": "file"
+    },
+    {
+      "observed_at_utc": "2026-08-26T07:14:00.136927+00:00",
+      "camera_ref": "REPLAY-04",
+      "plate": "44236B116",
+      "grammar_valid": false,
+      "corrections": 0,
+      "confidence": 0.645,
+      "pts_ms": 19218,
+      "source_type": "file"
+    },
+    {
+      "observed_at_utc": "2026-08-26T07:14:00.337111+00:00",
+      "camera_ref": "REPLAY-04",
+      "plate": "442E61116",
+      "grammar_valid": false,
+      "corrections": 0,
+      "confidence": 0.714,
+      "pts_ms": 19418,
+      "source_type": "file"
+    },
+    {
+      "observed_at_utc": "2026-08-26T07:14:00.537295+00:00",
+      "camera_ref": "REPLAY-04",
+      "plate": "442E61116",
+      "grammar_valid": false,
+      "corrections": 0,
+      "confidence": 0.631,
+      "pts_ms": 19618,
+      "source_type": "file"
+    },
+    {
+      "observed_at_utc": "2026-08-26T07:14:00.737479+00:00",
+      "camera_ref": "REPLAY-04",
+      "plate": "KA25AI116",
+      "grammar_valid": true,
+      "corrections": 2,
+      "confidence": 0.781,
+      "pts_ms": 19818,
+      "source_type": "file"
+    },
+    {
+      "observed_at_utc": "2026-08-26T07:14:00.937663+00:00",
+      "camera_ref": "REPLAY-04",
+      "plate": "KA25SA116",
+      "grammar_valid": true,
+      "corrections": 2,
+      "confidence": 0.801,
+      "pts_ms": 20018,
+      "source_type": "file"
+    },
+    {
+      "observed_at_utc": "2026-08-26T07:14:01.137847+00:00",
+      "camera_ref": "REPLAY-04",
+      "plate": "KL26GI116",
+      "grammar_valid": true,
+      "corrections": 2,
+      "confidence": 0.741,
+      "pts_ms": 20219,
+      "source_type": "file"
+    },
+    {
+      "observed_at_utc": "2026-08-26T07:14:07.743919+00:00",
+      "camera_ref": "REPLAY-04",
+      "plate": "KA25AB551",
+      "grammar_valid": true,
+      "corrections": 1,
+      "confidence": 0.611,
+      "pts_ms": 26825,
+      "source_type": "file"
+    }
+  ]
+}

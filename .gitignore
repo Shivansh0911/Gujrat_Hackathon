@@ -61,3 +61,7 @@ frontend/*.tsbuildinfo
 
 # Development-only evidence signing key. Never a production key.
 data/evidence/signing_key.dev
+
+# Ad-hoc detection reports; the dated evidence copies are committed.
+reports/detections-*.csv
+reports/detections-*.pdf
