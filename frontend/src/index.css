@@ -1,0 +1,24 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Control-room defaults: dark, dense, readable at three metres. */
+:root { color-scheme: dark; }
+html, body, #root { height: 100%; }
+body { @apply bg-ink-900 text-slate-200 antialiased; }
+
+.panel { @apply bg-ink-800 border border-edge rounded-lg; }
+.btn { @apply px-3 py-1.5 rounded border border-edge bg-ink-700 hover:bg-ink-600
+        text-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed; }
+.btn-primary { @apply bg-accent/20 border-accent/60 hover:bg-accent/30 text-accent; }
+.input { @apply bg-ink-900 border border-edge rounded px-2.5 py-1.5 text-sm
+         focus:outline-none focus:border-accent/70 w-full; }
+.label { @apply text-[11px] uppercase tracking-wider text-muted mb-1 block; }
+.badge { @apply inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium; }
+.mono { @apply font-mono tabular-nums; }
+
+/* MapLibre's default light chrome fights the control-room theme. */
+.maplibregl-popup-content { @apply bg-ink-800 text-slate-200 border border-edge rounded-lg; }
+.maplibregl-popup-tip { border-top-color: #1a2432 !important; }
+.maplibregl-ctrl-group { @apply bg-ink-800 border border-edge; }
+.maplibregl-ctrl-group button { filter: invert(1) hue-rotate(180deg); }

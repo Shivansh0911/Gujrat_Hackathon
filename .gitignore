@@ -49,3 +49,7 @@ tests/fixtures/*.mp4
 
 # Evidence crops are runtime output, not source.
 data/evidence/
+
+# Frontend build output and deps
+frontend/node_modules/
+frontend/dist/
