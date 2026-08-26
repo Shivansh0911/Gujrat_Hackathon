@@ -42,6 +42,70 @@ DEPARTMENTS = [
 ]
 
 
+
+class SeedValidationError(ValueError):
+    """The coordinate seed file is malformed. Raised before anything is written."""
+
+
+def _validate_rows(rows: list[dict[str, str]]) -> None:
+    """Reject a malformed seed file loudly, before any camera is placed.
+
+    The failure this guards against is silent and expensive: an unquoted comma in
+    `location_text` shifts every subsequent field, so a latitude lands in
+    `geom_source` and a camera is placed at a coordinate that belongs to nothing.
+    That produces an authoritative-looking route through a position no camera
+    occupies -- worse than having no coordinate at all, because nothing looks wrong.
+
+    Validating on parse means a bad file stops the seed rather than corrupting the
+    registry.
+    """
+    permitted = {g.value for g in GeomSource} | {"published", "geocoded"}
+    problems: list[str] = []
+
+    for i, row in enumerate(rows, start=2):  # row 1 is the header
+        ref = (row.get("camera_ref") or "").strip()
+        source = (row.get("geom_source") or "").strip()
+        lat, lon = (row.get("lat") or "").strip(), (row.get("lon") or "").strip()
+
+        if not ref:
+            problems.append(f"line {i}: empty camera_ref")
+        if source not in permitted:
+            problems.append(
+                f"line {i} (camera {ref}): geom_source {source!r} is not one of "
+                f"{sorted(permitted)} -- a shifted column is the usual cause"
+            )
+            continue
+
+        has_coords = bool(lat and lon)
+        if source == GeomSource.UNSET.value and has_coords:
+            problems.append(f"line {i} (camera {ref}): geom_source=unset but coordinates present")
+        if source != GeomSource.UNSET.value and not has_coords:
+            problems.append(f"line {i} (camera {ref}): geom_source={source} but no coordinates")
+
+        for name, value, lo, hi in (("lat", lat, -90, 90), ("lon", lon, -180, 180)):
+            if not value:
+                continue
+            try:
+                number = float(value)
+            except ValueError:
+                problems.append(f"line {i} (camera {ref}): {name}={value!r} is not a number")
+                continue
+            if not lo <= number <= hi:
+                problems.append(f"line {i} (camera {ref}): {name}={number} out of range")
+
+        radius = (row.get("confidence_radius_m") or "").strip()
+        if radius:
+            try:
+                if float(radius) <= 0:
+                    problems.append(f"line {i} (camera {ref}): confidence_radius_m must be > 0")
+            except ValueError:
+                problems.append(f"line {i} (camera {ref}): confidence_radius_m={radius!r} invalid")
+
+    if problems:
+        detail = chr(10) + "  " + (chr(10) + "  ").join(problems)
+        raise SeedValidationError(f"{SEED_CSV} is malformed; refusing to seed:{detail}")
+
+
 def seed_departments(session) -> dict[str, Department]:
     out: dict[str, Department] = {}
     for code, name in DEPARTMENTS:
@@ -64,6 +128,7 @@ def load_camera_geo(session, departments: dict[str, Department]) -> dict[str, in
         return {}
 
     rows = list(csv.DictReader(SEED_CSV.open(encoding="utf-8")))
+    _validate_rows(rows)
     counts = {"created": 0, "updated": 0, "unset": 0}
     home = departments["HOME"]
 

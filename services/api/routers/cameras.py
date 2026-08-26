@@ -7,8 +7,7 @@ from datetime import datetime, timezone
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from geoalchemy2.functions import ST_X, ST_Y
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
 from services.api import audit
@@ -36,11 +35,15 @@ def _to_out(session: Session, camera: Camera) -> CameraOut:
     """Project a Camera row, extracting lat/lon from PostGIS geography."""
     lat = lon = None
     if camera.geom is not None:
-        # ST_X/ST_Y need a geometry; geography casts cleanly for a point.
-        lon, lat = session.execute(
-            select(ST_X(camera.geom.ST_AsText().cast(__import__("geoalchemy2").Geometry())),
-                   ST_Y(camera.geom.ST_AsText().cast(__import__("geoalchemy2").Geometry())))
+        # ST_X/ST_Y are geometry functions; a geography column must be cast first.
+        row = session.execute(
+            text(
+                "SELECT ST_Y(geom::geometry) AS lat, ST_X(geom::geometry) AS lon "
+                "FROM camera WHERE id = :cid"
+            ),
+            {"cid": camera.id},
         ).one()
+        lat, lon = float(row.lat), float(row.lon)
 
     dept_code = session.execute(
         select(Department.code).where(Department.id == camera.department_id)

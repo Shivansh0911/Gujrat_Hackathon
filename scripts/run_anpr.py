@@ -41,6 +41,8 @@ def main() -> int:
     ap.add_argument("--motion-threshold", type=float, default=2.5)
     ap.add_argument("--crop-dir", type=Path, default=REPO_ROOT / "data" / "evidence" / "crops")
     ap.add_argument("--emit-evidence", action="store_true")
+    ap.add_argument("--persist", action="store_true",
+                    help="write detections to Postgres (idempotent on re-ingest)")
     args = ap.parse_args()
 
     redact.install(level=logging.INFO)
@@ -64,9 +66,20 @@ def main() -> int:
         motion_threshold=args.motion_threshold,
     )
 
+    writer = None
+    session = None
+    if args.persist:
+        from services.analytics.persistence import DetectionWriter
+        from services.api.db import get_sessionmaker
+
+        session = get_sessionmaker()()
+        writer = DetectionWriter(session)
+
     records = []
     started = time.monotonic()
     for rec in pipeline.run(source, max_frames=args.max_frames):
+        if writer is not None:
+            writer.add(rec)
         records.append(rec)
         flag = "VALID   " if rec.plate.valid else "UNPARSED"
         corr = f" [{len(rec.plate.corrections)} corrected]" if rec.plate.corrections else ""
@@ -74,6 +87,20 @@ def main() -> int:
               f"frames={rec.frames_fused} pts={rec.first_pts_ms:.0f}ms{corr}")
     elapsed = time.monotonic() - started
     source.close()
+
+    if writer is not None and session is not None:
+        writer.flush()
+        session.commit()
+        session.close()
+        ps = writer.stats
+        dropped = (
+            f", {ps.unknown_camera} dropped (no registry camera)"
+            if ps.unknown_camera else ""
+        )
+        print(
+            "\npersisted: "
+            f"{ps.inserted} inserted, {ps.duplicates} already present{dropped}"
+        )
 
     st = pipeline.stats
     valid = [r for r in records if r.plate.valid]

@@ -271,8 +271,19 @@ class WatchlistEntry(Base):
     case_ref: Mapped[str | None] = mapped_column(String(120))
     notes: Mapped[str | None] = mapped_column(Text)
     active: Mapped[bool] = mapped_column(nullable=False, default=True)
+
+    # Vehicle attributes, used to corroborate a plate match. A fuzzy match that also
+    # agrees on colour is a materially stronger claim than the plate alone.
+    make: Mapped[str | None] = mapped_column(String(64))
+    model: Mapped[str | None] = mapped_column(String(64))
+    colour: Mapped[str | None] = mapped_column(String(32))
+    authority: Mapped[str | None] = mapped_column(String(200))
+    priority: Mapped[int] = mapped_column(Integer, nullable=False, default=50)
+
     valid_from: Mapped[datetime] = _utcnow()
-    valid_to: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # NOT NULL deliberately: an entry without an expiry becomes a permanent shadow
+    # record on a citizen, outliving the investigation that justified it.
+    valid_to: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
 class Alert(Base):
@@ -315,6 +326,18 @@ class Alert(Base):
     # Measured decode-to-alert latency. Recorded per alert so the HLD's "under 2s"
     # claim is evidenced by the system itself rather than by a one-off benchmark.
     latency_ms: Mapped[float | None] = mapped_column(Float)
+
+    # Ordered observations behind a movement alert. Successive sightings of one
+    # vehicle are one developing event, not a stream of near-identical alerts an
+    # operator learns to dismiss.
+    sightings: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSONB, nullable=False, default=list
+    )
+    is_movement: Mapped[bool] = mapped_column(nullable=False, default=False)
+    # What agreed beyond the plate (colour, body type), and what did not.
+    corroboration: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, nullable=False, default=dict
+    )
 
 
 class AuditEntry(Base):

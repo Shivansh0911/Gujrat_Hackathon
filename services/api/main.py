@@ -13,7 +13,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from services.api.config import get_api_settings
-from services.api.routers import auth, cameras, system
+from services.api.routers import alerts, auth, cameras, journey, system
 from services.common import redact
 
 redact.install(level=logging.INFO)
@@ -56,6 +56,29 @@ async def security_headers(request, call_next):  # type: ignore[no-untyped-def]
 app.include_router(auth.router)
 app.include_router(cameras.router)
 app.include_router(system.router)
+app.include_router(alerts.router)
+app.include_router(journey.router)
+
+
+from fastapi import HTTPException  # noqa: E402
+from fastapi.responses import FileResponse  # noqa: E402
+
+
+@app.get("/media/crops/{name}", include_in_schema=False)
+def evidence_crop(name: str) -> FileResponse:
+    """Serve one evidence crop by filename.
+
+    Only the basename is accepted and it is resolved inside the crop directory, so a
+    traversal attempt (../../etc/passwd) cannot escape. The check is on the resolved
+    path rather than on the string, because string filtering misses encodings.
+    """
+    from pathlib import Path
+
+    crop_dir = (Path(__file__).resolve().parents[2] / "data" / "evidence" / "crops").resolve()
+    candidate = (crop_dir / Path(name).name).resolve()
+    if crop_dir not in candidate.parents or not candidate.is_file():
+        raise HTTPException(status_code=404, detail="crop not found")
+    return FileResponse(candidate, media_type="image/jpeg")
 
 
 @app.get("/", include_in_schema=False)
