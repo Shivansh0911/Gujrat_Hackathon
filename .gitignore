@@ -53,3 +53,8 @@ data/evidence/
 # Frontend build output and deps
 frontend/node_modules/
 frontend/dist/
+
+# TypeScript incremental build state. Machine-specific and regenerated on every
+# build; tracking it produces a diff on every developer's first compile.
+frontend/tsconfig.tsbuildinfo
+frontend/*.tsbuildinfo
