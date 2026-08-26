@@ -45,6 +45,17 @@ make frontend-dev   # http://localhost:5173
 ```
 
 **Credentials:** username `admin`, password is `SETU_ADMIN_PASSWORD` from `.env`.
+
+### Hosted instance (for the screening committee)
+
+| | |
+|---|---|
+| URL | _to be filled once deployed — see `docs/DEPLOYMENT.md` §4_ |
+| Operator account | `operator` / _record the deployed value_ |
+| Admin account | `admin` / _record the deployed value_ |
+
+Credentials are generated per deployment and are never committed. Record the live
+values here before submitting.
 There is also an `operator` account with the read-only role.
 
 ---

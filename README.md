@@ -56,10 +56,14 @@ gateway, not asserted from code comments. `reports/evidence/preflight-*.json`.
 | Full resolution, as published | 2560×1440 | 24.3 fps | 0.81 | ~98,500 |
 | Sub-stream, as ANPR ingests | 704×396 | 114.4 fps | 3.82 | **~21,000** |
 
-Both figures are **CPU-only, no GPU**. The gap between the two rows is the argument
-for sub-stream ingest, and ~21,000 CPU workers is the honest floor for a centralised
-design — which is precisely why the architecture pushes analytics to the edge and
-moves metadata rather than video. See `reports/evidence/benchmarks-*.md`.
+Both figures are **CPU-only, no GPU**. Read them together with the accuracy caveat
+below: the recogniser reads **nothing** at 704×396, so the 3.82 figure is throughput
+at an unusable operating point. The defensible number is the full-resolution one —
+**~98,500 CPU workers for a centralised design**, which is a stronger argument for
+pushing analytics to the edge and moving metadata rather than video, not a weaker one.
+Finding the lowest resolution that preserves plate legibility is the single most
+valuable optimisation outstanding. See `reports/evidence/benchmarks-*.md` and
+[`docs/HLD_RECONCILIATION.md`](docs/HLD_RECONCILIATION.md).
 
 ### ANPR
 
@@ -68,10 +72,20 @@ Measured on real Indian road footage (901 frames, 2560×1440): 22 plate boxes de
 `open-image-models` (YOLOv9-t ONNX) and `fast-plate-ocr` (CCT ONNX), **both MIT**.
 Ultralytics was deliberately avoided as AGPL.
 
-**Precision and recall are not yet measured.** `backend/scripts/ground_truth.py`
-generates an annotation sheet for all 56 evidence crops; the accuracy figures follow
-once a human has annotated them. Stating an accuracy number without that would be
-inventing it.
+> **⚠️ ANPR precision and recall are not yet measured.** Every figure above is a
+> pipeline *rate* — frames gated, boxes found, strings that parse — and none of those
+> knows what the plate actually was. `backend/scripts/ground_truth.py` generates an
+> annotation sheet for all 56 evidence crops; run `make ground-truth`, annotate, then
+> `make accuracy`. Stating an accuracy number without that would be inventing it.
+>
+> There is also direct evidence of error: three crops of visibly the same vehicle
+> produced three different registrations, because scene cuts reset tracks and
+> multi-frame fusion never grouped them.
+
+**Resolution matters more than the throughput table suggests.** The same clip yields
+8 valid plates at 2560×1440, 2 at 1280×720 and **0 at 704×396** — so the 3.82
+cameras/worker figure is a rate at which this recogniser reads almost nothing. See
+[`docs/HLD_RECONCILIATION.md`](docs/HLD_RECONCILIATION.md).
 
 ---
 
@@ -140,6 +154,19 @@ make frontend-dev             # terminal 2 → http://localhost:5173
 `make demo` works end to end **with the government gateway unreachable**, which is the
 state to plan for. Full demonstration script, credentials and fallbacks in
 [`docs/DEMO_RUNBOOK.md`](docs/DEMO_RUNBOOK.md).
+
+### Production containers
+
+```bash
+docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+# console http://localhost:8080
+```
+
+Three containers — Postgres, the API, and nginx serving the console. Verified from a
+clean state against nine checks including evidence photos rendering, the WebSocket
+connecting, and row-level security actually binding in the deployed database. Steps,
+every environment variable and what breaks without it, and the Railway procedure:
+[`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
 
 ---
 

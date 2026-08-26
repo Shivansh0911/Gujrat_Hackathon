@@ -171,3 +171,7 @@ centralised design and is the reason the architecture pushes analytics to the ed
   (Ed25519, tamper-tested), row-level security (unprivileged role, 9 isolation tests,
   append-only audit ledger), ground-truth harness, measured benchmarks, detection output
   report, README rewritten. 135 tests. **Next session: Part C — containerise and deploy.**
+- `2026-08-27` — Part C sections 1-4: both trees containerised, prod stack verified
+  9/9 from clean, eight container-only defects fixed, DEPLOYMENT/HLD_RECONCILIATION/
+  SUBMISSION_CHECKLIST written, gateway recovered (17 of 30 cameras). **Next session:
+  the Railway push (needs the team account) and gateway-feed ingest at scale.**
