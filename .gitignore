@@ -65,3 +65,6 @@ data/evidence/signing_key.dev
 # Ad-hoc detection reports; the dated evidence copies are committed.
 reports/detections-*.csv
 reports/detections-*.pdf
+
+# Production secrets, generated locally.
+.env.prod

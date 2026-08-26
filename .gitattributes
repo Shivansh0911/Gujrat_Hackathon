@@ -1,0 +1,24 @@
+# Normalise line endings so a Windows checkout does not produce files that break
+# inside a Linux container.
+#
+# This is not cosmetic. The backend entrypoint was rewritten by a Python script on
+# Windows, which wrote CRLF, and bash inside the container failed on every line with
+# `$'\r': command not found` — a failure that reads as a corrupt image rather than a
+# line-ending problem. Shell scripts, Dockerfiles and anything else executed by a
+# Linux tool must stay LF regardless of the host.
+
+* text=auto
+
+*.sh            text eol=lf
+Dockerfile      text eol=lf
+*.dockerfile    text eol=lf
+docker-entrypoint.sh text eol=lf
+Makefile        text eol=lf
+*.yml           text eol=lf
+*.yaml          text eol=lf
+
+# Binary
+*.png binary
+*.jpg binary
+*.mp4 binary
+*.pdf binary

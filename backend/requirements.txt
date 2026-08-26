@@ -28,3 +28,15 @@ websockets==13.1            # BSD-3-Clause
 
 reportlab==4.2.5             # BSD-3-Clause
 cryptography==43.0.1         # Apache-2.0 / BSD dual
+
+# --- ANPR inference (T0.5) ---
+# Both MIT. Ultralytics is deliberately NOT used: it is AGPL and would contaminate
+# a government submission. Licences verified, not assumed -- see the licence audit
+# at the top of this file.
+open-image-models==0.3.0    # MIT — YOLOv9-t ONNX plate detector
+fast-plate-ocr==1.1.0       # MIT — CCT ONNX recogniser, emits per-character confidence
+onnxruntime==1.19.2         # MIT — CPU inference backend
+
+# --- Media and reporting ---
+imageio-ffmpeg==0.5.1       # BSD-2-Clause — bundled ffmpeg binary for clip preparation
+pypdf==5.0.1                # BSD-3-Clause — reads generated PDFs back in tests

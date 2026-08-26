@@ -24,7 +24,11 @@ export type DistrictCoverage = components["schemas"]["DistrictCoverage"];
 export type CameraGap = components["schemas"]["CameraGap"];
 export type JourneyGap = components["schemas"]["JourneyGap"];
 
-const BASE = "/api";
+// Same-origin by default: nginx proxies /api to the backend in production and the
+// Vite dev server proxies it in development, so the browser never makes a
+// cross-origin credentialed request. Overridable at build time for a split-origin
+// deployment, where the backend must also allow that origin in CORS.
+const BASE = import.meta.env.VITE_API_BASE_URL ?? "/api";
 
 /**
  * The access token lives in a module variable, never in localStorage.

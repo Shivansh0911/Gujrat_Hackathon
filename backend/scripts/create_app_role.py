@@ -30,6 +30,7 @@ Usage:
 from __future__ import annotations
 
 import logging
+import os
 import sys
 from pathlib import Path
 from urllib.parse import urlparse
@@ -61,6 +62,19 @@ APPEND_ONLY = ("audit_entry",)
 
 
 def _env(key: str) -> str | None:
+    """Real environment first, then the project .env file.
+
+    That precedence is not cosmetic. This script runs in two very different places:
+    on a developer machine, where configuration lives in .env, and inside a
+    container, where there is no .env file at all and everything arrives as real
+    environment variables. Reading only the file made the container entrypoint fail
+    with "SETU_DATABASE_URL is not configured" while the variable was plainly set --
+    and because this step gates row-level security, that failure is the difference
+    between a deployment that isolates departments and one that does not.
+    """
+    value = os.environ.get(key)
+    if value:
+        return value.strip()
     if not ENV_FILE.exists():
         return None
     for line in ENV_FILE.read_text(encoding="utf-8").splitlines():
@@ -113,13 +127,29 @@ def main() -> int:
         conn.execute(text(f'GRANT CONNECT ON DATABASE "{database}" TO "{APP_ROLE}"'))
         conn.execute(text(f'GRANT USAGE ON SCHEMA public TO "{APP_ROLE}"'))
 
+        # A table that does not exist yet is skipped with a warning rather than
+        # aborting. This script is safe to run before every table is migrated, and a
+        # hard failure here would crash-loop a container over a table that the next
+        # migration is about to create.
+        missing: list[str] = []
         for table in TABLES:
+            exists = conn.execute(
+                text("SELECT to_regclass(:t)"), {"t": f"public.{table}"}
+            ).scalar_one_or_none()
+            if exists is None:
+                missing.append(table)
+                continue
             if table in APPEND_ONLY:
                 conn.execute(text(f'GRANT SELECT, INSERT ON {table} TO "{APP_ROLE}"'))
             else:
                 conn.execute(
                     text(f'GRANT SELECT, INSERT, UPDATE, DELETE ON {table} TO "{APP_ROLE}"')
                 )
+        if missing:
+            log.warning(
+                "not yet migrated, no grant applied: %s. Re-run after `alembic upgrade head`.",
+                ", ".join(missing),
+            )
 
         # Sequences backing bigserial columns; without USAGE an INSERT fails on the
         # nextval() rather than on the table, which is a confusing way to find out.

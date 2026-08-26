@@ -31,6 +31,8 @@ class ApiSettings(BaseSettings):
 
     # The console's origin. Never "*": credentialed requests with a wildcard origin
     # are rejected by browsers anyway, and the combination is a standing §0 violation.
+    # Development default only. docker-compose.prod.yml requires this to be set
+    # explicitly, so a deployed instance cannot inherit localhost origins.
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
 
     # --- Route plausibility (T4). Configuration, not constants, because the right

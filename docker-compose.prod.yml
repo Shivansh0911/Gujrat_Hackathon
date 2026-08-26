@@ -1,0 +1,107 @@
+# Project SETU — production stack.
+#
+# Differs from docker-compose.yml (development) in four ways that matter:
+#
+#   1. **No exposed database port.** Postgres is reachable only on the internal
+#      network. A database port published to the host is the most common way a
+#      demonstration deployment becomes an incident.
+#   2. **No defaulted secrets.** Every credential uses `${VAR:?message}`, so the
+#      stack refuses to start rather than silently running on a development value
+#      someone forgot to override.
+#   3. **Evidence crops on a named volume**, so they survive a redeploy. The image
+#      ships the demo crops; new detections written at runtime persist here.
+#   4. **Restart policies and health-gated startup** — the backend waits for a
+#      healthy database, and the frontend waits for a healthy backend.
+#
+# Usage:
+#   docker compose -f docker-compose.prod.yml --env-file .env.prod up --build
+
+name: setu-prod
+
+services:
+
+  postgres:
+    # PostGIS, TimescaleDB and pgvector in one image. Digest-pinned: the extension
+    # set is load-bearing and a floating tag could change it under us.
+    image: timescale/timescaledb-ha:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/home/postgres/pgdata/data
+    # Deliberately no `ports:`. Reachable on the internal network only.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+    networks: [internal]
+
+  backend:
+    build:
+      # Context is the repository root; see the header of backend/Dockerfile.
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # The API connects as the unprivileged role so row-level security binds.
+      SETU_DATABASE_URL: postgresql+psycopg://setu_app:${SETU_APP_DB_PASSWORD:?set SETU_APP_DB_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      # Alembic and the role-creation step connect as the schema owner.
+      SETU_MIGRATION_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      SETU_APP_DB_PASSWORD: ${SETU_APP_DB_PASSWORD}
+
+      SETU_JWT_SECRET: ${SETU_JWT_SECRET:?generate one, do not reuse the development value}
+      SETU_JWT_ISSUER: ${SETU_JWT_ISSUER:-setu-prod}
+      SETU_ADMIN_PASSWORD: ${SETU_ADMIN_PASSWORD:?set SETU_ADMIN_PASSWORD}
+      SETU_OPERATOR_PASSWORD: ${SETU_OPERATOR_PASSWORD:?set SETU_OPERATOR_PASSWORD}
+
+      # Explicit allowlist. Never a wildcard: a wildcard origin with credentials is
+      # rejected by browsers anyway and is a standing prohibition in SECURITY.md.
+      SETU_CORS_ORIGINS: ${SETU_CORS_ORIGINS:?set the deployed console origin}
+
+      SETU_GATEWAY_HOST: ${SETU_GATEWAY_HOST:-live.corp8.cloud}
+      SETU_GATEWAY_SCHEME: ${SETU_GATEWAY_SCHEME:-https}
+      SETU_EVIDENCE_SIGNING_KEY: ${SETU_EVIDENCE_SIGNING_KEY:-}
+      SETU_SEED_DEMO: ${SETU_SEED_DEMO:-1}
+      SETU_WORKERS: ${SETU_WORKERS:-2}
+      PORT: 8000
+    volumes:
+      # Detections written at runtime persist across redeploys. The image already
+      # carries the demo crops, so a fresh deploy is never empty.
+      - evidence_crops:/srv/setu/data/evidence/crops
+      - reports:/srv/setu/reports
+    networks: [internal]
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        # Same-origin by default: nginx proxies /api to the backend, so the browser
+        # makes no cross-origin request and CORS never enters the picture.
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api}
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      SETU_API_HOST: backend
+      SETU_API_PORT: 8000
+    ports:
+      - "${SETU_PUBLIC_PORT:-8080}:8080"
+    networks: [internal]
+
+volumes:
+  postgres_data:
+  evidence_crops:
+  reports:
+
+networks:
+  internal:
+    driver: bridge

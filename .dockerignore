@@ -1,0 +1,31 @@
+# Build context is the repository root, so this file decides what reaches the daemon.
+.git
+.venv
+**/node_modules
+**/dist
+**/__pycache__
+**/*.pyc
+.pytest_cache
+.ruff_cache
+
+# Secrets never enter an image layer.
+.env
+.env.*
+!.env.example
+data/evidence/signing_key.dev
+
+# Footage is large and is mounted or replaced per deployment, not baked in.
+data/own_feed/*.mp4
+!data/own_feed/demo_clip.mp4
+data/own_feed/*.mkv
+data/own_feed/*.webm
+data/own_feed/.substream_640.mp4
+
+# Local run artefacts
+reports/*.json
+reports/*.csv
+reports/*.pdf
+!reports/evidence/
+*.log
+tests/fixtures/*.mp4
+docs/screenshots

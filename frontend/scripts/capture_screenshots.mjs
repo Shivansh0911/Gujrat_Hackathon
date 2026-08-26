@@ -13,11 +13,12 @@ import { fileURLToPath } from "node:url";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, "..", "..");
-const OUT = join(ROOT, "docs", "screenshots");
+const OUT = join(ROOT, "docs", "screenshots", process.env.SETU_SHOT_DIR ?? "");
 const BASE = process.env.SETU_CONSOLE_URL ?? "http://127.0.0.1:5173";
 
 function env(key) {
-  const line = readFileSync(join(ROOT, ".env"), "utf8")
+  const envFile = process.env.SETU_ENV_FILE ?? ".env";
+  const line = readFileSync(join(ROOT, envFile), "utf8")
     .split(/\r?\n/)
     .find((l) => l.startsWith(`${key}=`));
   if (!line) throw new Error(`${key} missing from .env`);

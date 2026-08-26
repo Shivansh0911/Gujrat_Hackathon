@@ -63,10 +63,21 @@ def set_admin_context(session: Session) -> None:
     These run without a human actor and legitimately span departments -- an ANPR
     worker writes detections for whichever camera it is reading. Kept as a named
     function rather than an inline SET so every such elevation is greppable.
+
+    Set SESSION-scoped (`is_local=false`), unlike the per-request context. A batch
+    job commits many times, and a transaction-local flag is discarded at each commit:
+    the seeding script did exactly that, so its first statements ran elevated and
+    everything after the first commit was silently filtered by RLS. The visible
+    symptom was `StaleDataError: UPDATE ... expected to update 1 row(s); 0 were
+    matched`, which reads as an ORM problem rather than a policy one.
+
+    This is safe here precisely because a background job owns its connection for its
+    whole life. It would NOT be safe on a pooled request connection, which is why
+    `apply_context` below stays transaction-local.
     """
-    session.execute(text("SELECT set_config('setu.is_admin', 'on', true)"))
+    session.execute(text("SELECT set_config('setu.is_admin', 'on', false)"))
     session.execute(
-        text("SELECT set_config('setu.department_id', :dept, true)"),
+        text("SELECT set_config('setu.department_id', :dept, false)"),
         {"dept": NO_DEPARTMENT},
     )
 

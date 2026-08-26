@@ -29,6 +29,7 @@ from pathlib import Path
 # backend/ on the path so `services.*` imports resolve however this is launched.
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_ROOT))
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # sibling scripts
 
 from services.common.paths import PROJECT_ROOT as REPO_ROOT  # noqa: E402
 
@@ -170,31 +171,36 @@ def check_1_tcp_forced(cameras: list[CameraDescriptor], seconds: float) -> Check
 
 
 def check_2_no_declared_fps_timing() -> Check:
-    """Static: CAP_PROP_FPS may appear only on a line marked reference-only."""
-    hits: list[str] = []
-    allowed: list[str] = []
-    for path in _python_sources():
-        if path.name == Path(__file__).name:
-            continue  # this checker necessarily contains the literal
-        for i, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
-            if "CAP_PROP_FPS" not in line:
-                continue
-            if line.lstrip().startswith("#"):
-                continue  # a comment discussing the rule is not a use of it
-            ref = f"{path.relative_to(REPO_ROOT)}:{i}"
-            # The single permitted use records the declared value for display beside
-            # measured_fps. It must say so on the same line, so review is mechanical.
-            if "reference-only" in line or "never used for timing" in line:
-                allowed.append(ref)
-            else:
-                hits.append(ref)
-    passed = not hits
-    detail = (
-        f"{len(allowed)} reference-only use(s) {allowed}; "
-        f"{len(hits)} timing use(s) {hits}"
-        if passed
-        else f"CAP_PROP_FPS used without a reference-only marker at: {hits}"
-    )
+    """Static: CAP_PROP_FPS may appear only on a line marked reference-only.
+
+    Delegates to scripts/check_fps_guard.py rather than reimplementing the scan.
+    This check previously had its own copy of the rule and the two drifted: the
+    preflight exempted only its own filename, so when the guard script was added it
+    counted the guard's own NEEDLE constant and reported a violation that did not
+    exist. One rule, one implementation, and CI and the preflight now agree by
+    construction rather than by coincidence.
+    """
+    from check_fps_guard import EXPECTED_READS, find_reads
+
+    hits = find_reads()
+    marked = [h for h in hits
+              if "reference-only" in h[2] or "never used for timing" in h[2]]
+    unmarked = [h for h in hits if h not in marked]
+
+    passed = not unmarked and len(hits) == EXPECTED_READS
+    if unmarked:
+        detail = (
+            "CAP_PROP_FPS used without a reference-only marker at: "
+            + ", ".join(f"{rel}:{line}" for rel, line, _ in unmarked)
+        )
+    else:
+        detail = (
+            f"{len(marked)} reference-only use(s), all marked on the line "
+            f"({', '.join(f'{rel}:{line}' for rel, line, _ in marked)}); "
+            f"0 timing use(s). Expected count {EXPECTED_READS} — "
+            + ("matches" if len(hits) == EXPECTED_READS
+               else f"MISMATCH, found {len(hits)}; raising it is a reviewed decision")
+        )
     return Check(2, "No timing logic depends on declared FPS", passed, detail, "static")
 
 
