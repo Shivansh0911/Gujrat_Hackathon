@@ -38,7 +38,6 @@ from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 from services.registry.enums import (
-    AlertDisposition,
     AlertState,
     ArchiveMode,
     CameraStatus,
