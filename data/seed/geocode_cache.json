@@ -1,0 +1,926 @@
+{
+  "Ahmedabad district, Gujarat, India": {
+    "__error__": "ConnectionError: ('Connection aborted.', ConnectionResetError(10054, 'An existing connection was forcibly closed by the remote host', None, 10054, None))"
+  },
+  "BK Mervada tran Rasta, Banaskantha, Gujarat, India": [],
+  "Banaskantha district, Gujarat, India": [
+    {
+      "address": {
+        "ISO3166-2-lvl4": "IN-GJ",
+        "country": "India",
+        "country_code": "in",
+        "state": "Gujarat",
+        "state_district": "Banaskantha"
+      },
+      "addresstype": "state_district",
+      "boundingbox": [
+        "23.8268316",
+        "24.7118932",
+        "71.6547632",
+        "73.0280819"
+      ],
+      "category": "boundary",
+      "display_name": "Banaskantha, Gujarat, India",
+      "importance": 0.48358141372444075,
+      "lat": "24.2693869",
+      "licence": "Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright",
+      "lon": "72.5367513",
+      "name": "Banaskantha",
+      "osm_id": 8271163,
+      "osm_type": "relation",
+      "place_id": 243952736,
+      "place_rank": 10,
+      "type": "administrative"
+    }
+  ],
+  "CN Vidhyalaya, Ahmedabad, Gujarat, India": [],
+  "Chiman bhai Bridge, Ahmedabad, Gujarat, India": [],
+  "Delight, Ahmedabad, Gujarat, India": [],
+  "Gandhidham Rambaugh p2, Kutch, Gujarat, India": [],
+  "Gandhinagar district, Gujarat, India": [
+    {
+      "address": {
+        "ISO3166-2-lvl4": "IN-GJ",
+        "country": "India",
+        "country_code": "in",
+        "state": "Gujarat",
+        "state_district": "Gandhinagar"
+      },
+      "addresstype": "state_district",
+      "boundingbox": [
+        "22.9963339",
+        "23.5675802",
+        "72.3362133",
+        "73.0294494"
+      ],
+      "category": "boundary",
+      "display_name": "Gandhinagar, Gujarat, India",
+      "importance": 0.45066730194734383,
+      "lat": "23.2819525",
+      "licence": "Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright",
+      "lon": "72.6536309",
+      "name": "Gandhinagar",
+      "osm_id": 1950886,
+      "osm_type": "relation",
+      "place_id": 248569451,
+      "place_rank": 10,
+      "type": "administrative"
+    }
+  ],
+  "Gir Somnath district, Gujarat, India": [
+    {
+      "address": {
+        "ISO3166-2-lvl4": "IN-GJ",
+        "country": "India",
+        "country_code": "in",
+        "state": "Gujarat",
+        "state_district": "Gir Somnath"
+      },
+      "addresstype": "state_district",
+      "boundingbox": [
+        "20.6902888",
+        "21.1695505",
+        "70.2391051",
+        "71.2237617"
+      ],
+      "category": "boundary",
+      "display_name": "Gir Somnath, Gujarat, India",
+      "importance": 0.4098179928326091,
+      "lat": "20.9298181",
+      "licence": "Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright",
+      "lon": "70.7627578",
+      "name": "Gir Somnath",
+      "osm_id": 8258731,
+      "osm_type": "relation",
+      "place_id": 246794285,
+      "place_rank": 10,
+      "type": "administrative"
+    }
+  ],
+  "Janpath, Ahmedabad, Gujarat, India": [
+    {
+      "address": {
+        "ISO3166-2-lvl4": "IN-GJ",
+        "country": "India",
+        "country_code": "in",
+        "county": "Mahesana Taluka",
+        "postcode": "384002",
+        "road": "Ahmedabad Palanpur State Highway SH41",
+        "state": "Gujarat",
+        "state_district": "Mahesana",
+        "suburb": "Samrat Nagar",
+        "tourism": "Rooms janpath",
+        "village": "Palavasna"
+      },
+      "addresstype": "tourism",
+      "boundingbox": [
+        "23.5707171",
+        "23.5708171",
+        "72.3704744",
+        "72.3705744"
+      ],
+      "category": "tourism",
+      "display_name": "Rooms janpath, Ahmedabad Palanpur State Highway SH41, Samrat Nagar, Palavasna, Mahesana Taluka, Mahesana, Gujarat, 384002, India",
+      "importance": 5.252536812385775e-05,
+      "lat": "23.5707671",
+      "licence": "Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright",
+      "lon": "72.3705244",
+      "name": "Rooms janpath",
+      "osm_id": 4296618077,
+      "osm_type": "node",
+      "place_id": 248250802,
+      "place_rank": 30,
+      "type": "guest_house"
+    },
+    {
+      "address": {
+        "ISO3166-2-lvl4": "IN-GJ",
+        "country": "India",
+        "country_code": "in",
+        "county": "Mahesana Taluka",
+        "postcode": "384002",
+        "road": "Ahmedabad Palanpur State Highway SH41",
+        "state": "Gujarat",
+        "state_district": "Mahesana",
+        "suburb": "Samrat Nagar",
+        "tourism": "hotel janpath",
+        "village": "Palavasna"
+      },
+      "addresstype": "tourism",
+      "boundingbox": [
+        "23.5706359",
+        "23.5707359",
+        "72.3703826",
+        "72.3704826"
+      ],
+      "category": "tourism",
+      "display_name": "hotel janpath, Ahmedabad Palanpur State Highway SH41, Samrat Nagar, Palavasna, Mahesana Taluka, Mahesana, Gujarat, 384002, India",
+      "importance": 5.252536812385775e-05,
+      "lat": "23.5706859",
+      "licence": "Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright",
+      "lon": "72.3704326",
+      "name": "hotel janpath",
+      "osm_id": 4293387389,
+      "osm_type": "node",
+      "place_id": 248345432,
+      "place_rank": 30,
+      "type": "hotel"
+    },
+    {
+      "address": {
+        "ISO3166-2-lvl4": "IN-GJ",
+        "country": "India",
+        "country_code": "in",
+        "county": "Mahesana Taluka",
+        "hamlet": "Narayanpur",
+        "postcode": "384435",
+        "road": "Ahmedabad Palanpur State Highway SH41",
+        "state": "Gujarat",
+        "state_district": "Mahesana",
+        "tourism": "Janpath hotel",
+        "village": "Mevad"
+      },
+      "addresstype": "tourism",
+      "boundingbox": [
+        "23.4753213",
+        "23.4754213",
+        "72.3961873",
+        "72.3962873"
+      ],
+      "category": "tourism",
+      "display_name": "Janpath hotel, Ahmedabad Palanpur State Highway SH41, Narayanpur, Mevad, Mahesana Taluka, Mahesana, Gujarat, 384435, India",
+      "importance": 5.252536812385775e-05,
+      "lat": "23.4753713",
+      "licence": "Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright",
+      "lon": "72.3962373",
+      "name": "Janpath hotel",
+      "osm_id": 4293357207,
+      "osm_type": "node",
+      "place_id": 248571835,
+      "place_rank": 30,
+      "type": "hotel"
+    }
+  ],
+  "Junagadh district, Gujarat, India": [
+    {
+      "address": {
+        "ISO3166-2-lvl4": "IN-GJ",
+        "country": "India",
+        "country_code": "in",
+        "state": "Gujarat",
+        "state_district": "Junagadh"
+      },
+      "addresstype": "state_district",
+      "boundingbox": [
+        "20.9925196",
+        "21.6805186",
+        "69.9442394",
+        "70.9478939"
+      ],
+      "category": "boundary",
+      "display_name": "Junagadh, Gujarat, India",
+      "importance": 0.45445544749441374,
+      "lat": "21.3364779",
+      "licence": "Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright",
+      "lon": "70.4250428",
+      "name": "Junagadh",
+      "osm_id": 8258732,
+      "osm_type": "relation",
+      "place_id": 421993410,
+      "place_rank": 10,
+      "type": "administrative"
+    }
+  ],
+  "KHAPARIA GRAM PANCHAYAT , TALUKA GANDEVI, DISTRICT NAVSARI, Gujarat, India": [],
+  "KHAPARIA GRAM PANCHAYAT , TALUKA GANDEVI, DISTRICT NAVSARI, Navsari, Gujarat, India": [],
+  "Kutch district, Gujarat, India": [
+    {
+      "address": {
+        "ISO3166-2-lvl4": "IN-GJ",
+        "country": "India",
+        "country_code": "in",
+        "state": "Gujarat",
+        "state_district": "Kachchh"
+      },
+      "addresstype": "state_district",
+      "boundingbox": [
+        "22.7289411",
+        "24.6910085",
+        "68.1756585",
+        "71.7620404"
+      ],
+      "category": "boundary",
+      "display_name": "Kachchh, Gujarat, India",
+      "importance": 0.5065976620986499,
+      "lat": "23.5833330",
+      "licence": "Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright",
+      "lon": "70.0000000",
+      "name": "Kachchh",
+      "osm_id": 8269590,
+      "osm_type": "relation",
+      "place_id": 247821961,
+      "place_rank": 10,
+      "type": "administrative"
+    }
+  ],
+  "Mohanpura, Ahmedabad, Gujarat, India": [],
+  "Navsari district, Gujarat, India": [
+    {
+      "address": {
+        "ISO3166-2-lvl4": "IN-GJ",
+        "country": "India",
+        "country_code": "in",
+        "state": "Gujarat",
+        "state_district": "Navsari"
+      },
+      "addresstype": "state_district",
+      "boundingbox": [
+        "20.5800014",
+        "21.0794297",
+        "72.7223571",
+        "73.4968626"
+      ],
+      "category": "boundary",
+      "display_name": "Navsari, Gujarat, India",
+      "importance": 0.4457104052663012,
+      "lat": "20.8297140",
+      "licence": "Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright",
+      "lon": "73.0332342",
+      "name": "Navsari",
+      "osm_id": 8260119,
+      "osm_type": "relation",
+      "place_id": 247890467,
+      "place_rank": 10,
+      "type": "administrative"
+    }
+  ],
+  "O.N.G.C. Office, Ahmedabad, Gujarat, India": [],
+  "Paldi Circle, Ahmedabad, Gujarat, India": [],
+  "Patan Dethali Char Rasta, Gujarat, India": [],
+  "Patan Dethali Char Rasta, Patan, Gujarat, India": {
+    "__error__": "ConnectionError: ('Connection aborted.', ConnectionResetError(10054, 'An existing connection was forcibly closed by the remote host', None, 10054, None))"
+  },
+  "Patan district, Gujarat, India": [
+    {
+      "address": {
+        "ISO3166-2-lvl4": "IN-GJ",
+        "country": "India",
+        "country_code": "in",
+        "state": "Gujarat",
+        "state_district": "Patan"
+      },
+      "addresstype": "state_district",
+      "boundingbox": [
+        "23.3920261",
+        "24.1553103",
+        "71.0339723",
+        "72.4824875"
+      ],
+      "category": "boundary",
+      "display_name": "Patan, Gujarat, India",
+      "importance": 0.4821420033835039,
+      "lat": "23.7737530",
+      "licence": "Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright",
+      "lon": "71.6798581",
+      "name": "Patan",
+      "osm_id": 1950801,
+      "osm_type": "relation",
+      "place_id": 248215177,
+      "place_rank": 10,
+      "type": "administrative"
+    }
+  ],
+  "Rajkot Bus Port CCTV, Gujarat, India": [],
+  "Rajkot Bus Port CCTV, Rajkot, Gujarat, India": [],
+  "Rajkot CCTV, Gujarat, India": [],
+  "Rajkot CCTV, Rajkot, Gujarat, India": [],
+  "Rajkot district, Gujarat, India": [
+    {
+      "address": {
+        "ISO3166-2-lvl4": "IN-GJ",
+        "country": "India",
+        "country_code": "in",
+        "state": "Gujarat",
+        "state_district": "Rajkot"
+      },
+      "addresstype": "state_district",
+      "boundingbox": [
+        "21.5258358",
+        "22.6133217",
+        "70.0296588",
+        "71.5091846"
+      ],
+      "category": "boundary",
+      "display_name": "Rajkot, Gujarat, India",
+      "importance": 0.4545822443087463,
+      "lat": "22.0692880",
+      "licence": "Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright",
+      "lon": "71.0288686",
+      "name": "Rajkot",
+      "osm_id": 1953567,
+      "osm_type": "relation",
+      "place_id": 248982222,
+      "place_rank": 10,
+      "type": "administrative"
+    }
+  ],
+  "Suvidha park, Ahmedabad, Gujarat, India": [],
+  "TANKAL, Gujarat, India": [
+    {
+      "address": {
+        "ISO3166-2-lvl4": "IN-GJ",
+        "country": "India",
+        "country_code": "in",
+        "county": "Chikhli Taluka",
+        "healthcare": "PHC, Tankal",
+        "postcode": "396430",
+        "road": "SH177;703",
+        "state": "Gujarat",
+        "state_district": "Navsari"
+      },
+      "addresstype": "healthcare",
+      "boundingbox": [
+        "20.8605410",
+        "20.8606410",
+        "73.1305670",
+        "73.1306670"
+      ],
+      "category": "healthcare",
+      "display_name": "PHC, Tankal, SH177;703, Chikhli Taluka, Navsari, Gujarat, 396430, India",
+      "importance": 3.750133516437045e-05,
+      "lat": "20.8605910",
+      "licence": "Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright",
+      "lon": "73.1306170",
+      "name": "PHC, Tankal",
+      "osm_id": 7285514560,
+      "osm_type": "node",
+      "place_id": 248397206,
+      "place_rank": 30,
+      "type": "centre"
+    }
+  ],
+  "Timbavadi gate Junagadh, Gujarat, India": [],
+  "Timbavadi gate Junagadh, Junagadh, Gujarat, India": [],
+  "Tri Mandir Adalaj Tollnaka, Gandhinagar, Gujarat, India": [],
+  "Visat P2, Ahmedabad, Gujarat, India": {
+    "__error__": "ConnectionError: ('Connection aborted.', ConnectionResetError(10054, 'An existing connection was forcibly closed by the remote host', None, 10054, None))"
+  },
+  "Visat teen Rasta, Ahmedabad, Gujarat, India": [],
+  "bilimora, Navsari, Gujarat, India": [
+    {
+      "address": {
+        "ISO3166-2-lvl4": "IN-GJ",
+        "country": "India",
+        "country_code": "in",
+        "county": "Gandevi Taluka",
+        "postcode": "396321",
+        "state": "Gujarat",
+        "state_district": "Navsari",
+        "town": "Bilimora"
+      },
+      "addresstype": "town",
+      "boundingbox": [
+        "20.7271693",
+        "20.8071693",
+        "72.9293451",
+        "73.0093451"
+      ],
+      "category": "place",
+      "display_name": "Bilimora, Gandevi Taluka, Navsari, Gujarat, 396321, India",
+      "importance": 0.29322317952748045,
+      "lat": "20.7671693",
+      "licence": "Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright",
+      "lon": "72.9693451",
+      "name": "Bilimora",
+      "osm_id": 1997049602,
+      "osm_type": "node",
+      "place_id": 248549312,
+      "place_rank": 18,
+      "type": "town"
+    }
+  ],
+  "bk mervada, Banaskantha, Gujarat, India": [],
+  "bk, Banaskantha, Gujarat, India": [],
+  "char chowk road 2 junagadh, Gujarat, India": [],
+  "char chowk road 2 junagadh, Junagadh, Gujarat, India": [],
+  "chiman bhai, Ahmedabad, Gujarat, India": [],
+  "chiman, Ahmedabad, Gujarat, India": [],
+  "dehgam, Gandhinagar, Gujarat, India": [
+    {
+      "address": {
+        "ISO3166-2-lvl4": "IN-GJ",
+        "country": "India",
+        "country_code": "in",
+        "county": "Dehgam Taluka",
+        "state": "Gujarat",
+        "state_district": "Gandhinagar"
+      },
+      "addresstype": "county",
+      "boundingbox": [
+        "22.9963339",
+        "23.3310110",
+        "72.7383756",
+        "73.0294494"
+      ],
+      "category": "boundary",
+      "display_name": "Dehgam Taluka, Gandhinagar, Gujarat, India",
+      "importance": 0.2400325803006027,
+      "lat": "23.1640326",
+      "licence": "Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright",
+      "lon": "72.8818319",
+      "name": "Dehgam Taluka",
+      "osm_id": 9661779,
+      "osm_type": "relation",
+      "place_id": 248474852,
+      "place_rank": 12,
+      "type": "administrative"
+    }
+  ],
+  "dhanori, Gujarat, India": [
+    {
+      "address": {
+        "ISO3166-2-lvl4": "IN-GJ",
+        "amenity": "Civil Hospital, Dhanori",
+        "country": "India",
+        "country_code": "in",
+        "county": "Gandevi Taluka",
+        "postcode": "396360",
+        "road": "SH703",
+        "state": "Gujarat",
+        "state_district": "Navsari",
+        "village": "Khapariya"
+      },
+      "addresstype": "amenity",
+      "boundingbox": [
+        "20.8388120",
+        "20.8389120",
+        "73.0239050",
+        "73.0240050"
+      ],
+      "category": "amenity",
+      "display_name": "Civil Hospital, Dhanori, SH703, Khapariya, Gandevi Taluka, Navsari, Gujarat, 396360, India",
+      "importance": 5.31509880216223e-05,
+      "lat": "20.8388620",
+      "licence": "Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright",
+      "lon": "73.0239550",
+      "name": "Civil Hospital, Dhanori",
+      "osm_id": 7285514534,
+      "osm_type": "node",
+      "place_id": 247457619,
+      "place_rank": 30,
+      "type": "hospital"
+    }
+  ],
+  "dolatpara junagadh, Gujarat, India": [
+    {
+      "address": {
+        "ISO3166-2-lvl4": "IN-GJ",
+        "country": "India",
+        "country_code": "in",
+        "county": "Junagadh City Taluka",
+        "postcode": "362037",
+        "state": "Gujarat",
+        "state_district": "Junagadh",
+        "suburb": "Dolatpara"
+      },
+      "addresstype": "suburb",
+      "boundingbox": [
+        "21.5387569",
+        "21.5787569",
+        "70.4459223",
+        "70.4859223"
+      ],
+      "category": "place",
+      "display_name": "Dolatpara, Junagadh City Taluka, Junagadh, Gujarat, 362037, India",
+      "importance": 0.14672323872739754,
+      "lat": "21.5587569",
+      "licence": "Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright",
+      "lon": "70.4659223",
+      "name": "Dolatpara",
+      "osm_id": 11528540885,
+      "osm_type": "node",
+      "place_id": 248848065,
+      "place_rank": 19,
+      "type": "suburb"
+    }
+  ],
+  "dolatpara junagadh, Junagadh, Gujarat, India": [
+    {
+      "address": {
+        "ISO3166-2-lvl4": "IN-GJ",
+        "country": "India",
+        "country_code": "in",
+        "county": "Junagadh City Taluka",
+        "postcode": "362037",
+        "state": "Gujarat",
+        "state_district": "Junagadh",
+        "suburb": "Dolatpara"
+      },
+      "addresstype": "suburb",
+      "boundingbox": [
+        "21.5387569",
+        "21.5787569",
+        "70.4459223",
+        "70.4859223"
+      ],
+      "category": "place",
+      "display_name": "Dolatpara, Junagadh City Taluka, Junagadh, Gujarat, 362037, India",
+      "importance": 0.14672323872739754,
+      "lat": "21.5587569",
+      "licence": "Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright",
+      "lon": "70.4659223",
+      "name": "Dolatpara",
+      "osm_id": 11528540885,
+      "osm_type": "node",
+      "place_id": 247859608,
+      "place_rank": 19,
+      "type": "suburb"
+    }
+  ],
+  "gandhidham rambaugh, Kutch, Gujarat, India": [],
+  "gandhidham, Kutch, Gujarat, India": [
+    {
+      "address": {
+        "ISO3166-2-lvl4": "IN-GJ",
+        "city": "Gandhidham",
+        "country": "India",
+        "country_code": "in",
+        "county": "Gandhidham Taluka",
+        "postcode": "370210",
+        "state": "Gujarat",
+        "state_district": "Kachchh"
+      },
+      "addresstype": "city",
+      "boundingbox": [
+        "22.9118743",
+        "23.2318743",
+        "69.9717150",
+        "70.2917150"
+      ],
+      "category": "place",
+      "display_name": "Gandhidham, Gandhidham Taluka, Kachchh, Gujarat, 370210, India",
+      "importance": 0.36712697163315744,
+      "lat": "23.0718743",
+      "licence": "Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright",
+      "lon": "70.1317150",
+      "name": "Gandhidham",
+      "osm_id": 1540868277,
+      "osm_type": "node",
+      "place_id": 248288054,
+      "place_rank": 16,
+      "type": "city"
+    }
+  ],
+  "hero gir somnath, Gir Somnath, Gujarat, India": [],
+  "hero showroom gir somnath, Gir Somnath, Gujarat, India": [],
+  "hero showroom gir somnath, Gujarat, India": [],
+  "hero, Gir Somnath, Gujarat, India": [],
+  "junagadh, Junagadh, Gujarat, India": [
+    {
+      "address": {
+        "ISO3166-2-lvl4": "IN-GJ",
+        "city": "Junagadh",
+        "country": "India",
+        "country_code": "in",
+        "county": "Junagadh City Taluka",
+        "postcode": "362015",
+        "state": "Gujarat",
+        "state_district": "Junagadh"
+      },
+      "addresstype": "city",
+      "boundingbox": [
+        "21.4882792",
+        "21.5487583",
+        "70.3939640",
+        "70.4784169"
+      ],
+      "category": "place",
+      "display_name": "Junagadh, Junagadh City Taluka, Junagadh, Gujarat, 362015, India",
+      "importance": 0.4964974809833107,
+      "lat": "21.5220416",
+      "licence": "Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright",
+      "lon": "70.4582458",
+      "name": "Junagadh",
+      "osm_id": 22826295,
+      "osm_type": "way",
+      "place_id": 249178932,
+      "place_rank": 16,
+      "type": "city"
+    },
+    {
+      "address": {
+        "ISO3166-2-lvl4": "IN-GJ",
+        "country": "India",
+        "country_code": "in",
+        "county": "Junagadh",
+        "postcode": "362229",
+        "state": "Gujarat",
+        "state_district": "Junagadh"
+      },
+      "addresstype": "county",
+      "boundingbox": [
+        "20.5500000",
+        "21.9500000",
+        "69.6333330",
+        "71.0333330"
+      ],
+      "category": "place",
+      "display_name": "Junagadh, Gujarat, 362229, India",
+      "importance": 0.24003750133516438,
+      "lat": "21.2500000",
+      "licence": "Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright",
+      "lon": "70.3333330",
+      "name": "Junagadh",
+      "osm_id": 316417403,
+      "osm_type": "node",
+      "place_id": 249235341,
+      "place_rank": 12,
+      "type": "county"
+    }
+  ],
+  "khaparia , gandevi, navsari, Navsari, Gujarat, India": [],
+  "khaparia, Navsari, Gujarat, India": [],
+  "kheram, Gujarat, India": [],
+  "majewadi gate junagadh, Gujarat, India": [],
+  "majewadi gate junagadh, Junagadh, Gujarat, India": [],
+  "majewadi junagadh, Junagadh, Gujarat, India": [],
+  "majewadi, Junagadh, Gujarat, India": [],
+  "new bypass near by circle junagadh 2, Gujarat, India": [],
+  "new bypass near by circle junagadh 2, Junagadh, Gujarat, India": [],
+  "o.n.g.c., Ahmedabad, Gujarat, India": [
+    {
+      "address": {
+        "ISO3166-2-lvl4": "IN-GJ",
+        "city": "Ahmedabad",
+        "country": "India",
+        "country_code": "in",
+        "postcode": "380001",
+        "state": "Gujarat",
+        "state_district": "Ahmedabad"
+      },
+      "addresstype": "city",
+      "boundingbox": [
+        "22.8615374",
+        "23.1815374",
+        "72.4200568",
+        "72.7400568"
+      ],
+      "category": "place",
+      "display_name": "Ahmedabad, Gujarat, 380001, India",
+      "importance": 0.6076211116465337,
+      "lat": "23.0215374",
+      "licence": "Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright",
+      "lon": "72.5800568",
+      "name": "Ahmedabad",
+      "osm_id": 245711197,
+      "osm_type": "node",
+      "place_id": 248913054,
+      "place_rank": 16,
+      "type": "city"
+    },
+    {
+      "address": {
+        "ISO3166-2-lvl4": "IN-GJ",
+        "country": "India",
+        "country_code": "in",
+        "state": "Gujarat",
+        "state_district": "Ahmedabad"
+      },
+      "addresstype": "state_district",
+      "boundingbox": [
+        "21.9825428",
+        "23.5087840",
+        "71.8399849",
+        "72.8426219"
+      ],
+      "category": "boundary",
+      "display_name": "Ahmedabad, Gujarat, India",
+      "importance": 0.4947031075287046,
+      "lat": "22.7455390",
+      "licence": "Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright",
+      "lon": "72.2974907",
+      "name": "Ahmedabad",
+      "osm_id": 1953566,
+      "osm_type": "relation",
+      "place_id": 248391972,
+      "place_rank": 10,
+      "type": "administrative"
+    }
+  ],
+  "paldi, Ahmedabad, Gujarat, India": [
+    {
+      "address": {
+        "ISO3166-2-lvl4": "IN-GJ",
+        "country": "India",
+        "country_code": "in",
+        "county": "SabarmatiTaluka",
+        "postcode": "380007",
+        "state": "Gujarat",
+        "state_district": "Ahmedabad",
+        "suburb": "Paldi"
+      },
+      "addresstype": "suburb",
+      "boundingbox": [
+        "22.9945531",
+        "23.0345531",
+        "72.5435432",
+        "72.5835432"
+      ],
+      "category": "place",
+      "display_name": "Paldi, SabarmatiTaluka, Ahmedabad, Gujarat, 380007, India",
+      "importance": 0.34431618017923493,
+      "lat": "23.0145531",
+      "licence": "Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright",
+      "lon": "72.5635432",
+      "name": "Paldi",
+      "osm_id": 1559491365,
+      "osm_type": "node",
+      "place_id": 247853540,
+      "place_rank": 19,
+      "type": "suburb"
+    }
+  ],
+  "patan dethali, Patan, Gujarat, India": [],
+  "patan, Patan, Gujarat, India": [
+    {
+      "address": {
+        "ISO3166-2-lvl4": "IN-GJ",
+        "city": "Patan",
+        "country": "India",
+        "country_code": "in",
+        "county": "Patan Taluka",
+        "postcode": "384200",
+        "state": "Gujarat",
+        "state_district": "Patan"
+      },
+      "addresstype": "city",
+      "boundingbox": [
+        "23.6905032",
+        "24.0105032",
+        "71.9533403",
+        "72.2733403"
+      ],
+      "category": "place",
+      "display_name": "Patan, Patan Taluka, Patan, Gujarat, 384200, India",
+      "importance": 0.42742363444822296,
+      "lat": "23.8505032",
+      "licence": "Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright",
+      "lon": "72.1133403",
+      "name": "Patan",
+      "osm_id": 2373835978,
+      "osm_type": "node",
+      "place_id": 246408867,
+      "place_rank": 16,
+      "type": "city"
+    }
+  ],
+  "rajkot, Rajkot, Gujarat, India": [
+    {
+      "address": {
+        "ISO3166-2-lvl4": "IN-GJ",
+        "city": "Rajkot",
+        "country": "India",
+        "country_code": "in",
+        "county": "Rajkot East Taluka",
+        "postcode": "360001",
+        "state": "Gujarat",
+        "state_district": "Rajkot"
+      },
+      "addresstype": "city",
+      "boundingbox": [
+        "22.1453263",
+        "22.4653263",
+        "70.6428377",
+        "70.9628377"
+      ],
+      "category": "place",
+      "display_name": "Rajkot, Rajkot East Taluka, Rajkot, Gujarat, 360001, India",
+      "importance": 0.531509367257261,
+      "lat": "22.3053263",
+      "licence": "Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright",
+      "lon": "70.8028377",
+      "name": "Rajkot",
+      "osm_id": 1393852189,
+      "osm_type": "node",
+      "place_id": 249090383,
+      "place_rank": 16,
+      "type": "city"
+    }
+  ],
+  "timbavadi junagadh, Junagadh, Gujarat, India": [
+    {
+      "address": {
+        "ISO3166-2-lvl4": "IN-GJ",
+        "amenity": "State Bank Of India",
+        "city": "Junagadh",
+        "country": "India",
+        "country_code": "in",
+        "county": "Junagadh City Taluka",
+        "neighbourhood": "Timbavadi",
+        "postcode": "362015",
+        "road": "SH31",
+        "state": "Gujarat",
+        "state_district": "Junagadh",
+        "suburb": "Motibaug"
+      },
+      "addresstype": "amenity",
+      "boundingbox": [
+        "21.5004697",
+        "21.5005697",
+        "70.4238198",
+        "70.4239198"
+      ],
+      "category": "amenity",
+      "display_name": "State Bank Of India, SH31, Timbavadi, Motibaug, Junagadh, Junagadh City Taluka, Junagadh, Gujarat, 362015, India",
+      "importance": 5.657206073086164e-05,
+      "lat": "21.5005197",
+      "licence": "Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright",
+      "lon": "70.4238698",
+      "name": "State Bank Of India",
+      "osm_id": 11166247852,
+      "osm_type": "node",
+      "place_id": 249091601,
+      "place_rank": 30,
+      "type": "bank"
+    }
+  ],
+  "tri mandir adalaj, Gandhinagar, Gujarat, India": [],
+  "tri, Gandhinagar, Gujarat, India": [],
+  "visat, Ahmedabad, Gujarat, India": [
+    {
+      "address": {
+        "ISO3166-2-lvl4": "IN-GJ",
+        "building": "Jay Visat Eminence",
+        "country": "India",
+        "country_code": "in",
+        "county": "Ghatlodiya Taluka",
+        "house_number": "Jay Visat Eminence",
+        "postcode": "382424",
+        "quarter": "Godrej Garden City",
+        "road": "Tragad gam road",
+        "state": "Gujarat",
+        "state_district": "Ahmedabad",
+        "village": "Tragad"
+      },
+      "addresstype": "building",
+      "boundingbox": [
+        "23.1190516",
+        "23.1194528",
+        "72.5655230",
+        "72.5658228"
+      ],
+      "category": "building",
+      "display_name": "Jay Visat Eminence, Tragad gam road, Godrej Garden City, Tragad, Ghatlodiya Taluka, Ahmedabad, Gujarat, 382424, India",
+      "importance": 6.633783474474735e-05,
+      "lat": "23.1192572",
+      "licence": "Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright",
+      "lon": "72.5656704",
+      "name": "Jay Visat Eminence",
+      "osm_id": 1242753439,
+      "osm_type": "way",
+      "place_id": 248986386,
+      "place_rank": 30,
+      "type": "apartments"
+    }
+  ]
+}

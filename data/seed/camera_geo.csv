@@ -1,31 +1,31 @@
 camera_ref,location_text,lat,lon,geom_source,confidence_radius_m,resolved_by,resolved_at
-1,01 Chiman bhai Bridge,,,unset,,,
-2,02 Janpath,,,unset,,,
-3,03 O.N.G.C. Office,,,unset,,,
-4,04 Paldi Circle,,,unset,,,
-5,05 Visat teen Rasta,,,unset,,,
-6,06 Timbavadi gate-Junagadh,,,unset,,,
-7,07 hero-showroom-gir-somnath,,,unset,,,
-8,08 majewadi-gate-junagadh,,,unset,,,
-9,09 new-bypass-near-by-circle-junagadh-2,,,unset,,,
-10,10 char-chowk-road-2-junagadh,,,unset,,,
-11,11 dolatpara-junagadh,,,unset,,,
-12,12 Tri Mandir Adalaj Tollnaka,,,unset,,,
-13,13 CN Vidhyalaya,,,unset,,,
-14,14 Delight,,,unset,,,
-15,15 Suvidha park,,,unset,,,
-16,16 Visat P2,,,unset,,,
-17,17 Rajkot Bus Port CCTV,,,unset,,,
-18,18 Rajkot CCTV,,,unset,,,
-19,"19 KHAPARIA GRAM PANCHAYAT , TALUKA GANDEVI, DISTRICT NAVSARI",,,unset,,,
+1,01 Chiman bhai Bridge,22.745539,72.297491,approximate,5000,"nominatim:Ahmedabad district, Gujarat, India",2026-08-26T00:56:21.543081+00:00
+2,02 Janpath,23.570767,72.370524,geocoded,300,"nominatim:Janpath, Ahmedabad, Gujarat, India",2026-08-26T00:56:21.543081+00:00
+3,03 O.N.G.C. Office,23.021537,72.580057,geocoded,4000,"nominatim:o.n.g.c., Ahmedabad, Gujarat, India",2026-08-26T00:56:21.543081+00:00
+4,04 Paldi Circle,23.014553,72.563543,geocoded,1500,"nominatim:paldi, Ahmedabad, Gujarat, India",2026-08-26T00:56:21.543081+00:00
+5,05 Visat teen Rasta,23.119257,72.565670,geocoded,300,"nominatim:visat, Ahmedabad, Gujarat, India",2026-08-26T00:56:21.543081+00:00
+6,06 Timbavadi gate-Junagadh,21.500520,70.423870,geocoded,300,"nominatim:timbavadi junagadh, Junagadh, Gujarat, India",2026-08-26T00:56:21.543081+00:00
+7,07 hero-showroom-gir-somnath,20.929818,70.762758,approximate,5000,"nominatim:Gir Somnath district, Gujarat, India",2026-08-26T00:56:21.543081+00:00
+8,08 majewadi-gate-junagadh,21.336478,70.425043,approximate,5000,"nominatim:Junagadh district, Gujarat, India",2026-08-26T00:56:21.543081+00:00
+9,09 new-bypass-near-by-circle-junagadh-2,21.522042,70.458246,geocoded,4000,"nominatim:junagadh, Junagadh, Gujarat, India",2026-08-26T00:56:21.543081+00:00
+10,10 char-chowk-road-2-junagadh,21.522042,70.458246,geocoded,4000,"nominatim:junagadh, Junagadh, Gujarat, India",2026-08-26T00:56:21.543081+00:00
+11,11 dolatpara-junagadh,21.558757,70.465922,geocoded,1500,"nominatim:dolatpara junagadh, Junagadh, Gujarat, India",2026-08-26T00:56:21.543081+00:00
+12,12 Tri Mandir Adalaj Tollnaka,23.281952,72.653631,approximate,5000,"nominatim:Gandhinagar district, Gujarat, India",2026-08-26T00:56:21.543081+00:00
+13,13 CN Vidhyalaya,22.745539,72.297491,approximate,5000,"nominatim:Ahmedabad district, Gujarat, India",2026-08-26T00:56:21.543081+00:00
+14,14 Delight,22.745539,72.297491,approximate,5000,"nominatim:Ahmedabad district, Gujarat, India",2026-08-26T00:56:21.543081+00:00
+15,15 Suvidha park,22.745539,72.297491,approximate,5000,"nominatim:Ahmedabad district, Gujarat, India",2026-08-26T00:56:21.543081+00:00
+16,16 Visat P2,23.119257,72.565670,geocoded,300,"nominatim:visat, Ahmedabad, Gujarat, India",2026-08-26T00:56:21.543081+00:00
+17,17 Rajkot Bus Port CCTV,22.305326,70.802838,geocoded,4000,"nominatim:rajkot, Rajkot, Gujarat, India",2026-08-26T00:56:21.543081+00:00
+18,18 Rajkot CCTV,22.305326,70.802838,geocoded,4000,"nominatim:rajkot, Rajkot, Gujarat, India",2026-08-26T00:56:21.543081+00:00
+19,"19 KHAPARIA GRAM PANCHAYAT , TALUKA GANDEVI, DISTRICT NAVSARI",20.829714,73.033234,approximate,5000,"nominatim:Navsari district, Gujarat, India",2026-08-26T00:56:21.543081+00:00
 20,20 Mohanpura,,,unset,,,
-21,23 Patan Dethali Char Rasta,,,unset,,,
-22,28 BK Mervada tran Rasta,,,unset,,,
+21,23 Patan Dethali Char Rasta,23.850503,72.113340,geocoded,4000,"nominatim:patan, Patan, Gujarat, India",2026-08-26T00:56:21.543081+00:00
+22,28 BK Mervada tran Rasta,24.269387,72.536751,approximate,5000,"nominatim:Banaskantha district, Gujarat, India",2026-08-26T00:56:21.543081+00:00
 23,30 kheram,,,unset,,,
-24,33 dehgam,,,unset,,,
-25,34 dhanori,,,unset,,,
-26,35 TANKAL,,,unset,,,
-27,36 bilimora,,,unset,,,
-28,37 bilimora,,,unset,,,
-29,38 bilimora,,,unset,,,
-30,Gandhidham Rambaugh p2,,,unset,,,
+24,33 dehgam,23.281952,72.653631,approximate,5000,"nominatim:Gandhinagar district, Gujarat, India",2026-08-26T00:56:21.543081+00:00
+25,34 dhanori,20.838862,73.023955,geocoded,300,"nominatim:dhanori, Gujarat, India",2026-08-26T00:56:21.543081+00:00
+26,35 TANKAL,20.860591,73.130617,geocoded,300,"nominatim:TANKAL, Gujarat, India",2026-08-26T00:56:21.543081+00:00
+27,36 bilimora,20.767169,72.969345,geocoded,4000,"nominatim:bilimora, Navsari, Gujarat, India",2026-08-26T00:56:21.543081+00:00
+28,37 bilimora,20.767169,72.969345,geocoded,4000,"nominatim:bilimora, Navsari, Gujarat, India",2026-08-26T00:56:21.543081+00:00
+29,38 bilimora,20.767169,72.969345,geocoded,4000,"nominatim:bilimora, Navsari, Gujarat, India",2026-08-26T00:56:21.543081+00:00
+30,Gandhidham Rambaugh p2,23.071874,70.131715,geocoded,4000,"nominatim:gandhidham, Kutch, Gujarat, India",2026-08-26T00:56:21.543081+00:00
