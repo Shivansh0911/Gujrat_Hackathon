@@ -45,3 +45,6 @@ data/own_feed/*
 
 # Test fixtures are generated, not authored.
 tests/fixtures/*.mp4
+
+# Evidence crops are runtime output, not source.
+data/evidence/

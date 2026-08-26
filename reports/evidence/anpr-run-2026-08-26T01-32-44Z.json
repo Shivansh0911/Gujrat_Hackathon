@@ -1,0 +1,309 @@
+{
+  "kind": "anpr-run",
+  "generated_at": "2026-08-26T01-32-44Z",
+  "provenance": {
+    "git_sha": "7d649655d3cbf70eb862dfbdabc2cb33a711ce89",
+    "git_tree_dirty": true,
+    "git_branch": "main",
+    "python": "3.12.5",
+    "platform": "Windows-11-10.0.26200-SP0"
+  },
+  "video": "data\\own_feed\\commons_traffic_clip.mp4",
+  "source_properties": {
+    "width": 2560,
+    "height": 1440,
+    "codec": "h264",
+    "measured_fps": 29.972,
+    "declared_fps": 29.972426470588236,
+    "duration_s": 90.01606869058571
+  },
+  "settings": {
+    "analytic_fps": 5.0,
+    "motion_threshold": 2.5,
+    "detector_model": "yolo-v9-t-384-license-plate-end2end",
+    "recogniser_model": "cct-s-v1-global-model"
+  },
+  "measurements": {
+    "frames_decoded": 901,
+    "frames_gated_in": 123,
+    "gate_pass_rate": 0.1365,
+    "detector_runs": 123,
+    "plates_detected": 22,
+    "ocr_runs": 22,
+    "fused_records": 14,
+    "grammar_valid": 8,
+    "corrected": 7,
+    "distinct_plates": 8,
+    "wall_seconds": 20.22,
+    "decode_fps": 44.56
+  },
+  "plates": [
+    {
+      "normalised": "0ADA811",
+      "raw_fused": "0ADA811",
+      "valid": false,
+      "pattern": "unparsed",
+      "confidence": 0.6078,
+      "frames_fused": 1,
+      "first_pts_ms": 14813.615455381785,
+      "observed_at_utc": "2026-08-26T01:32:36.921978+00:00",
+      "clock_confidence": 1.0,
+      "corrections": [],
+      "crop_path": "C:\\Users\\ssojh\\OneDrive\\Desktop\\Gujrat Police\\data\\evidence\\crops\\own-feed-1_14813_0ADA811.jpg"
+    },
+    {
+      "normalised": "KA23AA441",
+      "raw_fused": "KA23AA44I",
+      "valid": true,
+      "pattern": "standard_corrected",
+      "confidence": 0.5883,
+      "frames_fused": 1,
+      "first_pts_ms": 15414.167433302668,
+      "observed_at_utc": "2026-08-26T01:32:37.522530+00:00",
+      "clock_confidence": 1.0,
+      "corrections": [
+        {
+          "position": 8,
+          "raw": "I",
+          "corrected": "1",
+          "confidence": 0.3894,
+          "reason": "grammar_expects_digit"
+        }
+      ],
+      "crop_path": "C:\\Users\\ssojh\\OneDrive\\Desktop\\Gujrat Police\\data\\evidence\\crops\\own-feed-1_15414_KA23AA441.jpg"
+    },
+    {
+      "normalised": "KA25AB144",
+      "raw_fused": "KA25AB144",
+      "valid": true,
+      "pattern": "standard",
+      "confidence": 0.9016,
+      "frames_fused": 1,
+      "first_pts_ms": 15614.351425942961,
+      "observed_at_utc": "2026-08-26T01:32:37.722714+00:00",
+      "clock_confidence": 1.0,
+      "corrections": [],
+      "crop_path": "C:\\Users\\ssojh\\OneDrive\\Desktop\\Gujrat Police\\data\\evidence\\crops\\own-feed-1_15614_KA25AB144.jpg"
+    },
+    {
+      "normalised": "KA25SB512",
+      "raw_fused": "KA255B51Z",
+      "valid": true,
+      "pattern": "standard_corrected",
+      "confidence": 0.7036,
+      "frames_fused": 1,
+      "first_pts_ms": 15814.535418583257,
+      "observed_at_utc": "2026-08-26T01:32:37.922898+00:00",
+      "clock_confidence": 1.0,
+      "corrections": [
+        {
+          "position": 4,
+          "raw": "5",
+          "corrected": "S",
+          "confidence": 0.3671,
+          "reason": "grammar_expects_letter"
+        },
+        {
+          "position": 8,
+          "raw": "Z",
+          "corrected": "2",
+          "confidence": 0.3806,
+          "reason": "grammar_expects_digit"
+        }
+      ],
+      "crop_path": "C:\\Users\\ssojh\\OneDrive\\Desktop\\Gujrat Police\\data\\evidence\\crops\\own-feed-1_15814_KA25SB512.jpg"
+    },
+    {
+      "normalised": "KA25SB542",
+      "raw_fused": "KA255B542",
+      "valid": true,
+      "pattern": "standard_corrected",
+      "confidence": 0.7854,
+      "frames_fused": 1,
+      "first_pts_ms": 16014.719411223552,
+      "observed_at_utc": "2026-08-26T01:32:38.123082+00:00",
+      "clock_confidence": 1.0,
+      "corrections": [
+        {
+          "position": 4,
+          "raw": "5",
+          "corrected": "S",
+          "confidence": 0.4741,
+          "reason": "grammar_expects_letter"
+        }
+      ],
+      "crop_path": "C:\\Users\\ssojh\\OneDrive\\Desktop\\Gujrat Police\\data\\evidence\\crops\\own-feed-1_16014_KA25SB542.jpg"
+    },
+    {
+      "normalised": "4121A1111",
+      "raw_fused": "4121A1111",
+      "valid": false,
+      "pattern": "too_many_corrections",
+      "confidence": 0.6093,
+      "frames_fused": 1,
+      "first_pts_ms": 18817.295308187673,
+      "observed_at_utc": "2026-08-26T01:32:40.925658+00:00",
+      "clock_confidence": 1.0,
+      "corrections": [],
+      "crop_path": "C:\\Users\\ssojh\\OneDrive\\Desktop\\Gujrat Police\\data\\evidence\\crops\\own-feed-1_18817_4121A1111.jpg"
+    },
+    {
+      "normalised": "442511166",
+      "raw_fused": "442511166",
+      "valid": false,
+      "pattern": "too_many_corrections",
+      "confidence": 0.5968,
+      "frames_fused": 1,
+      "first_pts_ms": 19017.47930082797,
+      "observed_at_utc": "2026-08-26T01:32:41.125842+00:00",
+      "clock_confidence": 1.0,
+      "corrections": [],
+      "crop_path": "C:\\Users\\ssojh\\OneDrive\\Desktop\\Gujrat Police\\data\\evidence\\crops\\own-feed-1_19017_442511166.jpg"
+    },
+    {
+      "normalised": "44236B116",
+      "raw_fused": "44236B116",
+      "valid": false,
+      "pattern": "too_many_corrections",
+      "confidence": 0.6452,
+      "frames_fused": 1,
+      "first_pts_ms": 19217.663293468264,
+      "observed_at_utc": "2026-08-26T01:32:41.326026+00:00",
+      "clock_confidence": 1.0,
+      "corrections": [],
+      "crop_path": "C:\\Users\\ssojh\\OneDrive\\Desktop\\Gujrat Police\\data\\evidence\\crops\\own-feed-1_19217_44236B116.jpg"
+    },
+    {
+      "normalised": "442E61116",
+      "raw_fused": "442E61116",
+      "valid": false,
+      "pattern": "too_many_corrections",
+      "confidence": 0.7137,
+      "frames_fused": 1,
+      "first_pts_ms": 19417.847286108557,
+      "observed_at_utc": "2026-08-26T01:32:41.526210+00:00",
+      "clock_confidence": 1.0,
+      "corrections": [],
+      "crop_path": "C:\\Users\\ssojh\\OneDrive\\Desktop\\Gujrat Police\\data\\evidence\\crops\\own-feed-1_19417_442E61116.jpg"
+    },
+    {
+      "normalised": "442E61116",
+      "raw_fused": "442E61116",
+      "valid": false,
+      "pattern": "too_many_corrections",
+      "confidence": 0.6308,
+      "frames_fused": 1,
+      "first_pts_ms": 19618.03127874885,
+      "observed_at_utc": "2026-08-26T01:32:41.726394+00:00",
+      "clock_confidence": 1.0,
+      "corrections": [],
+      "crop_path": "C:\\Users\\ssojh\\OneDrive\\Desktop\\Gujrat Police\\data\\evidence\\crops\\own-feed-1_19618_442E61116.jpg"
+    },
+    {
+      "normalised": "KA25AI116",
+      "raw_fused": "K425A1116",
+      "valid": true,
+      "pattern": "standard_corrected",
+      "confidence": 0.7814,
+      "frames_fused": 1,
+      "first_pts_ms": 19818.215271389145,
+      "observed_at_utc": "2026-08-26T01:32:41.926578+00:00",
+      "clock_confidence": 1.0,
+      "corrections": [
+        {
+          "position": 1,
+          "raw": "4",
+          "corrected": "A",
+          "confidence": 0.9994,
+          "reason": "grammar_expects_letter"
+        },
+        {
+          "position": 5,
+          "raw": "1",
+          "corrected": "I",
+          "confidence": 0.4427,
+          "reason": "grammar_expects_letter"
+        }
+      ],
+      "crop_path": "C:\\Users\\ssojh\\OneDrive\\Desktop\\Gujrat Police\\data\\evidence\\crops\\own-feed-1_19818_KA25AI116.jpg"
+    },
+    {
+      "normalised": "KA25SA116",
+      "raw_fused": "K4255A116",
+      "valid": true,
+      "pattern": "standard_corrected",
+      "confidence": 0.8012,
+      "frames_fused": 1,
+      "first_pts_ms": 20018.399264029442,
+      "observed_at_utc": "2026-08-26T01:32:42.126762+00:00",
+      "clock_confidence": 1.0,
+      "corrections": [
+        {
+          "position": 1,
+          "raw": "4",
+          "corrected": "A",
+          "confidence": 0.8558,
+          "reason": "grammar_expects_letter"
+        },
+        {
+          "position": 4,
+          "raw": "5",
+          "corrected": "S",
+          "confidence": 0.3838,
+          "reason": "grammar_expects_letter"
+        }
+      ],
+      "crop_path": "C:\\Users\\ssojh\\OneDrive\\Desktop\\Gujrat Police\\data\\evidence\\crops\\own-feed-1_20018_KA25SA116.jpg"
+    },
+    {
+      "normalised": "KL26GI116",
+      "raw_fused": "KL2661116",
+      "valid": true,
+      "pattern": "standard_corrected",
+      "confidence": 0.741,
+      "frames_fused": 1,
+      "first_pts_ms": 20218.583256669735,
+      "observed_at_utc": "2026-08-26T01:32:42.326946+00:00",
+      "clock_confidence": 1.0,
+      "corrections": [
+        {
+          "position": 4,
+          "raw": "6",
+          "corrected": "G",
+          "confidence": 0.6517,
+          "reason": "grammar_expects_letter"
+        },
+        {
+          "position": 5,
+          "raw": "1",
+          "corrected": "I",
+          "confidence": 0.497,
+          "reason": "grammar_expects_letter"
+        }
+      ],
+      "crop_path": "C:\\Users\\ssojh\\OneDrive\\Desktop\\Gujrat Police\\data\\evidence\\crops\\own-feed-1_20218_KL26GI116.jpg"
+    },
+    {
+      "normalised": "KA25AB551",
+      "raw_fused": "K425AB551",
+      "valid": true,
+      "pattern": "standard_corrected",
+      "confidence": 0.6113,
+      "frames_fused": 9,
+      "first_pts_ms": 26824.655013799445,
+      "observed_at_utc": "2026-08-26T01:32:48.933018+00:00",
+      "clock_confidence": 1.0,
+      "corrections": [
+        {
+          "position": 1,
+          "raw": "4",
+          "corrected": "A",
+          "confidence": 0.6168,
+          "reason": "grammar_expects_letter"
+        }
+      ],
+      "crop_path": "C:\\Users\\ssojh\\OneDrive\\Desktop\\Gujrat Police\\data\\evidence\\crops\\own-feed-1_26824_KA25AB551.jpg"
+    }
+  ],
+  "recall_caveat": "Strict recall requires ground truth: a human counting every plate legible in the footage. This run reports measured pipeline rates only. Evidence crops are written to disk so a ground-truth pass can be done against real output rather than an estimate."
+}
