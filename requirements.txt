@@ -7,3 +7,21 @@ numpy==1.26.4                       # BSD-3-Clause
 requests==2.32.3                    # Apache-2.0
 pydantic==2.9.2                     # MIT
 pydantic-settings==2.5.2            # MIT
+
+# --- Data layer (T0.1) ---
+sqlalchemy==2.0.35          # MIT
+alembic==1.13.3             # MIT
+psycopg[binary]==3.2.3      # LGPL-3.0 for libpq bindings; psycopg3 core is LGPL —
+                            # dynamically linked, not modified, and not distributed
+                            # by us. See docs/adr/0003-licence-review.md.
+geoalchemy2==0.15.2         # MIT
+
+# --- API (T0.4) ---
+fastapi==0.115.2            # MIT
+uvicorn[standard]==0.31.1   # BSD-3-Clause
+pydantic-extra-types==2.9.0 # MIT
+python-jose[cryptography]==3.3.0  # MIT
+passlib[bcrypt]==1.7.4      # BSD-2-Clause
+bcrypt==4.2.0               # Apache-2.0
+python-multipart==0.0.12    # Apache-2.0
+websockets==13.1            # BSD-3-Clause

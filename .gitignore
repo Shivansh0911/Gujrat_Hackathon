@@ -38,3 +38,10 @@ reports/*.json
 Thumbs.db
 .idea/
 .vscode/
+
+# Own-feed footage is data, not source.
+data/own_feed/*
+!data/own_feed/README.md
+
+# Test fixtures are generated, not authored.
+tests/fixtures/*.mp4
