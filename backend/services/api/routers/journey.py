@@ -30,7 +30,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -426,3 +426,75 @@ def _coverage_gaps(session: Session, hops: list[JourneyHop]) -> list[CoverageGap
                 reason=f"no detection at {row['camera_ref']} - coverage gap",
             ))
     return gaps
+
+
+# Bumped whenever the detector, recogniser or grammar changes in a way that could
+# alter a read. Printed on every export so a disputed result can be tied to the exact
+# analytics that produced it.
+MODEL_VERSION = "anpr-1.0.0 (open-image-models yolo-v9-t-384 + fast-plate-ocr cct-s-v1)"
+
+
+@router.get("/journey/export", response_class=Response, tags=["journey"])
+def export_journey_pdf(
+    session: SessionDep,
+    actor: CurrentActor,
+    settings: Annotated[ApiSettings, Depends(get_api_settings)],
+    plate: str = Query(min_length=4, max_length=32),
+    from_: datetime = Query(alias="from"),
+    to: datetime = Query(),
+    purpose: str = Query(min_length=8, max_length=500),
+    fuzzy: bool = Query(default=True),
+) -> Response:
+    """Signed PDF evidence export for a journey.
+
+    Runs the same reconstruction as GET /journey rather than accepting a client-
+    supplied result: a document signed over whatever the caller posted would attest
+    to nothing. The export is itself audited, separately from the query, because
+    producing a distributable evidence document is a more consequential act than
+    looking at a route on screen.
+    """
+    from services.api.evidence_export import export_journey
+
+    result = reconstruct_journey(
+        session=session, actor=actor, settings=settings,
+        plate=plate, from_=from_, to=to, purpose=purpose, fuzzy=fuzzy,
+    )
+
+    entry = audit.append(
+        session,
+        action="EXPORT_EVIDENCE",
+        subject_type="plate",
+        subject_id=result.plate,
+        actor_id=actor.subject,
+        actor_role=actor.role,
+        purpose=purpose,
+        detail={
+            "hops": len(result.hops),
+            "coverage_gaps": len(result.coverage_gaps),
+            "model_version": MODEL_VERSION,
+            "window_start": from_.isoformat(),
+            "window_end": to.isoformat(),
+        },
+    )
+    session.flush()
+
+    payload = result.model_dump(mode="json")
+    pdf, manifest, signature, public_key = export_journey(
+        payload, audit_seq=entry.seq, model_version=MODEL_VERSION
+    )
+
+    filename = f"setu-evidence-{result.plate}-{entry.seq}.pdf"
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            # The manifest and signature travel in headers so a recipient can verify
+            # the document without a second request that might return a different
+            # reconstruction.
+            "X-SETU-Manifest-SHA256": __import__("hashlib").sha256(manifest).hexdigest(),
+            "X-SETU-Signature": signature,
+            "X-SETU-Public-Key": public_key,
+            "X-SETU-Audit-Seq": str(entry.seq),
+        },
+    )

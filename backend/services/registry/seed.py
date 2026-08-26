@@ -23,6 +23,7 @@ sys.path.insert(0, str(BACKEND_ROOT))
 from sqlalchemy import func, select  # noqa: E402
 
 from services.api.db import get_sessionmaker  # noqa: E402
+from services.api.tenancy import set_admin_context  # noqa: E402
 from services.common import redact  # noqa: E402
 from services.common.paths import SEED_DIR  # noqa: E402
 from services.registry.enums import CameraStatus, GeomSource, SourceType  # noqa: E402
@@ -196,6 +197,8 @@ def load_camera_geo(session, departments: dict[str, Department]) -> dict[str, in
 def main() -> int:
     redact.install(level=logging.INFO)
     session = get_sessionmaker()()
+    # Background job: no human actor, and it legitimately spans departments.
+    set_admin_context(session)
     try:
         departments = seed_departments(session)
         counts = load_camera_geo(session, departments)

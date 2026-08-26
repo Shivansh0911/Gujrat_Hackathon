@@ -25,3 +25,6 @@ passlib[bcrypt]==1.7.4      # BSD-2-Clause
 bcrypt==4.2.0               # Apache-2.0
 python-multipart==0.0.12    # Apache-2.0
 websockets==13.1            # BSD-3-Clause
+
+reportlab==4.2.5             # BSD-3-Clause
+cryptography==43.0.1         # Apache-2.0 / BSD dual

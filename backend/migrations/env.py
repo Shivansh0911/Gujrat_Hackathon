@@ -25,7 +25,9 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-_url = os.environ.get("SETU_DATABASE_URL")
+# Migrations run as the schema OWNER, not as the runtime role. The app role is
+# deliberately unable to create tables or alter policies.
+_url = os.environ.get("SETU_MIGRATION_DATABASE_URL") or os.environ.get("SETU_DATABASE_URL")
 if not _url:
     # Fall back to .env so `alembic upgrade head` works the same way `make migrate`
     # does, without requiring the caller to export the variable by hand.
@@ -33,9 +35,13 @@ if not _url:
 
     env_file = ENV_FILE
     if env_file.exists():
-        for line in env_file.read_text(encoding="utf-8").splitlines():
-            if line.startswith("SETU_DATABASE_URL="):
-                _url = line.split("=", 1)[1].strip()
+        lines = env_file.read_text(encoding="utf-8").splitlines()
+        for key in ("SETU_MIGRATION_DATABASE_URL", "SETU_DATABASE_URL"):
+            for line in lines:
+                if line.startswith(f"{key}="):
+                    _url = line.split("=", 1)[1].strip()
+                    break
+            if _url:
                 break
 if not _url:
     raise RuntimeError("SETU_DATABASE_URL is not set; cannot run migrations")

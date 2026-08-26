@@ -47,6 +47,7 @@ from services.analytics.anpr import (  # noqa: E402
 from services.analytics.matcher import scan_detections  # noqa: E402
 from services.analytics.persistence import DetectionWriter  # noqa: E402
 from services.api.db import get_sessionmaker  # noqa: E402
+from services.api.tenancy import set_admin_context  # noqa: E402
 from services.common import redact  # noqa: E402
 from services.ingest.file_source import FileSource  # noqa: E402
 from services.registry.enums import CameraStatus, SourceType  # noqa: E402
@@ -143,6 +144,8 @@ def main() -> int:
     redact.install(level=logging.INFO)
     clip = _pick_clip()
     session = get_sessionmaker()()
+    # Background job: no human actor, and it legitimately spans departments.
+    set_admin_context(session)
 
     try:
         if args.reset:

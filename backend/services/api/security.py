@@ -30,6 +30,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from services.api.config import ApiSettings, get_api_settings
+from services.api.db import get_session
 from services.registry.enums import Role
 from services.registry.models import Camera
 
@@ -118,6 +119,7 @@ def decode_token(token: str, settings: ApiSettings) -> dict[str, Any]:
 def get_current_actor(
     token: Annotated[str | None, Depends(oauth2_scheme)],
     settings: Annotated[ApiSettings, Depends(get_api_settings)],
+    session: Annotated[Session, Depends(get_session)] = None,  # type: ignore[assignment]
 ) -> Actor:
     if not token:
         raise HTTPException(
@@ -127,11 +129,20 @@ def get_current_actor(
         )
     claims = decode_token(token, settings)
     dept = claims.get("dept")
-    return Actor(
+    actor = Actor(
         subject=str(claims["sub"]),
         role=str(claims.get("role", Role.OPERATOR.value)),
         department_id=uuid.UUID(dept) if dept else None,
     )
+
+    # Bind tenancy to this transaction before any route touches data, so row-level
+    # security applies even to a query that bypassed the scoped accessors. Done here
+    # rather than per-route because a route can forget; a dependency cannot.
+    if session is not None:
+        from services.api.tenancy import apply_context
+
+        apply_context(session, actor)
+    return actor
 
 
 CurrentActor = Annotated[Actor, Depends(get_current_actor)]

@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from services.api import audit
 from services.registry.models import AuditEntry
 
-DB_URL = os.environ.get("SETU_DATABASE_URL")
+DB_URL = os.environ.get("SETU_MIGRATION_DATABASE_URL")
 
 
 def _read_db_url() -> str | None:
@@ -28,13 +28,19 @@ def _read_db_url() -> str | None:
     pointed at a file that no longer existed and every audit test skipped instead of
     failing -- a green run that had verified nothing.
     """
+    # These tests create and drop an isolated schema per test, so they connect as the
+    # schema OWNER. The runtime role deliberately cannot create schemas -- that is the
+    # privilege separation working, not a test failure.
     if DB_URL:
         return DB_URL
     from services.common.paths import ENV_FILE
 
-    if ENV_FILE.exists():
-        for line in ENV_FILE.read_text(encoding="utf-8").splitlines():
-            if line.startswith("SETU_DATABASE_URL="):
+    if not ENV_FILE.exists():
+        return None
+    lines = ENV_FILE.read_text(encoding="utf-8").splitlines()
+    for key in ("SETU_MIGRATION_DATABASE_URL", "SETU_DATABASE_URL"):
+        for line in lines:
+            if line.startswith(f"{key}="):
                 return line.split("=", 1)[1].strip()
     return None
 

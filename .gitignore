@@ -58,3 +58,6 @@ frontend/dist/
 # build; tracking it produces a diff on every developer's first compile.
 frontend/tsconfig.tsbuildinfo
 frontend/*.tsbuildinfo
+
+# Development-only evidence signing key. Never a production key.
+data/evidence/signing_key.dev

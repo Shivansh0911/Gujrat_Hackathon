@@ -39,6 +39,7 @@ from sqlalchemy import delete, func, select  # noqa: E402
 
 from services.analytics.plate_grammar import DIGIT_TO_LETTER, LETTER_TO_DIGIT  # noqa: E402
 from services.api.db import get_sessionmaker  # noqa: E402
+from services.api.tenancy import set_admin_context  # noqa: E402
 from services.common import redact  # noqa: E402
 from services.registry.models import Detection, WatchlistEntry  # noqa: E402
 
@@ -87,6 +88,8 @@ def main() -> int:
 
     redact.install(level=logging.INFO)
     session = get_sessionmaker()()
+    # Background job: no human actor, and it legitimately spans departments.
+    set_admin_context(session)
     now = datetime.now(timezone.utc)
 
     try:

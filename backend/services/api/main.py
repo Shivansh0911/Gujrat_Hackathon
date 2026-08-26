@@ -13,7 +13,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from services.api.config import get_api_settings
-from services.api.routers import alerts, auth, cameras, journey, system
+from services.api.routers import alerts, auth, cameras, gaps, journey, system
 from services.common import redact
 
 redact.install(level=logging.INFO)
@@ -53,7 +53,11 @@ async def security_headers(request, call_next):  # type: ignore[no-untyped-def]
     return response
 
 
+# Order matters. FastAPI matches routes in registration order, and
+# /cameras/gap-analysis would otherwise be swallowed by /cameras/{camera_id} and
+# rejected as a malformed UUID. The specific path must be registered first.
 app.include_router(auth.router)
+app.include_router(gaps.router)
 app.include_router(cameras.router)
 app.include_router(system.router)
 app.include_router(alerts.router)

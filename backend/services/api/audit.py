@@ -21,7 +21,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from services.registry.models import AuditEntry
@@ -100,7 +100,18 @@ def append(
     ).scalar_one_or_none()
     prev_hash = tail.entry_hash if tail is not None else GENESIS_HASH
 
+    # Reserve the sequence value *before* inserting, so the row can be written once
+    # with its final hash. The earlier implementation inserted a placeholder hash and
+    # updated it after the flush assigned `seq`, which meant the application needed
+    # UPDATE on the ledger -- and a tamper-evident log that its own writer can update
+    # is defensible only by convention. Taking the number up front makes the table
+    # genuinely append-only, so the privilege can be withheld at the database level.
+    seq = session.execute(
+        text("SELECT nextval(pg_get_serial_sequence('audit_entry', 'seq'))")
+    ).scalar_one()
+
     entry = AuditEntry(
+        seq=int(seq),
         occurred_at=datetime.now(timezone.utc),
         actor_id=actor_id,
         actor_role=actor_role,
@@ -110,12 +121,11 @@ def append(
         purpose=purpose,
         detail=detail or {},
         prev_hash=prev_hash,
-        entry_hash=GENESIS_HASH,  # placeholder; replaced once seq is assigned
+        entry_hash=GENESIS_HASH,  # replaced below, before the row is ever written
     )
-    session.add(entry)
-    session.flush()  # assigns seq
-
     entry.entry_hash = compute_hash(prev_hash, _payload_of(entry))
+
+    session.add(entry)
     session.flush()
     return entry
 
