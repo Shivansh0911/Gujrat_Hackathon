@@ -39,7 +39,12 @@ DEDUP_WINDOW = timedelta(minutes=5)
 
 # A sighting at a different camera within this window extends the existing alert into
 # a movement alert rather than raising a new one.
-MOVEMENT_WINDOW = timedelta(minutes=30)
+#
+# Two hours, not thirty minutes. The window has to cover a realistic inter-city leg:
+# Junagadh to Rajkot is roughly 100 km and takes over an hour, so a thirty-minute
+# window classifies a vehicle genuinely crossing the state as a series of unrelated
+# sightings -- which is precisely the case where grouping matters most to an operator.
+MOVEMENT_WINDOW = timedelta(hours=2)
 
 # An exact match is certainty about the read, not about the vehicle -- the OCR could
 # still be wrong. Fuzzy scores are deliberately well below it.

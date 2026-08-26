@@ -76,3 +76,50 @@ clean:  ## Remove caches and ad-hoc reports (evidence records are preserved)
 	rm -rf .pytest_cache .ruff_cache .mypy_cache htmlcov .coverage
 	find . -name '__pycache__' -type d -prune -exec rm -rf {} +
 	rm -f reports/*.json
+
+# ---------------------------------------------------------------- console
+
+frontend:  ## Install console dependencies and produce a production build
+	cd frontend && npm install --no-fund --no-audit && npm run build
+
+frontend-dev:  ## Run the console dev server (proxies /api to the API)
+	cd frontend && npm run dev
+
+gen-api:  ## Regenerate the console's TypeScript types from the live OpenAPI schema
+	cd frontend && npm run gen:api
+
+screenshots:  ## Capture every console screen against real data into docs/screenshots
+	cd frontend && node scripts/capture_screenshots.mjs
+
+# ---------------------------------------------------------------- runtime
+
+api:  ## Run the API on 127.0.0.1:8090
+	$(PY) -m uvicorn services.api.main:app --host 127.0.0.1 --port 8090
+
+watchlist:  ## Seed a representative watchlist from plates present in the footage
+	$(PY) scripts/seed_watchlist.py --reset
+
+# ---------------------------------------------------------------- demo
+
+demo: up migrate seed  ## Full demo from a clean checkout. Works with the gateway down.
+	@echo ""
+	@echo "==> ingesting own-feed footage across replay cameras"
+	$(PY) scripts/seed_demo.py --reset
+	@echo "==> seeding the representative watchlist"
+	$(PY) scripts/seed_watchlist.py --reset
+	@echo "==> matching detections and raising alerts"
+	$(PY) -c "import sys; sys.path.insert(0, '.'); 	  from services.analytics.matcher import scan_detections; 	  from services.api.db import get_sessionmaker; 	  s = get_sessionmaker()(); st = scan_detections(s); s.commit(); s.close(); 	  print(f'  {st.alerts_created} alert(s) raised, {st.movement} grouped as movement')"
+	@echo "==> building the console"
+	cd frontend && npm install --no-fund --no-audit --silent && npm run build
+	@echo ""
+	@echo "  Demo ready."
+	@echo "    API      http://127.0.0.1:8090/docs   (make api)"
+	@echo "    Console  http://localhost:5173         (make frontend-dev)"
+	@echo ""
+	@echo "  Credentials are in .env (SETU_ADMIN_PASSWORD / SETU_OPERATOR_PASSWORD)."
+	@echo "  See docs/DEMO_RUNBOOK.md for the demonstration script."
+	@echo ""
+
+demo-reset:  ## Clear detections and alerts, then re-ingest
+	$(PY) scripts/seed_demo.py --reset
+	$(PY) scripts/seed_watchlist.py --reset
