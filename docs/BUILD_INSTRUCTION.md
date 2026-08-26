@@ -35,9 +35,10 @@ documented migration path.
 
 ### A3. Known constraints
 
-- **The gateway `live.corp8.cloud` has returned 502 on every media playlist since
-  2026-08-25.** `/api/ingest` still returns 200. Every demo path must work with the
-  media plane unreachable.
+- **The gateway recovered on 2026-08-27** after roughly two days of 502 on every
+  media playlist. It is now partially healthy: **17 of 30 cameras produce frames, 13
+  return none.** Treat availability as unreliable — every demo path must still work
+  with the media plane unreachable.
 - **RTSP and WHEP are unreachable** — Cloudflare proxies 443/80 only, so 8554 and 8889
   never reach origin. HLS is the transport. The gateway gates on a `cookieCheck=1`
   query parameter that FFmpeg drops when following a master playlist; we resolve the
@@ -80,13 +81,13 @@ documented migration path.
 
 ---
 
-## PART C — DEPLOYMENT AND HOSTING  ⬅ next
+## PART C — DEPLOYMENT AND HOSTING
 
 The submission form accepts a hosted platform URL with test credentials. Optional, but
 it materially helps the "working platform" assessment because a judge can click rather
 than watch.
 
-### C1. Containerise both trees
+### C1. Containerise both trees  ✅ done — verified 9/9 from a clean state
 - `backend/Dockerfile` — multi-stage, non-root, base pinned by digest, runtime deps
   only in the final layer, health check on `/healthz`.
 - `frontend/Dockerfile` — build stage produces the Vite bundle; serve stage is nginx
@@ -96,21 +97,22 @@ than watch.
 
 Verify both images build clean and the stack comes up on a machine with no prior state.
 
-### C2. Deploy
+### C2. Deploy  ⬅ NEXT — blocked on the team's Railway account
 Railway or Render for backend + Postgres; same platform or Vercel/Netlify for the
 frontend bundle. Record the choice in an ADR.
 
 Required:
 - CORS for the deployed frontend origin — never a wildcard with credentials
 - Environment configuration for database URL, JWT secret, gateway host, API base URL
-- **Migrations run on deploy**, and `create_app_role.py` before them, or RLS is inert
+- **Migrations run on deploy**, then `create_app_role.py` — that order, not the
+  reverse: its grants need the tables. Skipping it entirely leaves RLS inert
 - **Seed data loaded** — an empty deployed site is worse than no deployed site
 - **Evidence crops served** — bake the demo crops into the image or mount a volume
 - **Two test accounts** seeded, credentials recorded in `docs/DEMO_RUNBOOK.md`
 
 Document in `docs/DEPLOYMENT.md`: exact steps, environment variables, how to redeploy.
 
-### C3. Post-deployment verification
+### C3. Post-deployment verification  ✅ harness written, 9/9 against containers
 Do not report the URL as working until, against the deployed instance: logged in with
 both accounts, map renders cameras, a journey query returns hops, alert desk loads,
 gap analysis loads. Screenshot into `docs/screenshots/deployed/`.
@@ -153,11 +155,15 @@ regenerate.**
 | Decode to alert | median 14 ms, p95 1486 ms | under 2 s | meets |
 | Motion gate pass rate | 13.7% | — | — |
 | Throughput, published 2560×1440 | 0.81 cameras/worker | — | ~98,500 workers for 80k |
-| Throughput, 704×396 sub-stream | 3.82 cameras/worker | — | ~21,000 workers for 80k |
+| Throughput, 704×396 sub-stream | 3.82 cameras/worker | — | ~21,000 workers, but see below |
 | ANPR precision / recall | **not yet measured** | — | harness built |
+| Declared vs measured fps, live gateway | **12 of 16 diverge** | "never trust declared fps" | holds |
 
-Throughput is CPU-only with no GPU. ~21,000 workers is the honest floor for a
-centralised design and is the reason the architecture pushes analytics to the edge.
+Throughput is CPU-only with no GPU. **The sub-stream figure is not usable as stated:**
+the recogniser reads 8 valid plates at 2560×1440, 2 at 1280×720 and 0 at 704×396, so
+3.82 cameras/worker is throughput at an operating point that reads nothing. The
+defensible number is ~98,500 workers at full resolution — a stronger argument for edge
+processing, not a weaker one. See `docs/HLD_RECONCILIATION.md`.
 
 ---
 
