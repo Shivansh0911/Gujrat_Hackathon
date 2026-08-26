@@ -89,7 +89,14 @@ const run = async () => {
   const alertText = await shot(page, "05-alert-desk", { min: 200 });
   if (alertText.includes("No alerts")) failures.push("alert desk: no alerts present");
 
-  // 5 — health
+  // 5 — coverage gap analysis
+  await page.click('a:has-text("Coverage")');
+  await page.waitForSelector("text=Coverage gap analysis", { timeout: 15000 });
+  await page.waitForTimeout(3500);
+  const gapText = await shot(page, "08-gap-analysis", { min: 200 });
+  if (!gapText.includes("Coverage confidence")) failures.push("gap analysis: no district breakdown");
+
+  // 6 — health
   await page.click('a:has-text("Health")');
   await page.waitForSelector("text=Feed health", { timeout: 15000 });
   await page.waitForTimeout(2000);

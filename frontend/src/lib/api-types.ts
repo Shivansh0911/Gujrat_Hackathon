@@ -38,6 +38,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/cameras/gap-analysis": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Gap Analysis
+         * @description Where this network cannot see, and why.
+         */
+        get: operations["gap_analysis_cameras_gap_analysis_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/cameras": {
         parameters: {
             query?: never;
@@ -302,6 +322,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/journey/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export Journey Pdf
+         * @description Signed PDF evidence export for a journey.
+         *
+         *     Runs the same reconstruction as GET /journey rather than accepting a client-
+         *     supplied result: a document signed over whatever the caller posted would attest
+         *     to nothing. The export is itself audited, separately from the query, because
+         *     producing a distributable evidence document is a more consequential act than
+         *     looking at a route on screen.
+         */
+        get: operations["export_journey_pdf_journey_export_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -417,6 +463,29 @@ export interface components {
             /** Client Secret */
             client_secret?: string | null;
         };
+        /** CameraGap */
+        CameraGap: {
+            /** Camera Id */
+            camera_id: string;
+            /** Camera Ref */
+            camera_ref: string;
+            /** Name */
+            name: string;
+            /** Location Text */
+            location_text: string;
+            /** District */
+            district: string | null;
+            /** Kind */
+            kind: string;
+            /** Detail */
+            detail: string;
+            /** Confidence Radius M */
+            confidence_radius_m: number | null;
+            /** Lat */
+            lat?: number | null;
+            /** Lon */
+            lon?: number | null;
+        };
         /** CameraHealthOut */
         CameraHealthOut: {
             /**
@@ -529,6 +598,51 @@ export interface components {
             /** Reason */
             reason: string;
         };
+        /** DistrictCoverage */
+        DistrictCoverage: {
+            /** District */
+            district: string;
+            /** Cameras Total */
+            cameras_total: number;
+            /** Cameras Placed */
+            cameras_placed: number;
+            /** Cameras Unset */
+            cameras_unset: number;
+            /** Cameras Approximate */
+            cameras_approximate: number;
+            /** Cameras Degraded */
+            cameras_degraded: number;
+            /** Cameras Unreachable */
+            cameras_unreachable: number;
+            /** Mean Confidence Radius M */
+            mean_confidence_radius_m: number | null;
+            /** Spread Km2 */
+            spread_km2: number | null;
+            /** Coverage Confidence */
+            coverage_confidence: number;
+            /** Findings */
+            findings: string[];
+        };
+        /** GapAnalysis */
+        GapAnalysis: {
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+            /** Cameras Total */
+            cameras_total: number;
+            /** Districts */
+            districts: components["schemas"]["DistrictCoverage"][];
+            /** Camera Gaps */
+            camera_gaps: components["schemas"]["CameraGap"][];
+            /** Journey Gaps */
+            journey_gaps: components["schemas"]["JourneyGap"][];
+            /** Summary */
+            summary: Record<string, never>;
+            /** Interpretation */
+            interpretation: string;
+        };
         /**
          * GeomPatch
          * @description Operator pin-drop. Writes manual_survey provenance and an audit entry.
@@ -550,6 +664,26 @@ export interface components {
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /**
+         * JourneyGap
+         * @description A camera in scope for real plate queries that recorded nothing.
+         */
+        JourneyGap: {
+            /** Camera Id */
+            camera_id: string;
+            /** Camera Ref */
+            camera_ref: string;
+            /** Name */
+            name: string;
+            /** Lat */
+            lat: number;
+            /** Lon */
+            lon: number;
+            /** Times Implied */
+            times_implied: number;
+            /** Detail */
+            detail: string;
         };
         /** JourneyHop */
         JourneyHop: {
@@ -877,6 +1011,37 @@ export interface operations {
                     "application/json": {
                         [key: string]: string | null;
                     };
+                };
+            };
+        };
+    };
+    gap_analysis_cameras_gap_analysis_get: {
+        parameters: {
+            query?: {
+                journey_window_days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GapAnalysis"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -1262,6 +1427,39 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["JourneyResult"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_journey_pdf_journey_export_get: {
+        parameters: {
+            query: {
+                plate: string;
+                from: string;
+                to: string;
+                purpose: string;
+                fuzzy?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

@@ -23,6 +23,8 @@ export default function JourneyPage() {
   const [to, setTo] = useState(isoLocal(new Date(Date.now() + 36e5)));
   const [purpose, setPurpose] = useState("");
   const [activeHop, setActiveHop] = useState<number | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const [exported, setExported] = useState<string | null>(null);
 
   const run = useMutation({
     mutationFn: () =>
@@ -191,6 +193,33 @@ export default function JourneyPage() {
     else map.once("load", draw);
   }, [result]);
 
+  async function exportEvidence() {
+    if (!result) return;
+    setExporting(true);
+    setExported(null);
+    try {
+      const { blob, auditSeq } = await api.exportJourney(
+        result.plate,
+        new Date(from).toISOString(),
+        new Date(to).toISOString(),
+        purpose.trim(),
+      );
+      // The download is triggered from a blob URL rather than a link to the endpoint,
+      // so the browser never issues an unauthenticated GET for a signed document.
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `setu-evidence-${result.plate}-${auditSeq ?? "export"}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      setExported(auditSeq);
+    } finally {
+      setExporting(false);
+    }
+  }
+
   function submit(e: FormEvent) {
     e.preventDefault();
     setActiveHop(null);
@@ -290,7 +319,17 @@ export default function JourneyPage() {
             />
           )}
 
-          {result && <Results result={result} activeHop={activeHop} onHover={setActiveHop} map={mapRef} />}
+          {result && (
+            <Results
+              result={result}
+              activeHop={activeHop}
+              onHover={setActiveHop}
+              map={mapRef}
+              onExport={exportEvidence}
+              exporting={exporting}
+              exportedSeq={exported}
+            />
+          )}
         </div>
       </div>
     </div>
@@ -302,11 +341,17 @@ function Results({
   activeHop,
   onHover,
   map,
+  onExport,
+  exporting,
+  exportedSeq,
 }: {
   result: JourneyResult;
   activeHop: number | null;
   onHover: (seq: number | null) => void;
   map: React.MutableRefObject<maplibregl.Map | null>;
+  onExport: () => void;
+  exporting: boolean;
+  exportedSeq: string | null;
 }) {
   if (!result.hops.length) {
     // These are genuinely different findings and an investigator must be able to
@@ -339,6 +384,27 @@ function Results({
             no coordinate on record.
           </div>
         )}
+      </div>
+
+      <div className="p-3 border-b border-edge space-y-2">
+        <button
+          className="btn btn-primary w-full"
+          onClick={onExport}
+          disabled={exporting}
+        >
+          {exporting ? "Generating signed export…" : "Export signed evidence (PDF)"}
+        </button>
+        {exportedSeq && (
+          <div className="text-[11px] text-ok">
+            Exported and recorded at audit entry {exportedSeq}. The PDF carries an
+            Ed25519 signature over a manifest of every hop, verifiable without SETU.
+          </div>
+        )}
+        <p className="text-[10px] text-muted leading-snug">
+          The export re-runs this reconstruction server-side and is separately audited.
+          Producing a distributable evidence document is a more consequential act than
+          viewing a route on screen.
+        </p>
       </div>
 
       {result.hops.map((hop) => (

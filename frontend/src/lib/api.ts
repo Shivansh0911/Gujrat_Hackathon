@@ -19,6 +19,10 @@ export type RejectedHop = components["schemas"]["RejectedHop"];
 export type SyncResult = components["schemas"]["SyncResult"];
 export type AuditVerify = components["schemas"]["AuditVerifyOut"];
 export type StreamUrl = components["schemas"]["StreamUrlOut"];
+export type GapAnalysis = components["schemas"]["GapAnalysis"];
+export type DistrictCoverage = components["schemas"]["DistrictCoverage"];
+export type CameraGap = components["schemas"]["CameraGap"];
+export type JourneyGap = components["schemas"]["JourneyGap"];
 
 const BASE = "/api";
 
@@ -121,4 +125,24 @@ export const api = {
       `/journey?${new URLSearchParams({ plate, from, to, purpose })}`,
     ),
   auditVerify: () => request<AuditVerify>("/audit/verify"),
+  gapAnalysis: () => request<GapAnalysis>("/cameras/gap-analysis"),
+
+  /**
+   * Signed evidence PDF. Returned as a Blob rather than JSON, and the signature
+   * headers travel with it so a recipient can verify the document without a
+   * second request that might reconstruct a different route.
+   */
+  async exportJourney(plate: string, from: string, to: string, purpose: string) {
+    const qs = new URLSearchParams({ plate, from, to, purpose });
+    const headers = new Headers();
+    if (accessToken) headers.set("Authorization", `Bearer ${accessToken}`);
+    const res = await fetch(`${BASE}/journey/export?${qs}`, { headers });
+    if (!res.ok) throw new ApiError(res.status, await res.text());
+    return {
+      blob: await res.blob(),
+      auditSeq: res.headers.get("X-SETU-Audit-Seq"),
+      signature: res.headers.get("X-SETU-Signature"),
+      manifestSha256: res.headers.get("X-SETU-Manifest-SHA256"),
+    };
+  },
 };

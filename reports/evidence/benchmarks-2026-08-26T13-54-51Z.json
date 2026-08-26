@@ -1,0 +1,78 @@
+{
+  "kind": "benchmarks",
+  "generated_at": "2026-08-26T13-54-51Z",
+  "provenance": {
+    "git_sha": "fd805f43438c266cdf2087d9422a184084a798b8",
+    "git_tree_dirty": true,
+    "git_branch": "main",
+    "python": "3.12.5",
+    "platform": "Windows-11-10.0.26200-SP0"
+  },
+  "measured_at": "2026-08-26T13:53:58.023339+00:00",
+  "journey_query": {
+    "min_ms": 34.44,
+    "median_ms": 38.83,
+    "p95_ms": 56.81,
+    "max_ms": 352.7,
+    "mean_ms": 55.67,
+    "samples": 20,
+    "window_hours": 12,
+    "plates_exercised": 5,
+    "mean_hops": 3.0,
+    "hld_claim_ms": 3000.0,
+    "meets_hld_claim": true
+  },
+  "decode_to_alert": {
+    "min_ms": 11.91,
+    "median_ms": 20.3,
+    "p95_ms": 3252.1,
+    "max_ms": 3252.1,
+    "mean_ms": 411.7,
+    "samples": 9,
+    "hld_claim_ms": 2000.0,
+    "meets_hld_claim": false,
+    "note": "Measured on a live pipeline run: decode, motion gate, plate detection, OCR, fusion, persistence and watchlist matching. Excludes WebSocket delivery to a connected client."
+  },
+  "throughput": {
+    "cases": [
+      {
+        "label": "full resolution, as published",
+        "frames_decoded": 901,
+        "wall_seconds": 37.72,
+        "decode_fps": 23.89,
+        "source_fps": 29.97,
+        "resolution": "2560x1440",
+        "gate_pass_rate": 0.1365,
+        "detector_invocations": 123,
+        "ocr_invocations": 22,
+        "cameras_per_worker_realtime": 0.8,
+        "workers_for_80k": 100377
+      },
+      {
+        "label": "sub-stream, as an ANPR deployment ingests",
+        "frames_decoded": 901,
+        "wall_seconds": 7.79,
+        "decode_fps": 115.73,
+        "source_fps": 29.97,
+        "resolution": "704x396",
+        "gate_pass_rate": 0.1365,
+        "detector_invocations": 123,
+        "ocr_invocations": 17,
+        "cameras_per_worker_realtime": 3.86,
+        "workers_for_80k": 20718
+      }
+    ],
+    "hardware": "CPU only (ONNX Runtime, CPUExecutionProvider). No GPU used.",
+    "extrapolation_80k": {
+      "target_cameras": 80000,
+      "workers_at_measured_rate": 20725,
+      "assumptions": [
+        "Taken from the best measured case, which is the sub-stream at 704x396. The full-resolution case is roughly seven times more expensive and is recorded alongside it.",
+        "The motion gate already removes roughly 86% of frames before detection; this figure is with that gate active.",
+        "GPU inference is not included. The RTX 4050 in the development machine was not used for these numbers, so they are a floor rather than a target.",
+        "Assumes every camera is analysed continuously. Adaptive sampling by scene activity would reduce the requirement further."
+      ],
+      "honest_reading": "This is a floor measured on a laptop CPU against 1440p footage. It is quoted so the scaling argument rests on something observed rather than asserted; the production figure depends on sub-stream resolution and GPU batching, neither of which is measured here."
+    }
+  }
+}

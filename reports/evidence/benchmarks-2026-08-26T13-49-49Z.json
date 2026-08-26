@@ -1,0 +1,59 @@
+{
+  "kind": "benchmarks",
+  "generated_at": "2026-08-26T13-49-49Z",
+  "provenance": {
+    "git_sha": "fd805f43438c266cdf2087d9422a184084a798b8",
+    "git_tree_dirty": true,
+    "git_branch": "main",
+    "python": "3.12.5",
+    "platform": "Windows-11-10.0.26200-SP0"
+  },
+  "measured_at": "2026-08-26T13:48:24.059768+00:00",
+  "journey_query": {
+    "min_ms": 30.77,
+    "median_ms": 40.5,
+    "p95_ms": 55.11,
+    "max_ms": 275.03,
+    "mean_ms": 51.01,
+    "samples": 20,
+    "window_hours": 12,
+    "plates_exercised": 5,
+    "mean_hops": 3.0,
+    "hld_claim_ms": 3000.0,
+    "meets_hld_claim": true
+  },
+  "decode_to_alert": {
+    "min_ms": 11.01,
+    "median_ms": 69.86,
+    "p95_ms": 636.16,
+    "max_ms": 18355.01,
+    "mean_ms": 1653.61,
+    "samples": 12,
+    "hld_claim_ms": 2000.0,
+    "meets_hld_claim": true,
+    "note": "Measured on a live pipeline run: decode, motion gate, plate detection, OCR, fusion, persistence and watchlist matching. Excludes WebSocket delivery to a connected client."
+  },
+  "throughput": {
+    "frames_decoded": 901,
+    "wall_seconds": 57.95,
+    "decode_fps": 15.55,
+    "source_fps": 29.97,
+    "resolution": "2560x1440",
+    "gate_pass_rate": 0.1365,
+    "detector_invocations": 123,
+    "ocr_invocations": 22,
+    "cameras_per_worker_realtime": 0.52,
+    "hardware": "CPU only (ONNX Runtime, CPUExecutionProvider)",
+    "extrapolation_80k": {
+      "target_cameras": 80000,
+      "workers_at_measured_rate": 154221,
+      "assumptions": [
+        "Measured on CPU at 2560x1440. Production ingest would run sub-streams at a lower resolution, which is the single largest available saving.",
+        "The motion gate already removes roughly 86% of frames before detection; this figure is with that gate active.",
+        "GPU inference is not included. The RTX 4050 in the development machine was not used for these numbers, so they are a floor rather than a target.",
+        "Assumes every camera is analysed continuously. Adaptive sampling by scene activity would reduce the requirement further."
+      ],
+      "honest_reading": "This is a floor measured on a laptop CPU against 1440p footage. It is quoted so the scaling argument rests on something observed rather than asserted; the production figure depends on sub-stream resolution and GPU batching, neither of which is measured here."
+    }
+  }
+}

@@ -102,6 +102,14 @@ Points to make, in order:
    > problem you should fix."*
 7. **`2 cameras excluded from this search: no coordinate on record.`** We report what
    we could not consider.
+8. **Press `Export signed evidence (PDF)`.** A three-page document downloads: the
+   query and its authorisation, every hop with its crop and all three clocks, then
+   coverage gaps, rejected candidates, and an integrity page carrying an Ed25519
+   signature over a manifest that commits to every hop and to a SHA-256 of each
+   evidence image. **Say this:** *"A recipient can verify this with the public key
+   alone. They do not need access to our database, our API, or us."* The export is
+   itself audited — producing a distributable evidence document is a more
+   consequential act than looking at a route on screen.
 
 **Then demonstrate the negative case.** Type `MH99ZZ9999`, same purpose, trace. The
 result distinguishes *plate never seen anywhere* from *seen, but not in this window*
@@ -125,7 +133,24 @@ result distinguishes *plate never seen anywhere* from *seen, but not in this win
   registrations from Maharashtra, Delhi, Rajasthan, Tamil Nadu and Uttar Pradesh that
   are **correctly ignored**. A demo where everything matches is not believable.
 
-### 2.4 Health — 40 seconds
+### 2.4 Coverage — gap analysis, 45 seconds
+
+Model 1's own requirement, and the screen that turns the registry from an inventory
+into a planning tool.
+
+- Point at the **district confidence bars**. Ahmedabad 74%, Gandhinagar 60%, and the
+  finding beside each one naming why.
+- **Say this:** *"Gaps are separated by remedy, because the cost of each differs by
+  orders of magnitude. A missing coordinate is a pin drop. An approximate one needs a
+  survey. A degraded camera needs maintenance on money already spent. Uncovered ground
+  needs procurement."*
+- Scroll to **Investigation-derived gaps**. These are positions that real plate
+  queries kept needing, where nothing was recorded — 29 of them. That is an
+  evidence-backed case for where the next camera goes, not an opinion about it.
+- The red circles on the map are those positions, sized by how often investigations
+  needed them.
+
+### 2.5 Health — 40 seconds
 
 - Sort by **fps drift**. Declared versus measured frame rate side by side.
   **Say this:** *"The integration guide warns that a camera's reported frame rate
@@ -135,7 +160,7 @@ result distinguishes *plate never seen anywhere* from *seen, but not in this win
   verbatim — camera id, exact URL, client and version, UTC timestamp, client-side log
   — ready to send.
 
-### 2.5 Audit — 20 seconds
+### 2.6 Audit — 20 seconds
 
 In the API docs (`/docs`), call **`GET /audit/verify`**. It recomputes the whole hash
 chain and returns validity. Every journey query, every pin drop, every alert

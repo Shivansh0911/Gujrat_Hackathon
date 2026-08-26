@@ -5,12 +5,14 @@ import MapPage from "./pages/MapPage";
 import JourneyPage from "./pages/JourneyPage";
 import AlertsPage from "./pages/AlertsPage";
 import HealthPage from "./pages/HealthPage";
+import GapsPage from "./pages/GapsPage";
 
 const NAV = [
   { to: "/map", label: "GIS Map", hint: "Camera registry" },
   { to: "/journey", label: "Journey", hint: "Route reconstruction" },
   { to: "/alerts", label: "Alert Desk", hint: "Live watchlist matches" },
   { to: "/health", label: "Health", hint: "Feed diagnostics" },
+  { to: "/gaps", label: "Coverage", hint: "Gap analysis" },
 ];
 
 function Shell() {
@@ -59,6 +61,7 @@ function Shell() {
           <Route path="/journey" element={<JourneyPage />} />
           <Route path="/alerts" element={<AlertsPage />} />
           <Route path="/health" element={<HealthPage />} />
+          <Route path="/gaps" element={<GapsPage />} />
           <Route path="*" element={<Navigate to="/map" replace />} />
         </Routes>
       </main>
