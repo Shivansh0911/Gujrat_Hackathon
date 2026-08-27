@@ -7,6 +7,7 @@ from functools import lru_cache
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from services.common.dburl import normalise_pg_url
 from services.common.paths import ENV_FILE
 
 
@@ -44,6 +45,13 @@ class ApiSettings(BaseSettings):
     detour_factor: float = Field(default=1.3, ge=1.0)
     # A hop implying a speed below this is a dwell, not travel, and is not penalised.
     min_transit_speed_kmph: float = Field(default=2.0, ge=0)
+
+    @field_validator("database_url")
+    @classmethod
+    def _normalise_database_url(cls, v: str) -> str:
+        # Accept the libpq form every managed Postgres hands out, so a platform's own
+        # reference variable can be pasted in without editing. See services/common/dburl.py.
+        return normalise_pg_url(v) or v
 
     @field_validator("jwt_secret")
     @classmethod

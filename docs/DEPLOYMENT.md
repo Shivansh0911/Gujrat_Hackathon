@@ -86,60 +86,149 @@ Every step is idempotent. A restart is a normal event, not a recovery scenario.
 
 ## 4. Deploying to Railway
 
-> **Status: not yet performed.** The stack is container-ready and verified locally,
-> but pushing to Railway requires the team's account. The steps below are what to
-> run; §5 is what to check afterwards before quoting the URL to anyone.
+> **Status: not yet performed** -- pushing to Railway needs the team's account.
+> The procedure below is not guesswork, though: the images were driven the way
+> Railway drives them and the failure modes were fixed rather than documented around.
+> Verified by simulation, not by reading docs:
+>
+> * the backend booting with **only** a libpq `DATABASE_URL` and an app password,
+>   deriving its own unprivileged URL and ending up connected as `setu_app`
+>   (`rolsuper=false`, `rolbypassrls=false`) rather than as the superuser;
+> * the same, against a Postgres carrying **PostGIS but neither TimescaleDB nor
+>   pgvector** -- the optional extensions are skipped with a warning and the schema
+>   builds anyway;
+> * the console serving on an injected `PORT=7431`;
+> * the console **starting and staying up while the backend does not exist**, then
+>   picking it up when it appears.
+>
+> §5 is what to check against the real URL before quoting it to anyone.
 
 Railway is the recommendation: managed Postgres with PostGIS available, both
 services on one platform, one set of secrets. See
 `docs/adr/0004-deployment-platform.md` for the trade-offs against Render and Fly.
 
-```bash
-npm i -g @railway/cli
-railway login
-railway init                      # or: railway link  (existing project)
+Two services and a database, all in one Railway project. Both images are built from
+this repository's Dockerfiles, so what deploys is what was verified locally.
 
-# 1. Database
-railway add --database postgres
-# In the Postgres service shell, enable the extensions the schema needs:
-#   CREATE EXTENSION IF NOT EXISTS postgis;
-#   CREATE EXTENSION IF NOT EXISTS timescaledb;
-#   CREATE EXTENSION IF NOT EXISTS vector;
-#   CREATE EXTENSION IF NOT EXISTS pg_trgm;
-#   CREATE EXTENSION IF NOT EXISTS pgcrypto;
+### 1. The database
+
+Railway's own Postgres image does **not** carry PostGIS, and PostGIS is not optional
+here — the registry stores camera positions as `geography(Point,4326)`. Deploy the
+database from a custom image instead:
+
+> **New → Docker Image →**
+> `timescale/timescaledb-ha:pg16@sha256:92809e70c72a5fd169aa3bb7d9c6b1974d6afdf8da786d890f12ae9e7616a67c`
+>
+> Variables: `POSTGRES_DB=railway`, `POSTGRES_USER=postgres`,
+> `POSTGRES_PASSWORD=<generate one>`. Attach a volume at `/home/postgres/pgdata/data`.
+
+That is the same digest the compose stack runs, and it carries all five extensions.
+
+**If you use a Postgres that only has PostGIS**, the deploy still succeeds. Migration
+`0001` treats `postgis`, `pgcrypto` and `pg_trgm` as required and `timescaledb` and
+`vector` as optional: the optional ones are logged and skipped, and `detection` is
+left as a plain table. Correctness is unaffected; only time-window query performance
+at scale is. This was verified by deploying against `postgis/postgis:16-3.4`.
+
+**What is *not* true:** there is no `SETU_SKIP_HYPERTABLE` variable. An earlier
+version of this document promised one. The skip is automatic and needs no
+configuration.
+
+### 2. The backend service
+
+**New → GitHub Repo →** this repository. Then in Settings:
+
+| Setting | Value |
+|---|---|
+| Root Directory | `/` (the build context must be the repository root) |
+| Dockerfile Path | `backend/Dockerfile` |
+| Health Check Path | `/healthz` |
+| Health Check Timeout | `300` seconds |
+
+The health-check timeout matters. First boot runs migrations, creates the
+unprivileged role, seeds the registry and then runs plate inference over the bundled
+clip — around three minutes. A 30-second health check kills it mid-seed and reports a
+crash loop that reads like a code fault.
+
+Variables:
+
+```bash
+# Reference Railway's own database variable. The entrypoint accepts the libpq form
+# and rewrites the scheme to name psycopg 3.
+SETU_MIGRATION_DATABASE_URL=${{Postgres.DATABASE_URL}}
+
+# The API's own, unprivileged role. Supply only the password: the entrypoint derives
+# the URL from the migration URL by substituting role and password, which is what
+# stops the API ever running on the superuser URL by mistake.
+SETU_APP_DB_PASSWORD=<generate>
+
+SETU_JWT_SECRET=<generate, 48+ chars>
+SETU_ADMIN_PASSWORD=<generate>
+SETU_OPERATOR_PASSWORD=<generate>
+SETU_EVIDENCE_SIGNING_KEY=<64 hex chars>
+
+# The console's public origin, once you know it. Never a wildcard.
+SETU_CORS_ORIGINS=https://<console-domain>
+
+SETU_SEED_DEMO=1
+SETU_DEMO_FRAMES=900
 ```
 
-**If TimescaleDB is unavailable** on the plan, migration `0003` fails. Either use a
-Postgres image that carries it, or set `SETU_SKIP_HYPERTABLE=1` and accept that
-`detection` stays a plain table — correctness is unaffected, only time-window query
-performance at scale.
+Generate the secrets with:
 
 ```bash
-# 2. Backend service — root directory ".", Dockerfile "backend/Dockerfile"
-railway variables set \
-  SETU_DATABASE_URL='postgresql+psycopg://setu_app:<APP_PW>@<PGHOST>:<PGPORT>/<PGDB>' \
-  SETU_MIGRATION_DATABASE_URL='postgresql+psycopg://<PGUSER>:<PGPW>@<PGHOST>:<PGPORT>/<PGDB>' \
-  SETU_APP_DB_PASSWORD='<APP_PW>' \
-  SETU_JWT_SECRET='<generated>' \
-  SETU_ADMIN_PASSWORD='<generated>' \
-  SETU_OPERATOR_PASSWORD='<generated>' \
-  SETU_CORS_ORIGINS='https://<console-domain>' \
-  SETU_EVIDENCE_SIGNING_KEY='<64 hex chars>' \
-  SETU_SEED_DEMO=1 SETU_DEMO_FRAMES=900
-
-# 3. Console service — root ".", Dockerfile "frontend/Dockerfile"
-#    Build arg VITE_API_BASE_URL=https://<backend-domain>  (split origin)
-#    or leave the default /api and put both behind one domain.
-railway up
+python -c "import secrets; print(secrets.token_urlsafe(48))"
+python -c "import secrets; print(secrets.token_hex(32))"   # signing key
 ```
 
-Migrations and seeding run from the entrypoint on every deploy — there is no manual
-step, and nothing to forget.
+**Do not set `SETU_DATABASE_URL` yourself.** Deriving it is what guarantees the API
+connects as `setu_app` (NOSUPERUSER, NOBYPASSRLS) rather than as the superuser. A
+superuser carries `rolbypassrls` and silently ignores every row-level security policy,
+so departments stop being isolated while every isolation test still passes. If you do
+set it, it is used as given and that guarantee is yours to maintain.
 
-**Evidence crops.** The image ships the demo crops, so a fresh deploy is never empty.
-Crops written at runtime need a persistent volume mounted at
-`/srv/setu/data/evidence/crops`, or they vanish on redeploy and the Journey and Alert
-screens render empty image boxes.
+Attach a volume at `/srv/setu/data/evidence/crops`. The image ships the demo crops so
+a fresh deploy is never empty, but anything written after deploy vanishes on the next
+one without it, and the Journey and Alert screens then render empty image boxes.
+
+### 3. The console service
+
+**New → GitHub Repo →** the same repository, with:
+
+| Setting | Value |
+|---|---|
+| Root Directory | `/` |
+| Dockerfile Path | `frontend/Dockerfile` |
+| Health Check Path | `/healthz` |
+
+Variables:
+
+```bash
+SETU_API_HOST=<backend service name>.railway.internal
+SETU_API_PORT=8000
+```
+
+Leave `VITE_API_BASE_URL` unset. The console then calls `/api` on its own origin and
+nginx proxies it to the backend over the private network — one public URL, no CORS
+preflight, and the WebSocket works without further configuration.
+
+Both images honour Railway's injected `$PORT`; nothing needs setting for that.
+
+**Why the console does not need the backend to exist first.** nginx resolves upstream
+hostnames through a runtime resolver rather than at startup, so it boots and serves
+the app even while `*.railway.internal` does not resolve yet, and picks the backend up
+as soon as it appears. API calls return 502 in the meantime. Deploy order does not
+matter, and a backend redeploy does not require restarting the console.
+
+### 4. Afterwards
+
+Generate a public domain for the console, set `SETU_CORS_ORIGINS` on the backend to
+that origin, and redeploy the backend. Then verify before quoting the URL to anyone:
+
+```bash
+SETU_ADMIN_PASSWORD=... SETU_OPERATOR_PASSWORD=... \
+  python backend/scripts/verify_deployment.py https://<console-domain>
+```
 
 ---
 

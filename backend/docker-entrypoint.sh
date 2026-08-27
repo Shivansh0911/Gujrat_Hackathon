@@ -27,16 +27,71 @@ set -euo pipefail
 
 log() { printf '[entrypoint] %s\n' "$*" >&2; }
 
-: "${SETU_DATABASE_URL:?SETU_DATABASE_URL must be set}"
 : "${SETU_JWT_SECRET:?SETU_JWT_SECRET must be set}"
 
-# Migrations connect as the schema owner; the API connects as the unprivileged role.
-# Fall back to the app URL only for a single-role local run, and say so loudly.
+# ── Database URLs ───────────────────────────────────────────────────────────────
+#
+# Two roles, deliberately. Migrations connect as the schema owner; the API connects
+# as `setu_app`, which is NOSUPERUSER/NOBYPASSRLS so that row-level security actually
+# binds. Getting this wrong is the most consequential misconfiguration available
+# here: a superuser carries `rolbypassrls` and silently ignores every policy, so
+# departments stop being isolated while every isolation test still passes.
+#
+# Managed platforms hand out one superuser URL, usually as DATABASE_URL. Accept it
+# for MIGRATIONS -- that is exactly the right role for them -- and then *derive* the
+# application URL from it by substituting the unprivileged role and its password.
+# Deriving rather than accepting means the API cannot end up on the superuser URL by
+# someone pasting the platform variable into both fields.
+if [ -z "${SETU_MIGRATION_DATABASE_URL:-}" ] && [ -n "${DATABASE_URL:-}" ]; then
+  log "SETU_MIGRATION_DATABASE_URL unset; using the platform's DATABASE_URL for migrations."
+  export SETU_MIGRATION_DATABASE_URL="$DATABASE_URL"
+fi
+
+if [ -z "${SETU_DATABASE_URL:-}" ]; then
+  if [ -n "${SETU_MIGRATION_DATABASE_URL:-}" ] && [ -n "${SETU_APP_DB_PASSWORD:-}" ]; then
+    log "SETU_DATABASE_URL unset; deriving the application URL for role setu_app."
+    SETU_DATABASE_URL="$(python -c "
+import os, sys
+from urllib.parse import quote, urlsplit, urlunsplit
+
+sys.path.insert(0, '/srv/setu/backend')
+from services.common.dburl import normalise_pg_url
+
+parts = urlsplit(normalise_pg_url(os.environ['SETU_MIGRATION_DATABASE_URL']))
+host = parts.hostname or 'localhost'
+netloc = 'setu_app:' + quote(os.environ['SETU_APP_DB_PASSWORD'], safe='')
+netloc += '@' + ('[' + host + ']' if ':' in host else host)
+if parts.port:
+    netloc += ':' + str(parts.port)
+print(urlunsplit((parts.scheme, netloc, parts.path, parts.query, parts.fragment)))
+")"
+    export SETU_DATABASE_URL
+  else
+    log "FATAL: set SETU_DATABASE_URL, or provide SETU_MIGRATION_DATABASE_URL (or"
+    log "       DATABASE_URL) together with SETU_APP_DB_PASSWORD so it can be derived."
+    exit 1
+  fi
+fi
+
+# Fall back to the app URL for migrations only in a single-role local run, and say so.
 if [ -z "${SETU_MIGRATION_DATABASE_URL:-}" ]; then
   log "WARNING: SETU_MIGRATION_DATABASE_URL unset; using SETU_DATABASE_URL for migrations."
   log "         In production these should be different roles."
   export SETU_MIGRATION_DATABASE_URL="$SETU_DATABASE_URL"
 fi
+
+# Accept the libpq form (`postgres://`, `postgresql://`) that every managed Postgres
+# emits, and rewrite it to name psycopg 3. Without this the first connection fails
+# with ModuleNotFoundError: psycopg2, long after the container reports healthy.
+eval "$(python -c "
+import os, sys
+sys.path.insert(0, '/srv/setu/backend')
+from services.common.dburl import normalise_pg_url
+for key in ('SETU_DATABASE_URL', 'SETU_MIGRATION_DATABASE_URL'):
+    value = normalise_pg_url(os.environ.get(key))
+    if value:
+        print(\"export %s='%s'\" % (key, value.replace(\"'\", \"'\\\\''\")))
+")"
 
 count_rows() {
   python -c "

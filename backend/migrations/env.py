@@ -46,7 +46,17 @@ if not _url:
 if not _url:
     raise RuntimeError("SETU_DATABASE_URL is not set; cannot run migrations")
 
-config.set_main_option("sqlalchemy.url", _url)
+from services.common.dburl import normalise_pg_url  # noqa: E402
+
+_url = normalise_pg_url(_url)
+
+# `%` is doubled because set_main_option writes into a ConfigParser that performs
+# `%`-interpolation. A percent-encoded password -- which is what you get the moment a
+# platform-generated superuser password contains `/`, `@` or `+` -- otherwise fails
+# with `ValueError: invalid interpolation syntax`, during migrations, on first deploy.
+# It never appears locally: the generated development passwords are token_urlsafe,
+# whose alphabet needs no encoding at all.
+config.set_main_option("sqlalchemy.url", _url.replace("%", "%%"))
 
 target_metadata = Base.metadata
 

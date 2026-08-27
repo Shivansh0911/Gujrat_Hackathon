@@ -16,6 +16,8 @@ Revises: 0002_core_schema
 
 from __future__ import annotations
 
+import logging
+
 from alembic import op
 
 revision = "0003_detection_hypertable"
@@ -23,8 +25,27 @@ down_revision = "0002_core_schema"
 branch_labels = None
 depends_on = None
 
+log = logging.getLogger("alembic.runtime.migration")
+
 
 def upgrade() -> None:
+    # TimescaleDB is optional (see 0001_extensions): a managed Postgres that offers
+    # PostGIS but not Timescale is common, and the hypertable is a time-window query
+    # optimisation rather than a correctness requirement. Skipping it leaves
+    # `detection` a plain table that behaves identically and scales less well.
+    installed = (
+        op.get_bind()
+        .exec_driver_sql("SELECT 1 FROM pg_extension WHERE extname = 'timescaledb'")
+        .scalar()
+    )
+    if not installed:
+        log.warning(
+            "timescaledb is not installed; leaving 'detection' as a plain table. "
+            "Correctness is unaffected; time-window queries will not benefit from "
+            "chunk exclusion at scale."
+        )
+        return
+
     op.execute(
         """
         SELECT create_hypertable(

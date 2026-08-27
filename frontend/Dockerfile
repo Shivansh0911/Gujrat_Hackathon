@@ -48,7 +48,8 @@ FROM nginxinc/nginx-unprivileged@sha256:65e3e85dbaed8ba248841d9d58a899b6197106c2
 # `host not found in "${PORT}" of the "listen" directive`.
 ENV SETU_API_HOST=backend \
     SETU_API_PORT=8000 \
-    PORT=8080
+    PORT=8080 \
+    NGINX_LOCAL_RESOLVERS=127.0.0.11
 
 # Root only long enough to place files the unprivileged user must read.
 USER root

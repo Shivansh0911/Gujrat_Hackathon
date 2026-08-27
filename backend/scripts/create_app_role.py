@@ -159,19 +159,35 @@ def main() -> int:
 
         # TimescaleDB places hypertable chunks in an internal schema. Without these the
         # role can read `detection` but not the chunks that actually hold its rows.
-        conn.execute(text(f'GRANT USAGE ON SCHEMA _timescaledb_internal TO "{APP_ROLE}"'))
-        conn.execute(
-            text(
-                "GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA "
-                f'_timescaledb_internal TO "{APP_ROLE}"'
+        #
+        # Conditional, because TimescaleDB is optional (see migration 0001): on a
+        # Postgres that only offers PostGIS the schema simply does not exist, and
+        # granting on it aborts the transaction with `InvalidSchemaName` after the role
+        # has already been created -- so the deploy fails at a point that looks nothing
+        # like the missing extension that caused it.
+        has_timescale = conn.execute(
+            text("SELECT 1 FROM information_schema.schemata WHERE schema_name = :s"),
+            {"s": "_timescaledb_internal"},
+        ).scalar()
+        if has_timescale:
+            conn.execute(text(f'GRANT USAGE ON SCHEMA _timescaledb_internal TO "{APP_ROLE}"'))
+            conn.execute(
+                text(
+                    "GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA "
+                    f'_timescaledb_internal TO "{APP_ROLE}"'
+                )
             )
-        )
-        conn.execute(
-            text(
-                "ALTER DEFAULT PRIVILEGES IN SCHEMA _timescaledb_internal "
-                f'GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO "{APP_ROLE}"'
+            conn.execute(
+                text(
+                    "ALTER DEFAULT PRIVILEGES IN SCHEMA _timescaledb_internal "
+                    f'GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO "{APP_ROLE}"'
+                )
             )
-        )
+        else:
+            log.info(
+                "no _timescaledb_internal schema; skipping chunk grants "
+                "(detection is a plain table on this server)"
+            )
 
         role = (
             conn.execute(
