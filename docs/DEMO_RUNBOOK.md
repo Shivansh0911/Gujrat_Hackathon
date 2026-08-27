@@ -84,7 +84,20 @@ tells the truth about how well we know each position.
 
 This is the screen the live test case is judged on. Spend the time here.
 
-**Type plate:** `KA25AB144`
+> **Read the plate off your own instance before recording.** The demo ingest runs
+> against whatever clip is bundled, so the exact registration differs between
+> deployments — it was `KA25AB144` on the development stack and `KA25A3141` on the
+> container stack. Open the Alert Desk first and take the plate from a card, or run:
+>
+> ```bash
+> python backend/scripts/verify_deployment.py http://localhost:8080
+> ```
+>
+> which prints the plate it successfully traced in check 3. **A demonstration that
+> opens with "no route found" because the plate was copied from a document is the
+> worst possible first thirty seconds.**
+
+**Type plate:** the one you just read
 **Purpose:** `FIR 123/2026 — vehicle trace requested by Investigating Officer`
 Leave the default time window. Press **Trace vehicle**.
 
@@ -130,10 +143,20 @@ result distinguishes *plate never seen anywhere* from *seen, but not in this win
 
 **8 alerts**, all grouped as movement alerts.
 
-- **Click the `KA25AI11G` card** — this is the one to demonstrate. It is a
-  **`fuzzy_1`** match: the detection read `KA25AI116`, the watchlist holds
-  `KA25AI11G`, and `G`/`6` are a known OCR confusion pair. **An exact-match system
-  finds nothing here.** The card shows the match type and the reduced score.
+- **Click the `fuzzy_1` card** — that is the one to demonstrate; on the development
+  stack it was `KA25AI11G`, but as with the journey plate, **read it off your own
+  instance first.** The detection read `KA25AI116`, the watchlist holds `KA25AI11G`,
+  and `G`/`6` are a known OCR confusion pair. **An exact-match system finds nothing
+  here.** The card shows the match type and the reduced score.
+
+> **If a judge presses on this one, concede it cleanly.** Ground-truth annotation
+> shows that detection is itself wrong — the vehicle is `KA25AB1116`, so the
+> recogniser misread `B` as `I` as well. What the card demonstrates is real and worth
+> demonstrating: confusion-aware matching recovers a vehicle that exact matching drops
+> entirely. But it recovered it to a registration that is still wrong, and that is
+> precisely why the platform shows the crop, the corrections and the score instead of
+> presenting a plate as fact. **The reviewer is given what they need to disagree with
+> the machine.** Do not let this be discovered rather than offered.
 - Note the three timestamps on each card: `observed_at_utc`, stream `PTS`, and the
   read confidence. PTS is what makes a detection reproducible from the original
   stream rather than merely displayed.
@@ -180,6 +203,55 @@ before it.
 
 ---
 
+## 2.7 The government-feed recording — the second required video
+
+The organisers require two recordings: one on our own footage, one on the government
+feed. Section 2 covers the first. This is the second, and it is a different film with a
+different argument.
+
+**Do not try to make it look like the first one.** The estate does not deliver
+readable plates, and a recording that implies otherwise will not survive a question.
+The argument this video makes is: *we connected to the real feed, at estate scale, and
+we can tell you precisely what it does and does not give us.* That is a stronger
+position than a polished demo a judge can puncture in one question.
+
+### Before recording — the feed is unreliable
+
+```bash
+make gateway-ingest        # ~25 minutes across all 30 cameras
+make gateway-report        # merges passes into the output report
+```
+
+Check `reports/evidence/gateway-output-report-*.md` for the camera list. Availability
+changes by the hour: cameras 17 and 18 have returned HTTP 500 consistently, three
+others time out. **Re-run the ingest the morning of the recording** and use the report
+it produces, not the numbers below.
+
+### The sequence — about 3 minutes
+
+| # | Show | Say | Time |
+|---|---|---|---|
+| 1 | **Health screen**, sorted by drift | *"Twenty-five of thirty cameras deliver frames. Two return HTTP 500, three time out. We report that per camera, because a camera's own `live` flag is a claim, not a health signal."* | 40 s |
+| 2 | Same screen, declared vs measured | *"Five of the eight cameras that declare a frame rate are wrong about it — this one declares 12.5 and delivers 5.4. That is why nothing in our pipeline reads a declared frame rate. Every timestamp comes from stream PTS."* | 30 s |
+| 3 | **Map**, gateway cameras | *"These are the live government cameras, placed where we can place them and drawn as a confidence circle where we can only place them to a district."* | 20 s |
+| 4 | **Alert Desk / detections**, camera 7 crop | *"Nine thousand frames across twenty-five live cameras. Thirty plate regions. Three crops with a plate a human can read — all the same vehicle, on camera 7. Here it is."* | 40 s |
+| 5 | The `GJ14AK5333` crop, enlarged | *"Our system read this as GJ14AK533 at confidence 0.94. It dropped a digit. We know that because we annotated every crop by hand and scored it: plate-level precision is zero, character error rate 39.8%."* | 40 s |
+| 6 | **Coverage** | *"So the finding we would give Gujarat Police is not 'our recogniser needs tuning'. It is that this estate publishes below the resolution at which any recogniser can read a plate. That is a procurement and placement finding, and it is the argument for processing at the edge where full resolution still exists."* | 30 s |
+
+### Why lead with the failure
+
+Because a technical jury will find it within one question, and the difference between a
+team that measured its own accuracy and published it and a team that did not is the
+whole of the credibility on offer. Everything else in the submission — the audit chain,
+the signed evidence, the tenant isolation — asks to be trusted. This is the part that
+earns it.
+
+The recogniser is one component behind an interface (ADR 0003), a better-scoring
+candidate is already identified and measured, and swapping it does not touch the
+architecture. Say that too.
+
+---
+
 ## 3. If the gateway is 502 on the day
 
 It probably will be. Nothing above depends on it.
@@ -200,28 +272,44 @@ If the gateway **does** recover, run `python backend/scripts/probe_catalogue.py 
 
 ## 4. Honest limitations — state these before a judge finds them
 
-State these up front. They are the difference between a jury trusting the rest of the
-demonstration and not.
+Saying these first is what makes everything else in the submission credible. A jury
+that discovers a limitation itself discounts the whole; a jury told the limitation up
+front tends to trust the rest.
 
-1. **The own-feed clip is third-party.** A CC BY 3.0 Wikimedia clip of the
-   Hubli–Dharwad BRTS route, attributed in `data/own_feed/SOURCE.md`. Being Karnataka
-   footage, the plates read `KA…`/`KL…` rather than `GJ…`.
+1. **ANPR plate-level accuracy is 0.0%, character error rate 39.8%.** Measured against
+   a by-eye annotation of all 80 evidence crops, committed as
+   `data/seed/anpr_ground_truth.csv`. No registration has been read correctly on this
+   footage. Two measured causes: the estate publishes below the resolution at which
+   plates survive (the same pipeline reads 8 plates at 2560x1440 and none at 704x396),
+   and model fit — a scored comparison puts `cct-s-v2` ahead of the configured
+   `cct-s-v1`. The recogniser sits behind an interface (ADR 0003); replacing it is
+   bounded work, not an architectural change.
 
-2. **The four `REPLAY-…` cameras are a replay harness, not live feeds.** The
-   government multi-camera feed is unavailable, so route reconstruction is
-   demonstrated by running the full ANPR pipeline separately against four registry
-   positions. Every detection is a genuine inference result with a real crop —
-   nothing is copied between cameras and no plate is invented. What is simulated is
-   *which camera saw it*. The `REPLAY` prefix is visible in the UI for exactly this
-   reason.
+   **If asked "so does it work?"** — the platform works: federation, evidence chain,
+   audit ledger, journey reconstruction and alerting all run end to end on live
+   government feeds. The recogniser is the component that needs work, and we can tell
+   you exactly how much because we measured it.
 
-3. **The OCR is imperfect, and the evidence crop shows it.** On hop 1 the crop reads
-   `KA-25 AB-1542` while the system recorded `KA25AB144`. That is a genuine misread,
-   and it is visible precisely because we show the crop. Do not hide this — it is the
-   strongest argument for why evidence images belong in the interface at all. Recall
-   and precision have not yet been measured against annotated ground truth.
+2. **The own-feed clip is third-party** — a CC BY 3.0 Wikimedia clip of the
+   Hubli-Dharwad BRTS route, attributed in `data/own_feed/SOURCE.md`. Being Karnataka
+   footage, plates read `KA...`/`KL...` rather than `GJ...`.
 
-4. **Multi-frame fusion is barely exercised on this footage.** The clip is shot from a
-   moving bus, so the scene-cut detector fires often and tracks reset; most detections
-   fused a single frame. The logic is proven by unit tests, not by this clip. Fixed
-   CCTV is where it will show properly.
+3. **The four `REPLAY-...` cameras are a replay harness, not live feeds.** The
+   government multi-camera feed does not give us one vehicle across several cameras,
+   so route reconstruction is demonstrated by running the full pipeline separately
+   against four registry positions. Every detection is genuine inference with a real
+   crop; nothing is copied between cameras and no plate is invented. What is simulated
+   is *which camera saw it*, and the `REPLAY` prefix is visible on screen.
+
+4. **The gateway is unreliable and was unreachable for most of the build.** It
+   recovered on 2026-08-27: 25 of 30 cameras deliver frames, cameras 17 and 18 return
+   HTTP 500, three time out. `docs/SUPPORT_QUERY.md` is the fault report we prepared.
+
+5. **There is no hosted URL unless one has been deployed since.** The container stack
+   is verified against nine checks; the deployment needs the team's platform account.
+   `docs/DEPLOYMENT.md` §4.
+
+6. **Face recognition is not built.** Deliberately. It stays unbuilt until all four
+   governance controls fit — off by default per camera, recorded authorisation with a
+   named officer and expiry, gallery scoped to an authorised case, separately
+   auditable. An ungoverned biometric feature is worse than none.
