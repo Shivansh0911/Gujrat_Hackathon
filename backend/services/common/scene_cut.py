@@ -30,7 +30,10 @@ is a PTS wrap, handled in StreamSession, which catches the case regardless of co
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
+from numpy.typing import NDArray
 
 from services.common.cv_env import cv2
 
@@ -72,8 +75,8 @@ class SceneCutDetector:
         self._hist_corr_threshold = hist_corr_threshold
         self._mad_threshold = mad_threshold
         self._mad_strong_threshold = mad_strong_threshold
-        self._prev_small: np.ndarray | None = None
-        self._prev_hist: np.ndarray | None = None
+        self._prev_small: NDArray[Any] | None = None
+        self._prev_hist: NDArray[Any] | None = None
         self._warmup = 0
         self.last_corr: float | None = None
         self.last_mad: float | None = None
@@ -85,14 +88,14 @@ class SceneCutDetector:
         self._warmup = _WARMUP_FRAMES
 
     @staticmethod
-    def _prepare(frame: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    def _prepare(frame: NDArray[Any]) -> tuple[NDArray[Any], NDArray[Any]]:
         grey = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY) if frame.ndim == 3 else frame
         small = cv2.resize(grey, (_WORK_W, _WORK_H), interpolation=cv2.INTER_AREA)
         hist = cv2.calcHist([small], [0], None, [64], [0, 256])
         cv2.normalize(hist, hist, 0, 1, cv2.NORM_MINMAX)
         return small, hist
 
-    def update(self, frame: np.ndarray) -> bool:
+    def update(self, frame: NDArray[Any]) -> bool:
         """Return True when this frame begins a new scene."""
         small, hist = self._prepare(frame)
 

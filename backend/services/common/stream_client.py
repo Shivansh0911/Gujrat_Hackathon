@@ -31,9 +31,9 @@ import time
 import uuid
 from collections import deque
 from dataclasses import dataclass, field
-from typing import Callable, Iterator
+from typing import Any, Callable, Iterator
 
-import numpy as np
+from numpy.typing import NDArray
 
 from services.common.cv_env import RTSP_TRANSPORT, capture_options, cv2
 from services.common.scene_cut import SceneCutDetector
@@ -50,7 +50,7 @@ PTS_DISCONTINUITY_MS = 10_000.0
 class Frame:
     """One decoded frame. `pts_ms` is the only legitimate timing source."""
 
-    image: np.ndarray
+    image: NDArray[Any]
     pts_ms: float
     seq: int
     session_id: str

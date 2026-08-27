@@ -22,6 +22,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Iterator, Protocol, cast
 
 import numpy as np
+from numpy.typing import NDArray
 
 from services.analytics.plate_grammar import NormalisedPlate, PlateAccumulator
 from services.common.cv_env import cv2
@@ -47,7 +48,7 @@ class MotionGate:
     def __init__(self, threshold: float = 2.5, work_size: tuple[int, int] = (160, 90)) -> None:
         self._threshold = threshold
         self._size = work_size
-        self._prev: np.ndarray | None = None
+        self._prev: NDArray[Any] | None = None
         self.frames_seen = 0
         self.frames_passed = 0
 
@@ -55,7 +56,7 @@ class MotionGate:
         """Called on a scene discontinuity; the previous frame is no longer comparable."""
         self._prev = None
 
-    def check(self, frame: np.ndarray) -> tuple[bool, float]:
+    def check(self, frame: NDArray[Any]) -> tuple[bool, float]:
         self.frames_seen += 1
         small = cv2.resize(
             cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY) if frame.ndim == 3 else frame,
@@ -95,7 +96,7 @@ class PlateTrack:
     first_pts_ms: float = 0.0
     last_pts_ms: float = 0.0
     misses: int = 0
-    best_crop: np.ndarray | None = None
+    best_crop: NDArray[Any] | None = None
     best_crop_score: float = 0.0
     session_id: str = ""
 
@@ -191,11 +192,11 @@ class PlateTracker:
 
 
 class PlateDetector(Protocol):
-    def detect(self, image: np.ndarray) -> list[tuple[tuple[int, int, int, int], float]]: ...
+    def detect(self, image: NDArray[Any]) -> list[tuple[tuple[int, int, int, int], float]]: ...
 
 
 class PlateRecogniser(Protocol):
-    def read(self, crop: np.ndarray) -> tuple[str, list[float]]: ...
+    def read(self, crop: NDArray[Any]) -> tuple[str, list[float]]: ...
 
 
 class OpenImagePlateDetector:
@@ -210,7 +211,7 @@ class OpenImagePlateDetector:
         self._impl = LicensePlateDetector(detection_model=cast(Any, model))
         self.model_name = model
 
-    def detect(self, image: np.ndarray) -> list[tuple[tuple[int, int, int, int], float]]:
+    def detect(self, image: NDArray[Any]) -> list[tuple[tuple[int, int, int, int], float]]:
         out = []
         for det in self._impl.predict(image):
             bb = det.bounding_box
@@ -227,7 +228,7 @@ class FastPlateRecogniser:
         self._impl = LicensePlateRecognizer(cast(Any, model))  # Literal, as above
         self.model_name = model
 
-    def read(self, crop: np.ndarray) -> tuple[str, list[float]]:
+    def read(self, crop: NDArray[Any]) -> tuple[str, list[float]]:
         preds = cast(Any, self._impl.run(crop, return_confidence=True))
         if not preds:
             return "", []
@@ -258,7 +259,7 @@ class PlateDetectionRecord:
     clock_confidence: float
     frames_fused: int
     detector_confidence: float
-    crop: np.ndarray | None
+    crop: NDArray[Any] | None
     crop_path: str | None = None
     bbox: tuple[int, int, int, int] | None = None
 
@@ -399,7 +400,7 @@ class AnprPipeline:
 
     # ------------------------------------------------------------------ helpers
 
-    def _crop(self, image: np.ndarray, box: tuple[int, int, int, int]) -> np.ndarray | None:
+    def _crop(self, image: NDArray[Any], box: tuple[int, int, int, int]) -> NDArray[Any] | None:
         x1, y1, x2, y2 = box
         h, w = image.shape[:2]
         # A small margin: plate detectors crop tight, and the recogniser does better
