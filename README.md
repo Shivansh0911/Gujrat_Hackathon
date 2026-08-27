@@ -157,8 +157,8 @@ filter, not a complete one, and the confidence floor is what now stops that clas
 
 ## The console
 
-Six screens, all on real API data. No mocked components — a screen without a real
-backing endpoint does not ship.
+Eight screens, all on real API data. No mocked components — a screen without a real
+backing endpoint does not ship, and no endpoint ships without a screen.
 
 ### GIS Map — camera registry
 ![GIS map](docs/screenshots/02-gis-map.png)
@@ -202,6 +202,26 @@ Declared versus measured frame rate with drift, transport in use, reconnect coun
 and a false-positive rate derived from operator dispositions. One click generates the
 organiser's §2.5 fault-report payload verbatim.
 
+### Watchlist — what the platform is authorised to look for
+![Watchlist](docs/screenshots/09-watchlist.png)
+
+Every alert begins here, so this is where the authorisation for one is visible: which
+vehicle, listed by whom, under which case reference, and **until when**. Expiry is a
+required field with no default — an entry without one is a permanent record about a
+citizen created by omission, so the API refuses it and the form defaults to 30 days.
+The table shows the remaining life of every entry, and adding one is written to the
+audit ledger with the actor before it takes effect. Reading the list is open to any
+operator; extending it requires admin.
+
+### System — integrity and reconciliation
+![System](docs/screenshots/11-system-audit.png)
+
+Audit-chain verification, run on demand rather than only through Swagger:
+tamper-evidence nobody can check is a claim, not a control. Alongside it, catalogue
+reconciliation diffs the registry against the gateway and *reports* — a camera
+vanishing from a third-party feed for ten minutes is not authority to delete its
+identity, its history or its evidence.
+
 ### Login
 JWT held in memory, never `localStorage`.
 
@@ -229,8 +249,9 @@ docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
 ```
 
 Three containers — Postgres, the API, and nginx serving the console. Verified from a
-clean state against nine checks including evidence photos rendering, the WebSocket
-connecting, and row-level security actually binding in the deployed database. Steps,
+clean state against ten checks including evidence photos rendering, the WebSocket
+connecting, row-level security actually binding in the deployed database, and the
+watchlist being populated with a bounded expiry on every entry. Steps,
 every environment variable and what breaks without it, and the Railway procedure:
 [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
 

@@ -12,6 +12,7 @@ export type Camera = components["schemas"]["CameraOut"];
 export type CameraHealth = components["schemas"]["CameraHealthOut"];
 export type Alert = components["schemas"]["AlertOut"];
 export type WatchlistEntry = components["schemas"]["WatchlistOut"];
+export type WatchlistCreate = components["schemas"]["WatchlistCreate"];
 export type JourneyResult = components["schemas"]["JourneyResult"];
 export type JourneyHop = components["schemas"]["JourneyHop"];
 export type CoverageGap = components["schemas"]["CoverageGap"];
@@ -123,7 +124,15 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ disposition, note }),
     }),
-  watchlist: () => request<WatchlistEntry[]>("/watchlist"),
+  watchlist: (includeExpired = false) =>
+    request<WatchlistEntry[]>(
+      `/watchlist${includeExpired ? "?include_expired=true" : ""}`,
+    ),
+  addWatchlistEntry: (body: WatchlistCreate) =>
+    request<WatchlistEntry>("/watchlist", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
   journey: (plate: string, from: string, to: string, purpose: string) =>
     request<JourneyResult>(
       `/journey?${new URLSearchParams({ plate, from, to, purpose })}`,

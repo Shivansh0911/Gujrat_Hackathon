@@ -2,7 +2,7 @@
 
 The stack runs as three containers: Postgres, the backend API, and nginx serving the
 console and proxying `/api`. It has been verified end to end from a clean state —
-nine checks, all passing, listed in §5.
+ten checks, listed in §5.
 
 ---
 
@@ -195,22 +195,30 @@ prints by hand. **It reports `NOT VERIFIED` rather than `PASS` when it cannot re
 one** — an unverifiable security control must never read as a green tick. Results are
 written to `reports/deployment-verification.json`.
 
-The nine checks, all of which pass against the local production stack:
+The ten checks. Nine pass against the local production stack; check 8, row-level
+security, reports NOT VERIFIED there because that stack deliberately publishes no
+database port -- run the query it prints, inside the stack, to confirm it:
 
 | # | Check | Result |
 |---|---|---|
 | 1 | Log in as `admin` and `operator` | PASS |
-| 2 | Map renders pins, uncertainty circles and coordinate-missing entries | PASS — 34 cameras, 32 placed, 26 approximate, 2 missing |
-| 3 | Journey returns a multi-hop route **with evidence photos** | PASS — 4 hops, 4 crops, images fetch |
-| 4 | Signed PDF downloads with signature headers | PASS — 25 KB |
-| 5 | Alerts list; WebSocket connects | PASS — 8 alerts |
+| 2 | Map renders pins, uncertainty circles and coordinate-missing entries | PASS — 34 cameras, 32 placed, 32 approximate, 2 missing |
+| 3 | Journey returns a multi-hop route **with evidence photos** | PASS — `KA25AB1542`, 4 hops, 4/4 crops fetch |
+| 4 | Signed PDF downloads with signature headers | PASS — ~30 KB |
+| 5 | Alerts list; WebSocket connects | PASS — 6 alerts, socket connected |
 | 6 | Coverage returns district findings | PASS — 10 districts |
-| 7 | Health shows measured vs declared fps | PASS |
-| 8 | **RLS live**: `setu_app` is `rolsuper=false`, `rolbypassrls=false` | PASS |
+| 7 | Health shows measured vs declared fps | PASS — 34 rows |
+| 8 | **RLS live**: `setu_app` is `rolsuper=false`, `rolbypassrls=false` | NOT VERIFIED without database access — confirmed by hand inside the stack |
 | 9 | Audit chain verifies | PASS |
+| 10 | Watchlist populated, every entry bounded by an expiry | PASS — 9 entries, 9 with an expiry |
 
 Check 3 is the crop-storage check and check 8 the tenant-isolation check; those two
 are the ones most likely to pass locally and fail in a deployment.
+
+**Both images honour `$PORT`.** Railway, Cloud Run and Heroku assign a port at
+runtime and route to that alone. The console's nginx `listen` directive is templated
+from it, defaulting to 8080 so compose is unchanged — verified by running the image
+with `PORT=7431` and fetching the console on that port.
 
 ---
 

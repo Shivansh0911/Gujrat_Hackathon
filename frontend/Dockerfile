@@ -37,8 +37,18 @@ FROM nginxinc/nginx-unprivileged@sha256:65e3e85dbaed8ba248841d9d58a899b6197106c2
 
 # The upstream is templated so one image serves both compose (service name) and a
 # platform deployment (internal hostname) without a rebuild.
+# PORT is templated into the `listen` directive. Platforms that assign a port at
+# runtime (Railway, Cloud Run, Heroku) route to $PORT and nothing else, so a
+# hard-coded 8080 makes the console unreachable there while the logs look healthy.
+# The default keeps compose and local runs on 8080 exactly as before.
+#
+# It must be a real environment variable, not only a compose setting: the image's
+# envsubst step substitutes only variables that are actually set, and leaves anything
+# else in the config verbatim -- which nginx then rejects with
+# `host not found in "${PORT}" of the "listen" directive`.
 ENV SETU_API_HOST=backend \
-    SETU_API_PORT=8000
+    SETU_API_PORT=8000 \
+    PORT=8080
 
 # Root only long enough to place files the unprivileged user must read.
 USER root
@@ -50,4 +60,4 @@ USER nginx
 EXPOSE 8080
 
 HEALTHCHECK --interval=30s --timeout=4s --start-period=15s --retries=3 \
-    CMD wget -qO- http://127.0.0.1:8080/healthz >/dev/null 2>&1 || exit 1
+    CMD wget -qO- "http://127.0.0.1:${PORT}/healthz" >/dev/null 2>&1 || exit 1

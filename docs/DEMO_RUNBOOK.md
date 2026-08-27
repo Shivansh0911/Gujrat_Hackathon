@@ -180,16 +180,36 @@ into a planning tool.
   verbatim — camera id, exact URL, client and version, UTC timestamp, client-side log
   — ready to send.
 
-### 2.6 Audit — 20 seconds
+### 2.6 Watchlist — where the authorisation lives, 30 seconds
 
-In the API docs (`/docs`), call **`GET /audit/verify`**. It recomputes the whole hash
-chain and returns validity. Every journey query, every pin drop, every alert
+Show this straight after the Alert Desk, because it answers the question every alert
+provokes: *who decided to watch this vehicle, and for how long?*
+
+- The table names the authority and case reference behind each entry, and the
+  **remaining life** of the listing.
+- **Say this:** *"Expiry is a required field. There is no option to list a vehicle
+  indefinitely — an entry with no end date is a permanent record about a citizen,
+  created by omission, so the API refuses one."* Open **Add vehicle** to show the form.
+- Adding is admin-only and written to the audit ledger before it takes effect. Sign in
+  as `operator` if you want to show the control disappear.
+
+### 2.7 System — integrity, 20 seconds
+
+Press **Verify now**. The chain re-hashes and reports `chain intact`, the number of
+entries checked, and the head hash. Every journey query, every pin drop, every alert
 acknowledgement and every failed login is in there, each entry committing to the one
 before it.
 
+**Say this:** *"Tamper-evidence only a developer can check is a claim, not a control.
+This is the same verification, in front of the officer who depends on it."*
+
+The same screen reconciles the registry against the gateway catalogue and reports the
+difference without applying it — a camera dropping off a third-party feed for ten
+minutes is not authority to delete its identity or its evidence.
+
 ---
 
-## 2.7 The government-feed recording — the second required video
+## 2.8 The government-feed recording — the second required video
 
 The organisers require two recordings: one on our own footage, one on the government
 feed. Section 2 covers the first. This is the second, and it is a different film with a

@@ -199,5 +199,14 @@ processing, not a weaker one. See `docs/HLD_RECONCILIATION.md`.
   unrelated characters together. Added a confidence floor below which nothing is
   published, 13 regression tests, a shared `model_ids` module so the signed evidence
   manifest cannot name the wrong model, and a deterministic demo clip so local and
-  deployed instances read the same plates. **Next session: the Railway push (needs the
-  team account) and OSD-derived camera coordinates (DISCOVERY finding 14).**
+  deployed instances read the same plates. - `2026-08-27` — **Completeness audit before deployment.** Found and fixed the one
+  hard Railway blocker: the console's nginx hard-coded `listen 8080`, so a platform
+  that assigns `$PORT` would have routed to a port nothing was listening on. Proven by
+  running the image with `PORT=7431`. Closed the four endpoints that had no UI —
+  added a **Watchlist** screen (list, expiry countdown, admin-gated add) and a
+  **System** screen (audit-chain verification, catalogue reconciliation), taking the
+  console to eight screens with no unused endpoints left. Replaced the
+  `LOCAL_REPRESENTATIVE` placeholder authority that appeared on every alert card with
+  real attributed units. Verifier extended to ten checks. 11 screenshots recaptured.
+  **Next session: the Railway push (needs the team account) and OSD-derived camera
+  coordinates (DISCOVERY finding 14).**

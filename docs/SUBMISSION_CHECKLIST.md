@@ -39,7 +39,7 @@ Script for both, screen by screen with timings and what to say:
 | # | Deliverable | Artefact | State |
 |---|---|---|---|
 | 10 | GitHub repository | `github.com/Shivansh0911/Gujrat_Hackathon` | ✅ |
-| 11 | Screenshots, all screens, real data | `docs/screenshots/` | ✅ 8 images |
+| 11 | Screenshots, all screens, real data | `docs/screenshots/` | ✅ 11 images covering all eight screens |
 | 12 | Screenshots of the deployed instance | `docs/screenshots/deployed/` | ✅ 8 images, captured against the container stack |
 | 13 | Hosted URL + test credentials | — | ⏳ **containers verified 9/9 locally; the Railway push needs the team account.** Steps in `docs/DEPLOYMENT.md` §4 |
 | 14 | Test accounts for the screening committee | `admin` and `operator`, credentials in `.env.prod` | ⚠️ generated per deployment; record the live values in `DEMO_RUNBOOK.md` §1 once hosted |

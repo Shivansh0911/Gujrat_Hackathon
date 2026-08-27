@@ -111,6 +111,35 @@ const run = async () => {
     await shot(page, "07-fault-report", { min: 200 });
   }
 
+  // The fault-report dialog is modal and swallows clicks on the nav behind it.
+  const closeBtn = page.locator('button:has-text("Close")').first();
+  if (await closeBtn.count()) {
+    await closeBtn.click();
+    await page.waitForTimeout(400);
+  }
+
+  // 7 — watchlist, the input to every alert
+  await page.locator('a[href="/watchlist"]').click();
+  await page.waitForSelector("text=Every alert on the desk begins here", { timeout: 15000 });
+  await page.waitForTimeout(1500);
+  const watchText = await shot(page, "09-watchlist", { min: 200 });
+  if (!/expires/i.test(watchText)) failures.push("watchlist: no expiry column");
+
+  // 7b — the add form, which is where the expiry requirement is visible
+  const addBtn = page.locator('button:has-text("Add vehicle")').first();
+  if (await addBtn.count()) {
+    await addBtn.click();
+    await page.waitForTimeout(700);
+    await shot(page, "10-watchlist-add", { min: 200 });
+  }
+
+  // 8 — system: audit chain verification
+  await page.locator('a[href="/system"]').click();
+  await page.waitForSelector("text=Audit chain", { timeout: 15000 });
+  await page.waitForTimeout(2500);
+  const sysText = await shot(page, "11-system-audit", { min: 200 });
+  if (!/entries checked/i.test(sysText)) failures.push("system: audit chain not verified");
+
   await browser.close();
 
   if (failures.length) {

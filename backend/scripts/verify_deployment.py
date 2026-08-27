@@ -6,7 +6,7 @@ and closes the tab carries that impression into every other part of the submissi
 So this runs against the deployment rather than a developer laptop, and it is written
 to fail loudly rather than to reassure.
 
-Nine checks, each of which has failed at least once in a container that looked healthy
+Ten checks, each of which has failed at least once in a container that looked healthy
 from the outside:
 
   1. Both accounts authenticate.
@@ -25,6 +25,9 @@ from the outside:
      it reports NOT VERIFIED rather than PASS when it cannot reach one -- an
      unverifiable security control must never read as a green tick.
   9. The audit chain verifies.
+ 10. The watchlist is populated and every entry is bounded by an expiry. An empty
+     watchlist is a deployment that will never raise an alert, and it looks exactly
+     like a working one until someone waits.
 
 Usage:
     python scripts/verify_deployment.py http://localhost:8080
@@ -331,6 +334,24 @@ def main() -> int:
         )
     except Exception as exc:
         c.record(9, "audit chain verifies", FAIL, f"{type(exc).__name__}: {exc}")
+
+    # 10 -- the watchlist, which is the input to every alert on the desk. An empty
+    # one is a deployment that will never alert, and looks identical to a working
+    # one until a judge waits for something to happen.
+    try:
+        entries = as_list(get(base, "/watchlist", token).json())
+        with_expiry = [e for e in entries if e.get("valid_to")]
+        ok = bool(entries) and len(with_expiry) == len(entries)
+        c.record(
+            10,
+            "watchlist populated, every entry bounded",
+            PASS if ok else FAIL,
+            f"{len(entries)} entries, {len(with_expiry)} with an expiry",
+        )
+    except Exception as exc:
+        c.record(
+            10, "watchlist populated, every entry bounded", FAIL, f"{type(exc).__name__}: {exc}"
+        )
 
     passed = sum(1 for r in c.rows if r[2] == PASS)
     print("\n" + "=" * 66)

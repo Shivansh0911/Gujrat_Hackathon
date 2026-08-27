@@ -6,6 +6,8 @@ import JourneyPage from "./pages/JourneyPage";
 import AlertsPage from "./pages/AlertsPage";
 import HealthPage from "./pages/HealthPage";
 import GapsPage from "./pages/GapsPage";
+import WatchlistPage from "./pages/WatchlistPage";
+import SystemPage from "./pages/SystemPage";
 
 const NAV = [
   { to: "/map", label: "GIS Map", hint: "Camera registry" },
@@ -13,6 +15,8 @@ const NAV = [
   { to: "/alerts", label: "Alert Desk", hint: "Live watchlist matches" },
   { to: "/health", label: "Health", hint: "Feed diagnostics" },
   { to: "/gaps", label: "Coverage", hint: "Gap analysis" },
+  { to: "/watchlist", label: "Watchlist", hint: "Vehicles being watched" },
+  { to: "/system", label: "System", hint: "Audit chain, catalogue" },
 ];
 
 function Shell() {
@@ -62,6 +66,8 @@ function Shell() {
           <Route path="/alerts" element={<AlertsPage />} />
           <Route path="/health" element={<HealthPage />} />
           <Route path="/gaps" element={<GapsPage />} />
+          <Route path="/watchlist" element={<WatchlistPage />} />
+          <Route path="/system" element={<SystemPage />} />
           <Route path="*" element={<Navigate to="/map" replace />} />
         </Routes>
       </main>

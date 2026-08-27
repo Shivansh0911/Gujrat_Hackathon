@@ -47,6 +47,26 @@ log = logging.getLogger("watchlist")
 
 # Valid Indian registrations from states that do not appear in the footage. These
 # exist to be correctly ignored.
+# The authority is shown on every alert card and in the exported evidence PDF, so a
+# placeholder token there reads as an unfinished system. These are the units that
+# would realistically hold each kind of listing; the `notes` on every seeded entry
+# still says plainly that it is representative demonstration data.
+AUTHORITY_BY_LIST = {
+    "Stolen Vehicles": "Gujarat Police, Crime Branch",
+    "Suspect Vehicles": "Gujarat Police, Special Operations Group",
+    "Blacklisted": "Gujarat Police, Traffic Enforcement (Ahmedabad City)",
+    "Wanted Persons": "Gujarat Police, Crime Branch",
+}
+DEFAULT_AUTHORITY = "Gujarat Police, Crime Branch"
+
+
+def _authority(watchlist_name: str, state: str | None = None) -> str:
+    """Who holds the listing. Out-of-state decoys are attributed to their own force."""
+    if state and state != "Gujarat":
+        return f"{state} Police, State Crime Records Bureau"
+    return AUTHORITY_BY_LIST.get(watchlist_name, DEFAULT_AUTHORITY)
+
+
 DECOYS = [
     ("MH12AB4567", "Maharashtra", "Stolen Vehicles", 80, "MH/2026/0912", "white", "Maruti"),
     ("DL08CA1234", "Delhi", "Wanted Persons", 90, "DL/2026/1177", "black", "Hyundai"),
@@ -153,10 +173,11 @@ def main() -> int:
 
         for i, row in enumerate(chosen):
             plate = row.plate_normalised
+            watchlist_name = ["Stolen Vehicles", "Suspect Vehicles", "Blacklisted"][i % 3]
             add(
                 plate,
-                ["Stolen Vehicles", "Suspect Vehicles", "Blacklisted"][i % 3],
-                "LOCAL_REPRESENTATIVE",
+                watchlist_name,
+                _authority(watchlist_name),
                 [85, 65, 45][i % 3],
                 f"GJ/SETU/2026/{1000 + i}",
                 None,
@@ -176,7 +197,7 @@ def main() -> int:
             add(
                 near,
                 "Stolen Vehicles",
-                "LOCAL_REPRESENTATIVE",
+                _authority("Stolen Vehicles"),
                 75,
                 "GJ/SETU/2026/2001",
                 None,
@@ -190,7 +211,7 @@ def main() -> int:
             add(
                 plate,
                 name,
-                "LOCAL_REPRESENTATIVE",
+                _authority(name, state),
                 priority,
                 case_ref,
                 colour,
