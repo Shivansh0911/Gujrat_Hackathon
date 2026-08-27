@@ -1,0 +1,87 @@
+{
+  "kind": "preflight",
+  "generated_at": "2026-08-27T14-11-24Z",
+  "provenance": {
+    "git_sha": "af46795ff55d50d2261ba5404650f6f78b269254",
+    "git_tree_dirty": true,
+    "git_branch": "main",
+    "python": "3.12.5",
+    "platform": "Windows-11-10.0.26200-SP0"
+  },
+  "gateway_host": "live.corp8.cloud",
+  "catalogue_url": "https://live.corp8.cloud/api/ingest",
+  "rtsp_port_reachable": false,
+  "transport_used": "hls",
+  "cameras_catalogued": 30,
+  "cameras_live_flagged": 30,
+  "checks": [
+    {
+      "number": 1,
+      "name": "Every client forces RTSP over TCP (HLS fallback when 8554 is blocked)",
+      "passed": true,
+      "detail": "rtsp_transport forced to 'tcp' in every capture (options='rtsp_transport;tcp|timeout;15000000|max_delay;500000|reorder_queue_size;0|rw_timeout;20000000|reconnect;1|reconnect_streamed;1|live_start_index;-1'); RTSP:8554 unreachable (gateway is behind Cloudflare, which proxies 443/80 only) -> fell back to HLS per \u00a72.2; 5 frames decoded over HLS from camera 2 (join 0.08s); cv2 imported only via services.common.cv_env",
+      "method": "static+live",
+      "status": "pass"
+    },
+    {
+      "number": 2,
+      "name": "No timing logic depends on declared FPS",
+      "passed": true,
+      "detail": "2 reference-only use(s), all marked on the line (services\\common\\stream_client.py:200, services\\ingest\\file_source.py:111); 0 timing use(s). Expected count 2 \u2014 matches",
+      "method": "static",
+      "status": "pass"
+    },
+    {
+      "number": 3,
+      "name": "Inter-frame gaps do not crash or stall the pipeline",
+      "passed": true,
+      "detail": "109 intervals on camera 2: median 40ms, max 43ms (1.1x median), 34 frames decoded after the largest gap",
+      "method": "live",
+      "status": "pass"
+    },
+    {
+      "number": 4,
+      "name": "Reconnect with backoff, tested by interrupting a feed",
+      "passed": true,
+      "detail": "19 frames, disconnect forced mid-stream, 1 reconnect(s), 2 frames after recovery (backoff envelope 2.0s-30.0s with full jitter, observed resume 0.0s); transport=hls, HLS variant re-resolved on rejoin",
+      "method": "live",
+      "status": "pass"
+    },
+    {
+      "number": 5,
+      "name": "Decoder warnings on join are logged, not fatal",
+      "passed": true,
+      "detail": "camera 6 (codec hevc): 0 decode warning(s) absorbed during join, first frame at 0.12s, 25 frames decoded -- session never aborted",
+      "method": "live",
+      "status": "pass"
+    },
+    {
+      "number": 6,
+      "name": "Camera list and properties are read from /api/ingest",
+      "passed": true,
+      "detail": "30 cameras from https://live.corp8.cloud/api/ingest; 11 declare codec+resolution, 19 report empty/zero properties and are resolved by probing (ids ['1', '2', '3', '4', '5', '7', '8', '9']...)",
+      "method": "live",
+      "status": "pass"
+    },
+    {
+      "number": 7,
+      "name": "Pipeline handles mixed H.264/H.265 and mixed resolutions",
+      "passed": true,
+      "detail": "h264: camera 13 -> 10 frames at 1920x1080; h265: camera 6 -> 10 frames at 1920x1080; 4 distinct resolutions across the estate [(1280, 720), (1280, 960), (1920, 1080), (2560, 1440)]",
+      "method": "live",
+      "status": "pass"
+    },
+    {
+      "number": 8,
+      "name": "Behaviour is sane across a scene discontinuity",
+      "passed": true,
+      "detail": "40 consecutive frames from camera 2: 0 false cut(s); hard cut to camera 6 detected (hist_corr=0.43, mad=38.8); on detection trackers reset and a new session id is issued while written evidence is preserved",
+      "method": "live",
+      "status": "pass"
+    }
+  ],
+  "passed": 8,
+  "failed": 0,
+  "not_exercised": 0,
+  "total": 8
+}

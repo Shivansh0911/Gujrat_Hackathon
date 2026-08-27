@@ -59,6 +59,17 @@ class Check:
     passed: bool
     detail: str
     method: str  # "static" | "live"
+    #: "pass" | "fail" | "not_exercised".
+    #:
+    #: The third state exists because "our pipeline mishandled this" and "the
+    #: third-party feed gave us nothing to handle" are different findings, and
+    #: collapsing them into FAIL misreports both. A reviewer running this against a
+    #: gateway that is half down should see which checks were genuinely exercised.
+    status: str = "pass"
+
+
+def _not_exercised(number: int, name: str, why: str) -> "Check":
+    return Check(number, name, False, f"NOT EXERCISED: {why}", "live", "not_exercised")
 
 
 # --------------------------------------------------------------------- helpers
@@ -72,6 +83,52 @@ def _python_sources() -> list[Path]:
         for p in REPO_ROOT.rglob("*.py")
         if ".venv" not in p.parts and "node_modules" not in p.parts
     ]
+
+
+def _first_with_frames(cameras: list[CameraDescriptor], n: int, budget_s: float):
+    """Try each camera in turn; return the first that yields frames.
+
+    Liveness on this gateway is not stable between one connection and the next -- a
+    camera can answer during discovery and give nothing thirty seconds later. Taking
+    `verified[0]` and accepting whatever it did made a check's result depend on that
+    flap rather than on the pipeline.
+    """
+    last = (None, [], None)
+    for cam in cameras:
+        frames, stats = _grab_frames(cam, n, budget_s)
+        if frames:
+            return cam, frames, stats
+        last = (cam, frames, stats)
+    return last
+
+
+def discover_live_cameras(
+    cameras: list[CameraDescriptor], want: int, budget_s: float
+) -> list[CameraDescriptor]:
+    """Return cameras that actually produced a frame, most recently verified first.
+
+    The catalogue's `live` flag is a claim, not a health signal -- DISCOVERY finding 9
+    -- and on this estate a large minority of cameras flagged live deliver nothing.
+    Checks that need a working feed were previously handed `live[0]`, so whether the
+    preflight could exercise them at all came down to whether camera 1 happened to be
+    up. It frequently is not, and the checks then reported FAIL with details like
+    "no intervals observed": a true statement about the harness, read as a false
+    statement about the pipeline.
+
+    Probing costs one short connection per candidate and is done once, with the
+    result shared by every check that needs it.
+    """
+    found: list[CameraDescriptor] = []
+    for cam in cameras:
+        if len(found) >= want:
+            break
+        frames, _ = _grab_frames(cam, 3, budget_s)
+        if frames:
+            found.append(cam)
+            print(f"    camera {cam.external_id}: delivering frames", flush=True)
+        else:
+            print(f"    camera {cam.external_id}: no frames, skipping", flush=True)
+    return found
 
 
 def _grab_frames(cam: CameraDescriptor, n: int, budget_s: float):
@@ -119,6 +176,13 @@ def _grab_frames(cam: CameraDescriptor, n: int, budget_s: float):
 # ---------------------------------------------------------------------- checks
 
 
+def _grab_stats_placeholder():
+    """Stats shaped like a failed capture, for when there is no camera to try."""
+    from services.common.stream_client import SessionStats
+
+    return SessionStats(external_id="-", transport="hls" if not RTSP_AVAILABLE else "rtsp")
+
+
 def check_1_tcp_forced(cameras: list[CameraDescriptor], seconds: float) -> Check:
     """Static: cv2 only ever imported via cv_env, always with TCP forced.
     Live: frames decode over whichever transport the network actually permits.
@@ -138,10 +202,22 @@ def check_1_tcp_forced(cameras: list[CameraDescriptor], seconds: float) -> Check
     opts = capture_options()
     tcp_forced = RTSP_TRANSPORT == "tcp" and "rtsp_transport;tcp" in opts
 
-    frames, stats = _grab_frames(cameras[0], 5, seconds)
+    if cameras:
+        cam, frames, stats = _first_with_frames(cameras, 5, seconds)
+        if stats is None:
+            stats = _grab_stats_placeholder()
+    else:
+        cam, frames, stats = None, [], _grab_stats_placeholder()
     live_ok = len(frames) > 0
 
-    passed = not offenders and tcp_forced and live_ok
+    # The static half is the guarantee: TCP is forced in every capture, and cv2 is
+    # reachable only through the module that forces it. That is provable from the
+    # source and the capture options whatever the gateway is doing. The live half
+    # only *demonstrates* it. Failing the whole check because a third-party feed was
+    # down would report a pipeline defect that does not exist -- and passing it
+    # without frames would claim a demonstration that never happened.
+    static_ok = not offenders and tcp_forced
+    passed = static_ok and live_ok
     fallback = (
         "RTSP:8554 reachable, used directly"
         if RTSP_AVAILABLE
@@ -152,11 +228,12 @@ def check_1_tcp_forced(cameras: list[CameraDescriptor], seconds: float) -> Check
         retries = f", {stats.reconnects} retr(ies)" if stats.reconnects else ""
         outcome = (
             f"{len(frames)} frames decoded over {stats.transport.upper()} from "
-            f"camera {cameras[0].external_id} (join {stats.first_frame_latency_s:.2f}s{retries})"
+            f"camera {cam.external_id if cam else '-'} "
+            f"(join {stats.first_frame_latency_s:.2f}s{retries})"
         )
     else:
         outcome = (
-            f"NO FRAMES from camera {cameras[0].external_id} over "
+            f"NO FRAMES from camera {cam.external_id if cam else '-'} over "
             f"{stats.transport.upper()} after {stats.reconnects} attempt(s)"
         )
     imports = (
@@ -168,6 +245,15 @@ def check_1_tcp_forced(cameras: list[CameraDescriptor], seconds: float) -> Check
         f"rtsp_transport forced to '{RTSP_TRANSPORT}' in every capture "
         f"(options='{opts}'); {fallback}; {outcome}; {imports}"
     )
+    if static_ok and not live_ok:
+        return Check(
+            1,
+            "Every client forces RTSP over TCP (HLS fallback when 8554 is blocked)",
+            False,
+            "NOT EXERCISED live: the static guarantee holds -- " + detail,
+            "live",
+            "not_exercised",
+        )
     return Check(
         1,
         "Every client forces RTSP over TCP (HLS fallback when 8554 is blocked)",
@@ -212,53 +298,78 @@ def check_2_no_declared_fps_timing() -> Check:
     return Check(2, "No timing logic depends on declared FPS", passed, detail, "static")
 
 
-def check_3_gaps_tolerated(cam: CameraDescriptor, seconds: float) -> Check:
+NAME_3 = "Inter-frame gaps do not crash or stall the pipeline"
+
+
+def check_3_gaps_tolerated(cameras: list[CameraDescriptor], seconds: float) -> Check:
     """Live: observe real inter-frame gaps and confirm reading continued past them."""
-    source = select_transport(cam, get_settings(), rtsp_available=RTSP_AVAILABLE)
-    session = StreamSession(
-        source.url,
-        cam.external_id,
-        transport=source.transport,
-        backoff_min_s=1.0,
-        backoff_max_s=2.0,
+    if not cameras:
+        return _not_exercised(3, NAME_3, "no camera on the gateway delivered frames")
+
+    settings = get_settings()
+    attempted: list[str] = []
+
+    for cam in cameras:
+        attempted.append(cam.external_id)
+        source = select_transport(cam, settings, rtsp_available=RTSP_AVAILABLE)
+        session = StreamSession(
+            source.url,
+            cam.external_id,
+            transport=source.transport,
+            backoff_min_s=1.0,
+            backoff_max_s=2.0,
+        )
+        gaps: list[float] = []
+        prev_pts: float | None = None
+        frames_after_largest = 0
+        largest = 0.0
+        try:
+            deadline = time.monotonic() + seconds
+            for frame in session.frames():
+                if prev_pts is not None:
+                    d = frame.pts_ms - prev_pts
+                    if d > 0:
+                        gaps.append(d)
+                        if d > largest:
+                            largest, frames_after_largest = d, 0
+                        else:
+                            frames_after_largest += 1
+                prev_pts = frame.pts_ms
+                if time.monotonic() >= deadline:
+                    break
+        finally:
+            session.stop()
+            session.close()
+
+        if len(gaps) <= 10:
+            # Nothing to observe on this camera; try the next before giving up.
+            continue
+
+        median = sorted(gaps)[len(gaps) // 2]
+        # A pipeline that assumed a constant cadence would have stalled or errored
+        # here; passing requires that frames kept arriving *after* the largest gap.
+        passed = frames_after_largest > 0
+        detail = (
+            f"{len(gaps)} intervals on camera {cam.external_id}: median {median:.0f}ms, "
+            f"max {largest:.0f}ms ({largest / median:.1f}x median), "
+            f"{frames_after_largest} frames decoded after the largest gap"
+        )
+        return Check(3, NAME_3, passed, detail, "live", "pass" if passed else "fail")
+
+    # Every candidate gave too few frames to measure an interval. That is a statement
+    # about the feed, not about the pipeline: there was nothing here to stall on.
+    return _not_exercised(
+        3,
+        NAME_3,
+        f"no camera produced enough frames to measure inter-frame intervals "
+        f"(tried {', '.join(attempted)})",
     )
-    gaps: list[float] = []
-    prev_pts: float | None = None
-    frames_after_largest = 0
-    largest = 0.0
-    try:
-        deadline = time.monotonic() + seconds
-        for frame in session.frames():
-            if prev_pts is not None:
-                d = frame.pts_ms - prev_pts
-                if d > 0:
-                    gaps.append(d)
-                    if d > largest:
-                        largest, frames_after_largest = d, 0
-                    else:
-                        frames_after_largest += 1
-            prev_pts = frame.pts_ms
-            if time.monotonic() >= deadline:
-                break
-    finally:
-        session.stop()
-        session.close()
-
-    median = sorted(gaps)[len(gaps) // 2] if gaps else 0.0
-    # A pipeline that assumed a constant cadence would have stalled or errored here;
-    # passing requires that frames kept arriving *after* the largest observed gap.
-    passed = len(gaps) > 10 and frames_after_largest > 0
-    detail = (
-        f"{len(gaps)} intervals on camera {cam.external_id}: median {median:.0f}ms, "
-        f"max {largest:.0f}ms ({largest / median:.1f}x median), "
-        f"{frames_after_largest} frames decoded after the largest gap"
-        if gaps
-        else "no intervals observed"
-    )
-    return Check(3, "Inter-frame gaps do not crash or stall the pipeline", passed, detail, "live")
 
 
-def check_4_reconnect(cam: CameraDescriptor, seconds: float) -> Check:
+NAME_4 = "Reconnect uses backoff and resumes frames"
+
+
+def check_4_reconnect(cam: CameraDescriptor | None, seconds: float) -> Check:
     """Live: force a mid-stream disconnect and confirm backoff reconnect resumes frames.
 
     The interruption is raised through StreamSession.request_reconnect() rather than by
@@ -356,12 +467,12 @@ def check_7_mixed_codecs(cameras: list[CameraDescriptor], seconds: float) -> Che
     h264 = next((c for c in cameras if (c.declared_codec or "").lower() == "h264"), None)
     hevc = next((c for c in cameras if (c.declared_codec or "").lower() in ("hevc", "h265")), None)
     if h264 is None or hevc is None:
-        return Check(
+        # DISCOVERY finding 1: most of this catalogue declares no codec at all, so
+        # this is a property of the feed rather than a defect in the pipeline.
+        return _not_exercised(
             7,
             "Pipeline handles mixed H.264/H.265 and mixed resolutions",
-            False,
-            "catalogue did not declare both an H.264 and an H.265 camera",
-            "live",
+            "the catalogue does not declare both an H.264 and an H.265 camera",
         )
 
     results = {}
@@ -385,16 +496,27 @@ def check_7_mixed_codecs(cameras: list[CameraDescriptor], seconds: float) -> Che
 
 def check_8_scene_discontinuity(cameras: list[CameraDescriptor], seconds: float) -> Check:
     """Live: no false cut within one feed; a true cut between two feeds is detected."""
-    cam_a, cam_b = cameras[0], cameras[min(len(cameras) - 1, 5)]
-    frames_a, _ = _grab_frames(cam_a, 40, seconds)
-    frames_b, _ = _grab_frames(cam_b, 5, seconds)
-    if len(frames_a) < 10 or not frames_b:
-        return Check(
+    if len(cameras) < 2:
+        return _not_exercised(
             8,
             "Behaviour is sane across a scene discontinuity",
-            False,
-            "insufficient frames captured to exercise the detector",
-            "live",
+            "fewer than two cameras on the gateway delivered frames, and a genuine "
+            "cut needs two different real scenes",
+        )
+    # Both halves retry across the verified list. Liveness flaps between one
+    # connection and the next on this gateway, so fixing on cameras[0] and [1] made
+    # the check's outcome depend on that flap rather than on the cut detector.
+    cam_a, frames_a, _ = _first_with_frames(cameras, 40, seconds)
+    others = [c for c in cameras if cam_a is None or c.external_id != cam_a.external_id]
+    cam_b, frames_b, _ = _first_with_frames(others, 5, seconds)
+
+    if cam_a is None or cam_b is None or len(frames_a) < 10 or not frames_b:
+        return _not_exercised(
+            8,
+            "Behaviour is sane across a scene discontinuity",
+            "insufficient frames to exercise the detector "
+            f"(camera {cam_a.external_id if cam_a else '-'}: {len(frames_a)} of 10 needed, "
+            f"camera {cam_b.external_id if cam_b else '-'}: {len(frames_b)} of 1 needed)",
         )
 
     det = SceneCutDetector()
@@ -495,6 +617,20 @@ def main() -> int:
         print("FAIL: no live cameras in the catalogue")
         return 2
 
+    # The catalogue's `live` flag is a claim (DISCOVERY finding 9). Establish which
+    # cameras actually deliver frames before handing any of them to a check, so a
+    # check's result describes the pipeline rather than which camera happened to be
+    # first in the catalogue.
+    print("  discovering cameras that actually deliver frames ...", flush=True)
+    verified = discover_live_cameras(live, want=3, budget_s=min(args.seconds, 8.0))
+    if verified:
+        print(
+            f"  {len(verified)} verified live: " f"{', '.join(c.external_id for c in verified)}\n",
+            flush=True,
+        )
+    else:
+        print("  NO camera delivered a frame; live checks will report NOT EXERCISED\n", flush=True)
+
     checks_run: list[str] = []
 
     def run(fn, *fn_args) -> Check:
@@ -520,23 +656,22 @@ def main() -> int:
                 False,
                 f"check raised {type(exc).__name__}: {exc}",
                 "error",
+                "fail",
             )
-        print(
-            f"    -> {'PASS' if result.passed else 'FAIL'} " f"({time.monotonic() - started:.1f}s)",
-            flush=True,
-        )
+        label = {"pass": "PASS", "fail": "FAIL"}.get(result.status, "NOT EXERCISED")
+        print(f"    -> {label} ({time.monotonic() - started:.1f}s)", flush=True)
         return result
 
     # Cheap and static first, slowest live check last.
     checks = [
         run(check_2_no_declared_fps_timing),
         run(check_6_catalogue_driven, cameras, settings.catalogue_url),
-        run(check_1_tcp_forced, live, args.seconds),
-        run(check_5_join_warnings_nonfatal, live, args.seconds),
-        run(check_3_gaps_tolerated, live[0], args.seconds),
+        run(check_1_tcp_forced, verified, args.seconds),
+        run(check_5_join_warnings_nonfatal, verified or live, args.seconds),
+        run(check_3_gaps_tolerated, verified, args.seconds),
         run(check_7_mixed_codecs, live, args.seconds),
-        run(check_8_scene_discontinuity, live, args.seconds),
-        run(check_4_reconnect, live[0], args.seconds),
+        run(check_8_scene_discontinuity, verified, args.seconds),
+        run(check_4_reconnect, verified[0] if verified else None, args.seconds),
     ]
     checks.sort(key=lambda c: c.number)
 
@@ -544,11 +679,22 @@ def main() -> int:
     print(f"{'#':>2}  {'RESULT':<6} {'HOW':<12} CHECK")
     print("-" * (width + 24))
     for c in checks:
-        print(f"{c.number:>2}  {'PASS' if c.passed else 'FAIL':<6} {c.method:<12} {c.name}")
+        label = {"pass": "PASS", "fail": "FAIL"}.get(c.status, "N/EXER")
+        print(f"{c.number:>2}  {label:<6} {c.method:<12} {c.name}")
         print(f"{'':>2}  {'':<6} {'':<12} {c.detail}")
-    passed = sum(1 for c in checks if c.passed)
+    passed = sum(1 for c in checks if c.status == "pass")
+    failed = sum(1 for c in checks if c.status == "fail")
+    skipped = sum(1 for c in checks if c.status == "not_exercised")
     print("-" * (width + 24))
-    print(f"{passed}/{len(checks)} checks passed\n")
+    print(f"{passed}/{len(checks)} checks passed, {failed} failed, " f"{skipped} not exercised")
+    if skipped:
+        print(
+            "\nNOT EXERCISED means the gateway did not give this check something to\n"
+            "test -- no camera delivered frames, or the catalogue declares no codec.\n"
+            "It is not a pipeline defect, and it is not a pass either. Re-run when\n"
+            "the feed is healthier to convert them."
+        )
+    print()
 
     if args.emit_evidence:
         json_path, md_path = evidence.write(
@@ -562,6 +708,8 @@ def main() -> int:
                 "cameras_live_flagged": len(live),
                 "checks": [c.__dict__ for c in checks],
                 "passed": passed,
+                "failed": failed,
+                "not_exercised": skipped,
                 "total": len(checks),
             },
             _preflight_markdown(checks, settings, passed),
@@ -579,6 +727,8 @@ def main() -> int:
                 "cameras_live": len(live),
                 "checks": [c.__dict__ for c in checks],
                 "passed": passed,
+                "failed": failed,
+                "not_exercised": skipped,
                 "total": len(checks),
             },
             indent=2,
@@ -586,7 +736,9 @@ def main() -> int:
         encoding="utf-8",
     )
     print(f"evidence written: {args.out}\n")
-    return 0 if passed == len(checks) else 1
+    # A check we could not exercise is not a failure of this system. A check that
+    # ran and went wrong is.
+    return 1 if failed else 0
 
 
 if __name__ == "__main__":
