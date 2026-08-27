@@ -23,7 +23,14 @@ services:
   postgres:
     # PostGIS, TimescaleDB and pgvector in one image. Digest-pinned: the extension
     # set is load-bearing and a floating tag could change it under us.
-    image: timescale/timescaledb-ha:pg16.4-ts2.17.2-oss@sha256:5df86141242ec2724bbabf5ee82b2480170a9d821bbbb7a77f8572aed84e9180
+    # Pinned to the digest this deployment's volume was initialised and verified
+    # with (TimescaleDB 2.29.2). The development stack pins an older tag; the two
+    # deliberately differ, because a Postgres image's extension version is part of
+    # the on-disk format and changing it under an existing data directory makes
+    # every new session fail with `could not access file "$libdir/timescaledb-..."`
+    # while the already-connected API keeps working and the container reports
+    # healthy. See docs/DEPLOYMENT.md §4a. Align the two only by recreating a volume.
+    image: timescale/timescaledb-ha:pg16@sha256:92809e70c72a5fd169aa3bb7d9c6b1974d6afdf8da786d890f12ae9e7616a67c
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB}

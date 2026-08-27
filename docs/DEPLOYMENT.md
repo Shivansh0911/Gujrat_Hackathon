@@ -143,14 +143,57 @@ screens render empty image boxes.
 
 ---
 
+## 4a. Pinning a digest against an existing volume
+
+Worth knowing before it costs an evening. `docker-compose.prod.yml` previously ran the
+floating tag `timescale/timescaledb-ha:pg16`. Pinning it to the digest already used by
+the development stack (`pg16.4-ts2.17.2-oss`) **downgraded TimescaleDB from 2.29.2 to
+2.17.2 underneath a data directory that had been initialised by the newer image.**
+
+The failure is quiet and very easy to misread:
+
+```
+ERROR:  could not access file "$libdir/timescaledb-2.29.2": No such file or directory
+STATEMENT:  BEGIN
+```
+
+Every *new* session fails. The running API does not, because its connection pool was
+already established, so the container reports healthy, the console works, and the
+deployment checks pass — while `psql` and any restarted process cannot open a
+transaction at all. A restart of the backend would have surfaced it in front of
+whoever happened to be watching.
+
+**The rule:** a Postgres image's extension version is part of the on-disk format. When
+you change the pinned digest, either match the extension version the volume was built
+with, or recreate the volume:
+
+```bash
+docker compose -f docker-compose.prod.yml --env-file .env.prod down -v
+docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+```
+
+Recreating is safe here and takes about three minutes: migrations, seeding and demo
+ingest all run from the entrypoint, and the stack carries no data that is not
+regenerated. On a real deployment with real evidence it is not safe, and the extension
+version must be matched instead.
+
+---
+
 ## 5. Verification — do this before quoting the URL
 
 A broken hosted URL is worse than none: a judge who clicks it and sees an error
 carries that impression into everything else.
 
 ```bash
-python /path/to/verify_deployed.py https://<console-domain>
+python backend/scripts/verify_deployment.py https://<console-domain>
 ```
+
+Credentials come from `SETU_ADMIN_PASSWORD` and `SETU_OPERATOR_PASSWORD` in the
+environment, or `--admin-password` / `--operator-password`. Check 8 needs database
+access: set `SETU_DATABASE_URL` to reach the deployed database, or run the query it
+prints by hand. **It reports `NOT VERIFIED` rather than `PASS` when it cannot reach
+one** — an unverifiable security control must never read as a green tick. Results are
+written to `reports/deployment-verification.json`.
 
 The nine checks, all of which pass against the local production stack:
 
