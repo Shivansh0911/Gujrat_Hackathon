@@ -44,8 +44,11 @@ def main() -> int:
     ap.add_argument("--motion-threshold", type=float, default=2.5)
     ap.add_argument("--crop-dir", type=Path, default=REPO_ROOT / "data" / "evidence" / "crops")
     ap.add_argument("--emit-evidence", action="store_true")
-    ap.add_argument("--persist", action="store_true",
-                    help="write detections to Postgres (idempotent on re-ingest)")
+    ap.add_argument(
+        "--persist",
+        action="store_true",
+        help="write detections to Postgres (idempotent on re-ingest)",
+    )
     args = ap.parse_args()
 
     redact.install(level=logging.INFO)
@@ -53,8 +56,10 @@ def main() -> int:
     source = FileSource(args.video, camera_ref=args.camera_ref, realtime=False, loop=False)
     caps = source.probe()
     print(f"\nsource : {args.video.name}")
-    print(f"  {caps.width}x{caps.height} codec={caps.codec} "
-          f"measured_fps={caps.measured_fps} duration={caps.duration_s:.0f}s")
+    print(
+        f"  {caps.width}x{caps.height} codec={caps.codec} "
+        f"measured_fps={caps.measured_fps} duration={caps.duration_s:.0f}s"
+    )
 
     print("loading models...")
     t0 = time.monotonic()
@@ -63,7 +68,8 @@ def main() -> int:
     print(f"  models ready in {time.monotonic() - t0:.1f}s")
 
     pipeline = AnprPipeline(
-        detector, recogniser,
+        detector,
+        recogniser,
         crop_dir=args.crop_dir,
         analytic_fps=args.analytic_fps,
         motion_threshold=args.motion_threshold,
@@ -86,8 +92,10 @@ def main() -> int:
         records.append(rec)
         flag = "VALID   " if rec.plate.valid else "UNPARSED"
         corr = f" [{len(rec.plate.corrections)} corrected]" if rec.plate.corrections else ""
-        print(f"  {flag} {rec.plate.normalised:<12} conf={rec.plate.confidence:.2f} "
-              f"frames={rec.frames_fused} pts={rec.first_pts_ms:.0f}ms{corr}")
+        print(
+            f"  {flag} {rec.plate.normalised:<12} conf={rec.plate.confidence:.2f} "
+            f"frames={rec.frames_fused} pts={rec.first_pts_ms:.0f}ms{corr}"
+        )
     elapsed = time.monotonic() - started
     source.close()
 
@@ -96,14 +104,8 @@ def main() -> int:
         session.commit()
         session.close()
         ps = writer.stats
-        dropped = (
-            f", {ps.unknown_camera} dropped (no registry camera)"
-            if ps.unknown_camera else ""
-        )
-        print(
-            "\npersisted: "
-            f"{ps.inserted} inserted, {ps.duplicates} already present{dropped}"
-        )
+        dropped = f", {ps.unknown_camera} dropped (no registry camera)" if ps.unknown_camera else ""
+        print("\npersisted: " f"{ps.inserted} inserted, {ps.duplicates} already present{dropped}")
 
     st = pipeline.stats
     valid = [r for r in records if r.plate.valid]
@@ -114,8 +116,10 @@ def main() -> int:
     print("MEASURED PIPELINE PERFORMANCE")
     print("=" * 66)
     print(f"  frames decoded          : {st.frames_decoded}")
-    print(f"  frames passing motion   : {st.frames_gated_in}  "
-          f"({st.gate_pass_rate * 100:.1f}% gate pass rate)")
+    print(
+        f"  frames passing motion   : {st.frames_gated_in}  "
+        f"({st.gate_pass_rate * 100:.1f}% gate pass rate)"
+    )
     print(f"  detector invocations    : {st.detector_runs}")
     print(f"  plate boxes detected    : {st.plates_detected}")
     print(f"  OCR invocations         : {st.ocr_runs}")
@@ -124,8 +128,10 @@ def main() -> int:
     print(f"  of which corrected      : {len(corrected)}")
     print(f"  distinct valid plates   : {len(distinct)}")
     print(f"  scene discontinuities   : {st.discontinuities}")
-    print(f"  wall time               : {elapsed:.1f}s "
-          f"({st.frames_decoded / elapsed:.1f} decode fps)")
+    print(
+        f"  wall time               : {elapsed:.1f}s "
+        f"({st.frames_decoded / elapsed:.1f} decode fps)"
+    )
     if distinct:
         print("\n  most frequent plates:")
         for plate, n in distinct.most_common(10):
@@ -142,8 +148,11 @@ def main() -> int:
     payload = {
         "video": str(args.video),
         "source_properties": {
-            "width": caps.width, "height": caps.height, "codec": caps.codec,
-            "measured_fps": caps.measured_fps, "declared_fps": caps.declared_fps,
+            "width": caps.width,
+            "height": caps.height,
+            "codec": caps.codec,
+            "measured_fps": caps.measured_fps,
+            "declared_fps": caps.declared_fps,
             "duration_s": caps.duration_s,
         },
         "settings": {
@@ -191,14 +200,16 @@ def main() -> int:
 
     if args.emit_evidence:
         md = [
-            "# ANPR pipeline - measured performance", "",
+            "# ANPR pipeline - measured performance",
+            "",
             f"- **Footage:** `{args.video.name}` "
             f"({caps.width}x{caps.height}, {caps.codec}, {caps.duration_s:.0f}s)",
             f"- **Detector:** {detector.model_name} (MIT)",
             f"- **Recogniser:** {recogniser.model_name} (MIT)",
             f"- **Analytic rate:** {args.analytic_fps} fps, sampled on PTS",
             "",
-            "| measurement | value |", "|---|---:|",
+            "| measurement | value |",
+            "|---|---:|",
             f"| frames decoded | {st.frames_decoded} |",
             f"| frames passing motion gate | {st.frames_gated_in} |",
             f"| **gate pass rate** | **{st.gate_pass_rate * 100:.1f}%** |",
@@ -209,7 +220,10 @@ def main() -> int:
             f"| of which corrected | {len(corrected)} |",
             f"| distinct valid plates | {len(distinct)} |",
             f"| decode throughput | {st.frames_decoded / elapsed:.1f} fps |",
-            "", "## Caveat on recall", "", caveat,
+            "",
+            "## Caveat on recall",
+            "",
+            caveat,
         ]
         j, m = evidence.write("anpr-run", payload, "\n".join(md) + "\n")
         print(f"evidence: {j.name}, {m.name}")

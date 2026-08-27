@@ -46,9 +46,7 @@ class CameraDescriptor:
     @property
     def properties_known(self) -> bool:
         """False when the catalogue gave us zeros; such cameras MUST be probed."""
-        return bool(
-            self.declared_codec and self.declared_width and self.declared_height
-        )
+        return bool(self.declared_codec and self.declared_width and self.declared_height)
 
 
 def _opt_str(v: Any) -> str | None:

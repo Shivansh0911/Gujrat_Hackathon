@@ -123,15 +123,20 @@ def ingest_one(
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--seconds", type=float, default=30.0,
-                    help="wall-clock budget per camera")
+    ap.add_argument("--seconds", type=float, default=30.0, help="wall-clock budget per camera")
     ap.add_argument("--max-frames", type=int, default=900)
     ap.add_argument("--analytic-fps", type=float, default=5.0)
     ap.add_argument("--motion-threshold", type=float, default=2.5)
-    ap.add_argument("--cameras", default=None,
-                    help="comma-separated camera refs; default is every catalogued camera")
-    ap.add_argument("--persist", action="store_true",
-                    help="write detections to Postgres (idempotent on re-ingest)")
+    ap.add_argument(
+        "--cameras",
+        default=None,
+        help="comma-separated camera refs; default is every catalogued camera",
+    )
+    ap.add_argument(
+        "--persist",
+        action="store_true",
+        help="write detections to Postgres (idempotent on re-ingest)",
+    )
     args = ap.parse_args()
 
     redact.install(level=logging.WARNING)
@@ -150,7 +155,8 @@ def main() -> int:
     print(f"  models ready in {time.monotonic() - t0:.1f}s")
 
     pipeline = AnprPipeline(
-        detector, recogniser,
+        detector,
+        recogniser,
         crop_dir=CROPS_DIR,
         analytic_fps=args.analytic_fps,
         motion_threshold=args.motion_threshold,
@@ -171,26 +177,31 @@ def main() -> int:
     results = []
     for i, d in enumerate(descriptors, 1):
         print(f"\n[{i}/{len(descriptors)}] camera {d.external_id} ({d.name})")
-        r = ingest_one(d, pipeline, seconds=args.seconds,
-                       max_frames=args.max_frames, writer=writer)
+        r = ingest_one(d, pipeline, seconds=args.seconds, max_frames=args.max_frames, writer=writer)
         results.append(r)
         if r["error"]:
             print(f"  FAILED  {r['error']}  ({r['wall_seconds']}s)")
         else:
-            print(f"  {r['frames_decoded']} frames, {r['plates_detected']} plate boxes, "
-                  f"{len(r['records'])} fused, measured_fps={r.get('measured_fps')} "
-                  f"({r['wall_seconds']}s)")
+            print(
+                f"  {r['frames_decoded']} frames, {r['plates_detected']} plate boxes, "
+                f"{len(r['records'])} fused, measured_fps={r.get('measured_fps')} "
+                f"({r['wall_seconds']}s)"
+            )
         for rec in r["records"]:
             flag = "VALID   " if rec["valid"] else "UNPARSED"
-            print(f"    {flag} {rec['plate']:<12} conf={rec['confidence']:.2f} "
-                  f"frames={rec['frames_fused']}")
+            print(
+                f"    {flag} {rec['plate']:<12} conf={rec['confidence']:.2f} "
+                f"frames={rec['frames_fused']}"
+            )
 
     if writer is not None and session is not None:
         writer.flush()
         session.commit()
         ps = writer.stats
-        print(f"\npersisted: {ps.inserted} inserted, {ps.duplicates} already present, "
-              f"{ps.unknown_camera} dropped (no registry camera)")
+        print(
+            f"\npersisted: {ps.inserted} inserted, {ps.duplicates} already present, "
+            f"{ps.unknown_camera} dropped (no registry camera)"
+        )
         session.close()
 
     ok = [r for r in results if r["ok"]]

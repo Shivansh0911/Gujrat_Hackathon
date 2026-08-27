@@ -91,8 +91,12 @@ def _grab_frames(cam: CameraDescriptor, n: int, budget_s: float):
     join_timeout_s = get_settings().join_timeout_s
     source = select_transport(cam, get_settings(), rtsp_available=RTSP_AVAILABLE)
     session = StreamSession(
-        source.url, cam.external_id, transport=source.transport,
-        join_timeout_s=join_timeout_s, backoff_min_s=1.0, backoff_max_s=2.0,
+        source.url,
+        cam.external_id,
+        transport=source.transport,
+        join_timeout_s=join_timeout_s,
+        backoff_min_s=1.0,
+        backoff_max_s=2.0,
     )
     out = []
     total_s = budget_s + join_timeout_s
@@ -165,8 +169,11 @@ def check_1_tcp_forced(cameras: list[CameraDescriptor], seconds: float) -> Check
         f"(options='{opts}'); {fallback}; {outcome}; {imports}"
     )
     return Check(
-        1, "Every client forces RTSP over TCP (HLS fallback when 8554 is blocked)",
-        passed, detail, "static+live",
+        1,
+        "Every client forces RTSP over TCP (HLS fallback when 8554 is blocked)",
+        passed,
+        detail,
+        "static+live",
     )
 
 
@@ -183,23 +190,24 @@ def check_2_no_declared_fps_timing() -> Check:
     from check_fps_guard import EXPECTED_READS, find_reads
 
     hits = find_reads()
-    marked = [h for h in hits
-              if "reference-only" in h[2] or "never used for timing" in h[2]]
+    marked = [h for h in hits if "reference-only" in h[2] or "never used for timing" in h[2]]
     unmarked = [h for h in hits if h not in marked]
 
     passed = not unmarked and len(hits) == EXPECTED_READS
     if unmarked:
-        detail = (
-            "CAP_PROP_FPS used without a reference-only marker at: "
-            + ", ".join(f"{rel}:{line}" for rel, line, _ in unmarked)
+        detail = "CAP_PROP_FPS used without a reference-only marker at: " + ", ".join(
+            f"{rel}:{line}" for rel, line, _ in unmarked
         )
     else:
         detail = (
             f"{len(marked)} reference-only use(s), all marked on the line "
             f"({', '.join(f'{rel}:{line}' for rel, line, _ in marked)}); "
             f"0 timing use(s). Expected count {EXPECTED_READS} — "
-            + ("matches" if len(hits) == EXPECTED_READS
-               else f"MISMATCH, found {len(hits)}; raising it is a reviewed decision")
+            + (
+                "matches"
+                if len(hits) == EXPECTED_READS
+                else f"MISMATCH, found {len(hits)}; raising it is a reviewed decision"
+            )
         )
     return Check(2, "No timing logic depends on declared FPS", passed, detail, "static")
 
@@ -208,8 +216,11 @@ def check_3_gaps_tolerated(cam: CameraDescriptor, seconds: float) -> Check:
     """Live: observe real inter-frame gaps and confirm reading continued past them."""
     source = select_transport(cam, get_settings(), rtsp_available=RTSP_AVAILABLE)
     session = StreamSession(
-        source.url, cam.external_id, transport=source.transport,
-        backoff_min_s=1.0, backoff_max_s=2.0,
+        source.url,
+        cam.external_id,
+        transport=source.transport,
+        backoff_min_s=1.0,
+        backoff_max_s=2.0,
     )
     gaps: list[float] = []
     prev_pts: float | None = None
@@ -259,8 +270,11 @@ def check_4_reconnect(cam: CameraDescriptor, seconds: float) -> Check:
     """
     source = select_transport(cam, get_settings(), rtsp_available=RTSP_AVAILABLE)
     session = StreamSession(
-        source.url, cam.external_id, transport=source.transport,
-        backoff_min_s=2.0, backoff_max_s=30.0,
+        source.url,
+        cam.external_id,
+        transport=source.transport,
+        backoff_min_s=2.0,
+        backoff_max_s=30.0,
     )
     killed = threading.Event()
     before = after = 0
@@ -343,8 +357,11 @@ def check_7_mixed_codecs(cameras: list[CameraDescriptor], seconds: float) -> Che
     hevc = next((c for c in cameras if (c.declared_codec or "").lower() in ("hevc", "h265")), None)
     if h264 is None or hevc is None:
         return Check(
-            7, "Pipeline handles mixed H.264/H.265 and mixed resolutions", False,
-            "catalogue did not declare both an H.264 and an H.265 camera", "live",
+            7,
+            "Pipeline handles mixed H.264/H.265 and mixed resolutions",
+            False,
+            "catalogue did not declare both an H.264 and an H.265 camera",
+            "live",
         )
 
     results = {}
@@ -352,19 +369,18 @@ def check_7_mixed_codecs(cameras: list[CameraDescriptor], seconds: float) -> Che
         frames, stats = _grab_frames(cam, 10, seconds)
         results[label] = (cam.external_id, len(frames), stats.width, stats.height)
 
-    declared_res = {
-        (c.declared_width, c.declared_height) for c in cameras if c.properties_known
-    }
+    declared_res = {(c.declared_width, c.declared_height) for c in cameras if c.properties_known}
     both_decoded = all(v[1] > 0 for v in results.values())
     passed = both_decoded and len(declared_res) > 1
     detail = (
         "; ".join(
-            f"{k}: camera {v[0]} -> {v[1]} frames at {v[2]}x{v[3]}"
-            for k, v in results.items()
+            f"{k}: camera {v[0]} -> {v[1]} frames at {v[2]}x{v[3]}" for k, v in results.items()
         )
         + f"; {len(declared_res)} distinct resolutions across the estate {sorted(declared_res)}"
     )
-    return Check(7, "Pipeline handles mixed H.264/H.265 and mixed resolutions", passed, detail, "live")
+    return Check(
+        7, "Pipeline handles mixed H.264/H.265 and mixed resolutions", passed, detail, "live"
+    )
 
 
 def check_8_scene_discontinuity(cameras: list[CameraDescriptor], seconds: float) -> Check:
@@ -373,8 +389,13 @@ def check_8_scene_discontinuity(cameras: list[CameraDescriptor], seconds: float)
     frames_a, _ = _grab_frames(cam_a, 40, seconds)
     frames_b, _ = _grab_frames(cam_b, 5, seconds)
     if len(frames_a) < 10 or not frames_b:
-        return Check(8, "Behaviour is sane across a scene discontinuity", False,
-                     "insufficient frames captured to exercise the detector", "live")
+        return Check(
+            8,
+            "Behaviour is sane across a scene discontinuity",
+            False,
+            "insufficient frames captured to exercise the detector",
+            "live",
+        )
 
     det = SceneCutDetector()
     false_positives = sum(1 for f in frames_a if det.update(f.image))
@@ -501,8 +522,7 @@ def main() -> int:
                 "error",
             )
         print(
-            f"    -> {'PASS' if result.passed else 'FAIL'} "
-            f"({time.monotonic() - started:.1f}s)",
+            f"    -> {'PASS' if result.passed else 'FAIL'} " f"({time.monotonic() - started:.1f}s)",
             flush=True,
         )
         return result

@@ -92,16 +92,19 @@ def _load_signing_key() -> Ed25519PrivateKey:
     )
     log.warning(
         "generated a DEVELOPMENT evidence signing key at %s; set %s in production",
-        _DEV_KEY_PATH.name, SIGNING_KEY_ENV,
+        _DEV_KEY_PATH.name,
+        SIGNING_KEY_ENV,
     )
     return key
 
 
 def public_key_hex(key: Ed25519PrivateKey | None = None) -> str:
     k = key or _load_signing_key()
-    return k.public_key().public_bytes(
-        encoding=serialization.Encoding.Raw, format=serialization.PublicFormat.Raw
-    ).hex()
+    return (
+        k.public_key()
+        .public_bytes(encoding=serialization.Encoding.Raw, format=serialization.PublicFormat.Raw)
+        .hex()
+    )
 
 
 def verify_manifest(manifest: bytes, signature: bytes, public_key_hex_str: str) -> bool:
@@ -155,12 +158,10 @@ def build_manifest(journey: dict[str, Any], audit_seq: int | None, model_version
             for h in journey["hops"]
         ],
         "coverage_gaps": [
-            {"camera_ref": g["camera_ref"], "reason": g["reason"]}
-            for g in journey["coverage_gaps"]
+            {"camera_ref": g["camera_ref"], "reason": g["reason"]} for g in journey["coverage_gaps"]
         ],
         "rejected": [
-            {"camera_ref": r["camera_ref"], "reason": r["reason"]}
-            for r in journey["rejected"]
+            {"camera_ref": r["camera_ref"], "reason": r["reason"]} for r in journey["rejected"]
         ],
     }
     return json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str).encode()
@@ -197,9 +198,12 @@ def render_pdf(
     """Produce the evidence PDF."""
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(
-        buffer, pagesize=A4,
-        leftMargin=18 * mm, rightMargin=18 * mm,
-        topMargin=16 * mm, bottomMargin=16 * mm,
+        buffer,
+        pagesize=A4,
+        leftMargin=18 * mm,
+        rightMargin=18 * mm,
+        topMargin=16 * mm,
+        bottomMargin=16 * mm,
         title=f"SETU evidence export - {journey['plate']}",
         author="Project SETU",
     )
@@ -214,8 +218,7 @@ def render_pdf(
     story: list[Any] = []
 
     story.append(Paragraph("Vehicle movement evidence export", h1))
-    story.append(Paragraph(
-        "Project SETU — Gujarat Police CCTV Integration Platform", small))
+    story.append(Paragraph("Project SETU — Gujarat Police CCTV Integration Platform", small))
     story.append(Spacer(1, 6))
 
     # ---- header: the query and its authorisation ----
@@ -232,13 +235,17 @@ def render_pdf(
         ["Journey confidence", f"{journey['confidence']:.2f}"],
     ]
     table = Table(header_rows, colWidths=[38 * mm, 132 * mm])
-    table.setStyle(TableStyle([
-        ("FONTSIZE", (0, 0), (-1, -1), 8),
-        ("TEXTCOLOR", (0, 0), (0, -1), colors.HexColor("#444444")),
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
-        ("LINEBELOW", (0, 0), (-1, -2), 0.25, colors.HexColor("#DDDDDD")),
-    ]))
+    table.setStyle(
+        TableStyle(
+            [
+                ("FONTSIZE", (0, 0), (-1, -1), 8),
+                ("TEXTCOLOR", (0, 0), (0, -1), colors.HexColor("#444444")),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+                ("LINEBELOW", (0, 0), (-1, -2), 0.25, colors.HexColor("#DDDDDD")),
+            ]
+        )
+    )
     story.append(table)
 
     story.append(Paragraph("Route", h2))
@@ -250,12 +257,15 @@ def render_pdf(
     # ---- what was NOT seen ----
     if journey["coverage_gaps"]:
         story.append(Paragraph("Coverage gaps", h2))
-        story.append(Paragraph(
-            "Cameras lying on the reconstructed route that recorded no detection in the "
-            "relevant interval. These are reported because the difference between "
-            "&ldquo;the vehicle was not there&rdquo; and &ldquo;we could not see&rdquo; is "
-            "material to an investigation, and only one of them is a coverage problem.",
-            small))
+        story.append(
+            Paragraph(
+                "Cameras lying on the reconstructed route that recorded no detection in the "
+                "relevant interval. These are reported because the difference between "
+                "&ldquo;the vehicle was not there&rdquo; and &ldquo;we could not see&rdquo; is "
+                "material to an investigation, and only one of them is a coverage problem.",
+                small,
+            )
+        )
         story.append(Spacer(1, 3))
         gap_rows = [["Camera", "Finding"]] + [
             [g["camera_ref"], g["reason"]] for g in journey["coverage_gaps"]
@@ -264,10 +274,14 @@ def render_pdf(
 
     if journey["rejected"]:
         story.append(Paragraph("Candidate sightings rejected", h2))
-        story.append(Paragraph(
-            "Sightings of this registration that were excluded from the route because "
-            "they were not physically reachable from the preceding hop. Listed so a "
-            "reviewer can see what was considered as well as what was accepted.", small))
+        story.append(
+            Paragraph(
+                "Sightings of this registration that were excluded from the route because "
+                "they were not physically reachable from the preceding hop. Listed so a "
+                "reviewer can see what was considered as well as what was accepted.",
+                small,
+            )
+        )
         story.append(Spacer(1, 3))
         rej_rows = [["Camera", "Reason for exclusion"]] + [
             [r["camera_ref"], r["reason"]] for r in journey["rejected"]
@@ -277,21 +291,28 @@ def render_pdf(
     # ---- integrity ----
     story.append(PageBreak())
     story.append(Paragraph("Integrity and verification", h1))
-    story.append(Paragraph(
-        "This export commits to the facts above in two independent ways.", body))
+    story.append(Paragraph("This export commits to the facts above in two independent ways.", body))
     story.append(Spacer(1, 4))
-    story.append(Paragraph(
-        "<b>1. Audit chain.</b> The query that produced this route was written to a "
-        "hash-chained ledger <i>before</i> it executed, at the entry number shown in the "
-        "header. Each entry commits to every entry before it, so altering any historical "
-        "record invalidates the chain from that point on. Ask SETU to verify the chain "
-        "at <font face='Courier'>GET /audit/verify</font>.", body))
+    story.append(
+        Paragraph(
+            "<b>1. Audit chain.</b> The query that produced this route was written to a "
+            "hash-chained ledger <i>before</i> it executed, at the entry number shown in the "
+            "header. Each entry commits to every entry before it, so altering any historical "
+            "record invalidates the chain from that point on. Ask SETU to verify the chain "
+            "at <font face='Courier'>GET /audit/verify</font>.",
+            body,
+        )
+    )
     story.append(Spacer(1, 4))
-    story.append(Paragraph(
-        "<b>2. Detached signature.</b> The accompanying manifest is a canonical JSON "
-        "record of every hop, including a SHA-256 of each evidence image. It is signed "
-        "with Ed25519. A recipient can verify it with the public key below and needs no "
-        "access to SETU, its database, or its operators to do so.", body))
+    story.append(
+        Paragraph(
+            "<b>2. Detached signature.</b> The accompanying manifest is a canonical JSON "
+            "record of every hop, including a SHA-256 of each evidence image. It is signed "
+            "with Ed25519. A recipient can verify it with the public key below and needs no "
+            "access to SETU, its database, or its operators to do so.",
+            body,
+        )
+    )
     story.append(Spacer(1, 6))
 
     integrity_rows = [
@@ -303,21 +324,29 @@ def render_pdf(
 
     story.append(Spacer(1, 8))
     story.append(Paragraph("Verifying without SETU", h2))
-    story.append(Paragraph(
-        "<font face='Courier' size='7'>"
-        "python -c \"from cryptography.hazmat.primitives.asymmetric.ed25519 import "
-        "Ed25519PublicKey; import sys; "
-        "Ed25519PublicKey.from_public_bytes(bytes.fromhex(PUBLIC_KEY))"
-        ".verify(bytes.fromhex(SIGNATURE), open('manifest.json','rb').read()); "
-        "print('signature valid')\"</font>", small))
+    story.append(
+        Paragraph(
+            "<font face='Courier' size='7'>"
+            'python -c "from cryptography.hazmat.primitives.asymmetric.ed25519 import '
+            "Ed25519PublicKey; import sys; "
+            "Ed25519PublicKey.from_public_bytes(bytes.fromhex(PUBLIC_KEY))"
+            ".verify(bytes.fromhex(SIGNATURE), open('manifest.json','rb').read()); "
+            "print('signature valid')\"</font>",
+            small,
+        )
+    )
 
     story.append(Spacer(1, 10))
-    story.append(Paragraph(
-        "Plate reads marked as corrected were produced by automated recognition with "
-        "character-level substitutions applied under Indian registration grammar. Each "
-        "substitution is printed with the position and the confidence at that position. "
-        "A corrected read is an investigative lead requiring human verification, not a "
-        "confirmed identification.", small))
+    story.append(
+        Paragraph(
+            "Plate reads marked as corrected were produced by automated recognition with "
+            "character-level substitutions applied under Indian registration grammar. Each "
+            "substitution is printed with the position and the confidence at that position. "
+            "A corrected read is an investigative lead requiring human verification, not a "
+            "confirmed identification.",
+            small,
+        )
+    )
 
     doc.build(story)
     return buffer.getvalue()
@@ -366,14 +395,18 @@ def _hop_block(hop: dict[str, Any], body: Any, small: Any, mono: Any) -> Table:
     )
 
     table = Table([[img, Paragraph(detail, body)]], colWidths=[40 * mm, 130 * mm])
-    table.setStyle(TableStyle([
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("BOX", (0, 0), (-1, -1), 0.4, colors.HexColor("#CCCCCC")),
-        ("LEFTPADDING", (0, 0), (-1, -1), 4),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 4),
-        ("TOPPADDING", (0, 0), (-1, -1), 4),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-    ]))
+    table.setStyle(
+        TableStyle(
+            [
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("BOX", (0, 0), (-1, -1), 0.4, colors.HexColor("#CCCCCC")),
+                ("LEFTPADDING", (0, 0), (-1, -1), 4),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+                ("TOPPADDING", (0, 0), (-1, -1), 4),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ]
+        )
+    )
     return table
 
 

@@ -53,7 +53,7 @@ class ApiSettings(BaseSettings):
         if v.strip().lower() in {"change-me-locally", "changeme", "secret", "dev"}:
             raise ValueError(
                 "SETU_JWT_SECRET is still the placeholder value; generate one with "
-                "python -c \"import secrets;print(secrets.token_urlsafe(48))\""
+                'python -c "import secrets;print(secrets.token_urlsafe(48))"'
             )
         return v
 

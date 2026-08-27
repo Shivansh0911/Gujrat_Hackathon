@@ -156,9 +156,9 @@ class Camera(Base):
     codec: Mapped[str | None] = mapped_column(String(32))
     resolution_w: Mapped[int | None] = mapped_column(Integer)
     resolution_h: Mapped[int | None] = mapped_column(Integer)
-    declared_fps: Mapped[float | None] = mapped_column(Float)   # reference only
-    measured_fps: Mapped[float | None] = mapped_column(Float)   # from PTS deltas
-    transport: Mapped[str | None] = mapped_column(String(16))   # rtsp | hls | file
+    declared_fps: Mapped[float | None] = mapped_column(Float)  # reference only
+    measured_fps: Mapped[float | None] = mapped_column(Float)  # from PTS deltas
+    transport: Mapped[str | None] = mapped_column(String(16))  # rtsp | hls | file
 
     source_type: Mapped[str] = mapped_column(
         String(32), nullable=False, default=SourceType.GATEWAY.value
@@ -192,9 +192,7 @@ class CameraCapability(Base):
     """A probed capability. Declared capabilities are verified before an adapter loads."""
 
     __tablename__ = "camera_capability"
-    __table_args__ = (
-        UniqueConstraint("camera_id", "name", name="uq_capability_camera_name"),
-    )
+    __table_args__ = (UniqueConstraint("camera_id", "name", name="uq_capability_camera_name"),)
 
     id: Mapped[uuid.UUID] = _uuid_pk()
     camera_id: Mapped[uuid.UUID] = mapped_column(
@@ -237,9 +235,7 @@ class Detection(Base):
     plate_normalised: Mapped[str] = mapped_column(String(32), nullable=False)
     # Every character correction, with position, raw value, corrected value and
     # confidence. A corrected plate is never presented as clean.
-    corrections: Mapped[list[dict[str, Any]]] = mapped_column(
-        JSONB, nullable=False, default=list
-    )
+    corrections: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, nullable=False, default=list)
     confidence: Mapped[float] = mapped_column(Float, nullable=False)
 
     # Stream position, retained so a detection can be re-derived from the original
@@ -258,9 +254,7 @@ class WatchlistEntry(Base):
     """A vehicle or person of interest. Sources include our representative list."""
 
     __tablename__ = "watchlist_entry"
-    __table_args__ = (
-        Index("ix_watchlist_plate", "plate_normalised"),
-    )
+    __table_args__ = (Index("ix_watchlist_plate", "plate_normalised"),)
 
     id: Mapped[uuid.UUID] = _uuid_pk()
     plate_normalised: Mapped[str | None] = mapped_column(String(32), index=True)
@@ -316,9 +310,7 @@ class Alert(Base):
     dedup_window_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     observation_count: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
 
-    state: Mapped[str] = mapped_column(
-        String(32), nullable=False, default=AlertState.RAISED.value
-    )
+    state: Mapped[str] = mapped_column(String(32), nullable=False, default=AlertState.RAISED.value)
     disposition: Mapped[str | None] = mapped_column(String(32))
     acknowledged_by: Mapped[str | None] = mapped_column(String(200))
     acknowledged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -330,14 +322,10 @@ class Alert(Base):
     # Ordered observations behind a movement alert. Successive sightings of one
     # vehicle are one developing event, not a stream of near-identical alerts an
     # operator learns to dismiss.
-    sightings: Mapped[list[dict[str, Any]]] = mapped_column(
-        JSONB, nullable=False, default=list
-    )
+    sightings: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, nullable=False, default=list)
     is_movement: Mapped[bool] = mapped_column(nullable=False, default=False)
     # What agreed beyond the plate (colour, body type), and what did not.
-    corroboration: Mapped[dict[str, Any]] = mapped_column(
-        JSONB, nullable=False, default=dict
-    )
+    corroboration: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
 
 
 class AuditEntry(Base):

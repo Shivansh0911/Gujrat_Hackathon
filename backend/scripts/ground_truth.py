@@ -57,8 +57,14 @@ log = logging.getLogger("ground-truth")
 ANNOTATION_CSV = DATA_DIR / "seed" / "anpr_ground_truth.csv"
 
 FIELDS = [
-    "crop_file", "camera_ref", "observed_at_utc", "pipeline_read",
-    "pipeline_confidence", "corrections_applied", "true_plate", "notes",
+    "crop_file",
+    "camera_ref",
+    "observed_at_utc",
+    "pipeline_read",
+    "pipeline_confidence",
+    "corrections_applied",
+    "true_plate",
+    "notes",
 ]
 
 # Annotation values that mean "no plate a human could read here". Anything else in
@@ -78,11 +84,13 @@ def _levenshtein(a: str, b: str) -> int:
     for i, ca in enumerate(a, 1):
         current = [i]
         for j, cb in enumerate(b, 1):
-            current.append(min(
-                previous[j] + 1,        # deletion
-                current[j - 1] + 1,     # insertion
-                previous[j - 1] + (ca != cb),  # substitution
-            ))
+            current.append(
+                min(
+                    previous[j] + 1,  # deletion
+                    current[j - 1] + 1,  # insertion
+                    previous[j - 1] + (ca != cb),  # substitution
+                )
+            )
         previous = current
     return previous[-1]
 
@@ -92,9 +100,10 @@ def annotate(args: argparse.Namespace) -> int:
     session = get_sessionmaker()()
     set_admin_context(session)
     try:
-        rows = session.execute(
-            text(
-                """
+        rows = (
+            session.execute(
+                text(
+                    """
                 SELECT d.crop_path, d.plate_normalised, d.confidence,
                        d.observed_at_utc, d.corrections, c.camera_ref
                 FROM detection d
@@ -102,8 +111,11 @@ def annotate(args: argparse.Namespace) -> int:
                 WHERE d.crop_path IS NOT NULL
                 ORDER BY c.camera_ref, d.observed_at_utc
                 """
+                )
             )
-        ).mappings().all()
+            .mappings()
+            .all()
+        )
     finally:
         session.close()
 
@@ -132,16 +144,18 @@ def annotate(args: argparse.Namespace) -> int:
             continue
         seen.add(crop_file)
         prior = existing.get(crop_file, {})
-        out_rows.append({
-            "crop_file": crop_file,
-            "camera_ref": row["camera_ref"],
-            "observed_at_utc": row["observed_at_utc"].isoformat(),
-            "pipeline_read": row["plate_normalised"],
-            "pipeline_confidence": f"{float(row['confidence'] or 0):.4f}",
-            "corrections_applied": str(len(row["corrections"] or [])),
-            "true_plate": prior.get("true_plate", ""),
-            "notes": prior.get("notes", ""),
-        })
+        out_rows.append(
+            {
+                "crop_file": crop_file,
+                "camera_ref": row["camera_ref"],
+                "observed_at_utc": row["observed_at_utc"].isoformat(),
+                "pipeline_read": row["plate_normalised"],
+                "pipeline_confidence": f"{float(row['confidence'] or 0):.4f}",
+                "corrections_applied": str(len(row["corrections"] or [])),
+                "true_plate": prior.get("true_plate", ""),
+                "notes": prior.get("notes", ""),
+            }
+        )
 
     ANNOTATION_CSV.parent.mkdir(parents=True, exist_ok=True)
     with ANNOTATION_CSV.open("w", encoding="utf-8", newline="") as fh:
@@ -279,8 +293,10 @@ def score(args: argparse.Namespace) -> int:
     if wrong:
         print("\n  worst errors:")
         for e in sorted(payload["errors"], key=lambda x: -x["edit_distance"])[:6]:
-            print(f"    read {e['pipeline_read']:<12} truth {e['true_plate']:<12} "
-                  f"distance {e['edit_distance']}  conf {e['confidence']:.2f}")
+            print(
+                f"    read {e['pipeline_read']:<12} truth {e['true_plate']:<12} "
+                f"distance {e['edit_distance']}  conf {e['confidence']:.2f}"
+            )
     print("=" * 62 + "\n")
 
     if args.emit_evidence:
@@ -293,17 +309,20 @@ def score(args: argparse.Namespace) -> int:
 def _markdown(p: dict) -> str:
     ce = p["correction_efficacy"]
     lines = [
-        "# ANPR accuracy against human annotation", "",
+        "# ANPR accuracy against human annotation",
+        "",
         "Measured, not estimated. A human read every evidence crop and recorded the",
         "true registration; these figures compare the pipeline against that record.",
         "",
-        "| metric | value |", "|---|---:|",
+        "| metric | value |",
+        "|---|---:|",
         f"| Precision | **{p['precision']:.1%}** |",
         f"| Recall | **{p['recall']:.1%}** |",
         f"| F1 | {p['f1']:.3f} |",
         f"| Character error rate | {p['character_error_rate']:.1%} |",
         "",
-        "| population | count |", "|---|---:|",
+        "| population | count |",
+        "|---|---:|",
         f"| Crops annotated | {p['crops_annotated']} of {p['crops_total']} |",
         f"| Legible to a human | {p['crops_readable_by_human']} |",
         f"| Illegible to a human | {p['crops_unreadable_by_human']} |",
@@ -311,18 +330,25 @@ def _markdown(p: dict) -> str:
         f"| Reads wrong | {p['reads_wrong']} |",
         f"| Asserted on an illegible crop | {p['reads_asserted_on_unreadable']} |",
         "",
-        "## Did grammar correction help?", "",
+        "## Did grammar correction help?",
+        "",
         f"- Corrected reads: {ce['corrected_reads']}, "
         f"accuracy {ce['corrected_accuracy'] if ce['corrected_accuracy'] is not None else 'n/a'}",
         f"- Uncorrected reads: {ce['uncorrected_reads']}, "
         f"accuracy {ce['uncorrected_accuracy'] if ce['uncorrected_accuracy'] is not None else 'n/a'}",
         "",
-        "## Method", "", p["method"], "",
+        "## Method",
+        "",
+        p["method"],
+        "",
     ]
     if p["errors"]:
-        lines += ["## Every error", "",
-                  "| crop | read | truth | distance | corrections | confidence |",
-                  "|---|---|---|---:|---:|---:|"]
+        lines += [
+            "## Every error",
+            "",
+            "| crop | read | truth | distance | corrections | confidence |",
+            "|---|---|---|---:|---:|---:|",
+        ]
         for e in sorted(p["errors"], key=lambda x: -x["edit_distance"]):
             lines.append(
                 f"| `{e['crop_file']}` | `{e['pipeline_read']}` | `{e['true_plate']}` | "

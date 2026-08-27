@@ -79,8 +79,9 @@ def test_discontinuity_callback_receives_reason_and_stats():
 
 
 def test_frame_carries_pts_and_session_scope():
-    f = Frame(image=np.zeros((2, 2, 3), np.uint8), pts_ms=80.0, seq=1,
-              session_id="abc", wall_recv_ts=1.0)
+    f = Frame(
+        image=np.zeros((2, 2, 3), np.uint8), pts_ms=80.0, seq=1, session_id="abc", wall_recv_ts=1.0
+    )
     # wall_recv_ts exists for latency telemetry only; nothing may correlate on it.
     assert f.pts_ms == 80.0 and f.session_id == "abc"
 

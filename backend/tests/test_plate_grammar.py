@@ -24,8 +24,8 @@ from services.analytics.plate_grammar import (
         ("gj 01 ab 1234", "GJ01AB1234"),
         ("GJ-01-AB-1234", "GJ01AB1234"),
         ("  MH12DE1433  ", "MH12DE1433"),
-        ("GJ1AB1234", "GJ1AB1234"),      # single-digit RTO
-        ("GJ01A1234", "GJ01A1234"),      # single-letter series
+        ("GJ1AB1234", "GJ1AB1234"),  # single-digit RTO
+        ("GJ01A1234", "GJ01A1234"),  # single-letter series
     ],
 )
 def test_clean_plates_pass_through_uncorrected(raw, expected):
@@ -171,7 +171,7 @@ def test_fusion_recovers_from_a_dropped_leading_character():
     for _ in range(6):
         acc.add("GJ01AB1234", [0.9] * 10)
     for _ in range(2):
-        acc.add("J01AB1234", [0.6] * 9)   # leading 'G' lost
+        acc.add("J01AB1234", [0.6] * 9)  # leading 'G' lost
 
     fused = acc.fused()
     assert fused is not None

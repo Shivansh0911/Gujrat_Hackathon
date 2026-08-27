@@ -105,7 +105,7 @@ def decode_token(token: str, settings: ApiSettings) -> dict[str, Any]:
         return jwt.decode(
             token,
             settings.jwt_secret,
-            algorithms=[ALGORITHM],   # allowlist, never the token's own claim
+            algorithms=[ALGORITHM],  # allowlist, never the token's own claim
             issuer=settings.jwt_issuer,
             options={"require_exp": True, "require_sub": True, "verify_aud": False},
         )
@@ -182,9 +182,7 @@ def get_camera_or_404(session: Session, actor: Actor, camera_id: uuid.UUID) -> C
     Returns 404 -- not 403 -- for a camera outside scope. A 403 would confirm that
     the id exists, letting a caller enumerate the estate they cannot see.
     """
-    camera = session.execute(
-        camera_scope(actor).where(Camera.id == camera_id)
-    ).scalar_one_or_none()
+    camera = session.execute(camera_scope(actor).where(Camera.id == camera_id)).scalar_one_or_none()
     if camera is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="camera not found")
     return camera

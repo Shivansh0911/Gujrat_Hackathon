@@ -69,7 +69,7 @@ class CameraGap(BaseModel):
     name: str
     location_text: str
     district: str | None
-    kind: str          # no_coordinate | low_confidence | degraded | unreachable
+    kind: str  # no_coordinate | low_confidence | degraded | unreachable
     detail: str
     confidence_radius_m: float | None
     lat: float | None = None
@@ -101,20 +101,56 @@ class GapAnalysis(BaseModel):
 # The catalogue carries no district field, so district is parsed from the same
 # free-text location string the geocoder used.
 _DISTRICTS = [
-    "ahmedabad", "amreli", "anand", "banaskantha", "bharuch", "bhavnagar",
-    "dahod", "gandhinagar", "gir somnath", "jamnagar", "junagadh", "kutch",
-    "kheda", "mehsana", "morbi", "narmada", "navsari", "panchmahal", "patan",
-    "porbandar", "rajkot", "sabarkantha", "surat", "surendranagar", "tapi",
-    "vadodara", "valsad",
+    "ahmedabad",
+    "amreli",
+    "anand",
+    "banaskantha",
+    "bharuch",
+    "bhavnagar",
+    "dahod",
+    "gandhinagar",
+    "gir somnath",
+    "jamnagar",
+    "junagadh",
+    "kutch",
+    "kheda",
+    "mehsana",
+    "morbi",
+    "narmada",
+    "navsari",
+    "panchmahal",
+    "patan",
+    "porbandar",
+    "rajkot",
+    "sabarkantha",
+    "surat",
+    "surendranagar",
+    "tapi",
+    "vadodara",
+    "valsad",
 ]
 _HINTS = {
-    "somnath": "gir somnath", "gandevi": "navsari", "khaparia": "navsari",
-    "bilimora": "navsari", "dehgam": "gandhinagar", "adalaj": "gandhinagar",
-    "gandhidham": "kutch", "mervada": "banaskantha", "dolatpara": "junagadh",
-    "timbavadi": "junagadh", "majewadi": "junagadh", "paldi": "ahmedabad",
-    "visat": "ahmedabad", "janpath": "ahmedabad", "chiman": "ahmedabad",
-    "mohanpura": "ahmedabad", "vidhyalaya": "ahmedabad", "suvidha": "ahmedabad",
-    "tankal": "navsari", "dethali": "patan", "kheram": "navsari",
+    "somnath": "gir somnath",
+    "gandevi": "navsari",
+    "khaparia": "navsari",
+    "bilimora": "navsari",
+    "dehgam": "gandhinagar",
+    "adalaj": "gandhinagar",
+    "gandhidham": "kutch",
+    "mervada": "banaskantha",
+    "dolatpara": "junagadh",
+    "timbavadi": "junagadh",
+    "majewadi": "junagadh",
+    "paldi": "ahmedabad",
+    "visat": "ahmedabad",
+    "janpath": "ahmedabad",
+    "chiman": "ahmedabad",
+    "mohanpura": "ahmedabad",
+    "vidhyalaya": "ahmedabad",
+    "suvidha": "ahmedabad",
+    "tankal": "navsari",
+    "dethali": "patan",
+    "kheram": "navsari",
 }
 
 
@@ -141,9 +177,10 @@ def gap_analysis(
     journey_window_days: int = Query(default=7, ge=1, le=90),
 ) -> GapAnalysis:
     """Where this network cannot see, and why."""
-    rows = session.execute(
-        text(
-            """
+    rows = (
+        session.execute(
+            text(
+                """
             SELECT c.id, c.camera_ref, c.name, c.location_text, c.status,
                    c.geom_source, c.confidence_radius_m,
                    CASE WHEN c.geom IS NULL THEN NULL ELSE ST_Y(c.geom::geometry) END AS lat,
@@ -152,9 +189,12 @@ def gap_analysis(
             WHERE c.status <> :decommissioned
             ORDER BY c.camera_ref
             """
-        ),
-        {"decommissioned": CameraStatus.DECOMMISSIONED.value},
-    ).mappings().all()
+            ),
+            {"decommissioned": CameraStatus.DECOMMISSIONED.value},
+        )
+        .mappings()
+        .all()
+    )
 
     by_district: dict[str, list[dict[str, Any]]] = {}
     camera_gaps: list[CameraGap] = []
@@ -164,50 +204,65 @@ def gap_analysis(
         by_district.setdefault(district, []).append(dict(row))
 
         if row["geom_source"] == GeomSource.UNSET.value:
-            camera_gaps.append(CameraGap(
-                camera_id=str(row["id"]), camera_ref=row["camera_ref"], name=row["name"],
-                location_text=row["location_text"] or "", district=district,
-                kind="no_coordinate",
-                detail=(
-                    "No coordinate on record. This camera cannot contribute to route "
-                    "reconstruction or any spatial query, and is excluded from them "
-                    "rather than silently ignored. A pin drop resolves it in seconds."
-                ),
-                confidence_radius_m=None,
-            ))
+            camera_gaps.append(
+                CameraGap(
+                    camera_id=str(row["id"]),
+                    camera_ref=row["camera_ref"],
+                    name=row["name"],
+                    location_text=row["location_text"] or "",
+                    district=district,
+                    kind="no_coordinate",
+                    detail=(
+                        "No coordinate on record. This camera cannot contribute to route "
+                        "reconstruction or any spatial query, and is excluded from them "
+                        "rather than silently ignored. A pin drop resolves it in seconds."
+                    ),
+                    confidence_radius_m=None,
+                )
+            )
         elif (row["confidence_radius_m"] or 0) > LOW_CONFIDENCE_RADIUS_M:
             radius = float(row["confidence_radius_m"])
-            camera_gaps.append(CameraGap(
-                camera_id=str(row["id"]), camera_ref=row["camera_ref"], name=row["name"],
-                location_text=row["location_text"] or "", district=district,
-                kind="low_confidence",
-                detail=(
-                    f"Positioned to within {radius / 1000:.1f} km ({row['geom_source']}). "
-                    "Route plausibility widens its tolerance by this much wherever this "
-                    "camera appears, weakening every journey it contributes to. A survey "
-                    "fixes it."
-                ),
-                confidence_radius_m=radius,
-                lat=row["lat"], lon=row["lon"],
-            ))
+            camera_gaps.append(
+                CameraGap(
+                    camera_id=str(row["id"]),
+                    camera_ref=row["camera_ref"],
+                    name=row["name"],
+                    location_text=row["location_text"] or "",
+                    district=district,
+                    kind="low_confidence",
+                    detail=(
+                        f"Positioned to within {radius / 1000:.1f} km ({row['geom_source']}). "
+                        "Route plausibility widens its tolerance by this much wherever this "
+                        "camera appears, weakening every journey it contributes to. A survey "
+                        "fixes it."
+                    ),
+                    confidence_radius_m=radius,
+                    lat=row["lat"],
+                    lon=row["lon"],
+                )
+            )
 
         if row["status"] in (CameraStatus.DEGRADED.value, CameraStatus.UNREACHABLE.value):
-            camera_gaps.append(CameraGap(
-                camera_id=str(row["id"]), camera_ref=row["camera_ref"], name=row["name"],
-                location_text=row["location_text"] or "", district=district,
-                kind=row["status"].lower(),
-                detail=(
-                    "Deployed and inventoried but not contributing evidence. A "
-                    "maintenance finding, not a coverage one: the capital cost is "
-                    "already spent."
-                ),
-                confidence_radius_m=row["confidence_radius_m"],
-                lat=row["lat"], lon=row["lon"],
-            ))
+            camera_gaps.append(
+                CameraGap(
+                    camera_id=str(row["id"]),
+                    camera_ref=row["camera_ref"],
+                    name=row["name"],
+                    location_text=row["location_text"] or "",
+                    district=district,
+                    kind=row["status"].lower(),
+                    detail=(
+                        "Deployed and inventoried but not contributing evidence. A "
+                        "maintenance finding, not a coverage one: the capital cost is "
+                        "already spent."
+                    ),
+                    confidence_radius_m=row["confidence_radius_m"],
+                    lat=row["lat"],
+                    lon=row["lon"],
+                )
+            )
 
-    districts = [
-        _summarise_district(name, cams) for name, cams in sorted(by_district.items())
-    ]
+    districts = [_summarise_district(name, cams) for name, cams in sorted(by_district.items())]
 
     # Journey-derived gaps come from the audit ledger, which records every plate
     # query, so this reflects real investigative demand rather than a synthetic sweep.
@@ -317,9 +372,10 @@ def _journey_derived_gaps(session: Session, since: datetime) -> list[JourneyGap]
     watching somewhere the traffic is not — and either way it is worth an operator's
     attention before more cameras are bought.
     """
-    rows = session.execute(
-        text(
-            """
+    rows = (
+        session.execute(
+            text(
+                """
             WITH queries AS (
                 SELECT (detail->>'window_start')::timestamptz AS w_start,
                        (detail->>'window_end')::timestamptz   AS w_end
@@ -348,19 +404,28 @@ def _journey_derived_gaps(session: Session, since: datetime) -> list[JourneyGap]
             ORDER BY count(*) DESC, p.camera_ref
             LIMIT 40
             """
-        ),
-        {"since": since},
-    ).mappings().all()
+            ),
+            {"since": since},
+        )
+        .mappings()
+        .all()
+    )
 
     out: list[JourneyGap] = []
     for r in rows:
         n = int(r["times_implied"])
-        out.append(JourneyGap(
-            camera_id=str(r["id"]), camera_ref=r["camera_ref"], name=r["name"],
-            lat=float(r["lat"]), lon=float(r["lon"]), times_implied=n,
-            detail=(
-                f"In scope for {n} recent plate quer{'y' if n == 1 else 'ies'} and "
-                "recorded nothing in any of those windows."
-            ),
-        ))
+        out.append(
+            JourneyGap(
+                camera_id=str(r["id"]),
+                camera_ref=r["camera_ref"],
+                name=r["name"],
+                lat=float(r["lat"]),
+                lon=float(r["lon"]),
+                times_implied=n,
+                detail=(
+                    f"In scope for {n} recent plate quer{'y' if n == 1 else 'ies'} and "
+                    "recorded nothing in any of those windows."
+                ),
+            )
+        )
     return out

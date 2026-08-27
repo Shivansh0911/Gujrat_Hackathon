@@ -86,12 +86,15 @@ def main() -> int:
 
     # Declared-versus-measured is the §2.2 claim; count only cameras where both exist.
     comparable = [
-        r for r in ok
+        r
+        for r in ok
         if r.get("declared_fps") not in (None, 0) and r.get("measured_fps") not in (None, 0)
     ]
     diverged = [
-        r for r in comparable
-        if abs(float(r["measured_fps"]) - float(r["declared_fps"])) / float(r["declared_fps"]) > 0.05
+        r
+        for r in comparable
+        if abs(float(r["measured_fps"]) - float(r["declared_fps"])) / float(r["declared_fps"])
+        > 0.05
     ]
     undeclared = [r for r in ok if r.get("declared_fps") in (None, 0)]
 
@@ -103,13 +106,17 @@ def main() -> int:
     A = lines.append
     A("# Government feed — ANPR output report")
     A("")
-    A(f"Merged from **{len(runs)} ingest pass(es)** against `{runs[0]['gateway_host']}`, "
-      f"{runs[0]['started_utc'][:19]}Z to {runs[-1]['finished_utc'][:19]}Z.")
+    A(
+        f"Merged from **{len(runs)} ingest pass(es)** against `{runs[0]['gateway_host']}`, "
+        f"{runs[0]['started_utc'][:19]}Z to {runs[-1]['finished_utc'][:19]}Z."
+    )
     A("")
-    A("Produced by `backend/scripts/ingest_gateway.py`, which runs the same "
-      "`AnprPipeline` as the own-feed report against `GatewaySource` instead of a "
-      "file. Timing is taken from stream PTS; no declared frame rate is read anywhere "
-      "in the path.")
+    A(
+        "Produced by `backend/scripts/ingest_gateway.py`, which runs the same "
+        "`AnprPipeline` as the own-feed report against `GatewaySource` instead of a "
+        "file. Timing is taken from stream PTS; no declared frame rate is read anywhere "
+        "in the path."
+    )
     A("")
     A("## Estate coverage")
     A("")
@@ -146,59 +153,81 @@ def main() -> int:
         for r in results:
             for rec in r["records"]:
                 if rec["valid"]:
-                    A(f"| `{rec['plate']}` | {r['camera_ref']} | {rec['confidence']:.2f} "
-                      f"| {rec['frames_fused']} | {rec['observed_at_utc'][:19]} |")
+                    A(
+                        f"| `{rec['plate']}` | {r['camera_ref']} | {rec['confidence']:.2f} "
+                        f"| {rec['frames_fused']} | {rec['observed_at_utc'][:19]} |"
+                    )
         A("")
     A("### The finding that matters")
     A("")
-    A(f"{frames} frames across {len(ok)} live cameras yielded {boxes} plate regions and "
-      f"**{len(valid)} grammar-valid registrations**. That is not a pipeline fault: the "
-      "recogniser reads what is legible, and at the resolution and framing these "
-      "cameras publish, very little is. The evidence crops are committed, and the "
-      "unreadable ones are unreadable to a human reviewer too.")
+    A(
+        f"{frames} frames across {len(ok)} live cameras yielded {boxes} plate regions and "
+        f"**{len(valid)} grammar-valid registrations**. That is not a pipeline fault: the "
+        "recogniser reads what is legible, and at the resolution and framing these "
+        "cameras publish, very little is. The evidence crops are committed, and the "
+        "unreadable ones are unreadable to a human reviewer too."
+    )
     A("")
-    A("This is the same resolution effect measured on the own-feed clip, where the "
-      "identical pipeline reads 8 plates at 2560x1440, 2 at 1280x720 and none at "
-      "704x396. It is the empirical basis for the amended scalability claim in "
-      "`docs/HLD_RECONCILIATION.md`: sub-stream ingest buys throughput at an operating "
-      "point where nothing is read, so the honest number is the full-resolution one.")
+    A(
+        "This is the same resolution effect measured on the own-feed clip, where the "
+        "identical pipeline reads 8 plates at 2560x1440, 2 at 1280x720 and none at "
+        "704x396. It is the empirical basis for the amended scalability claim in "
+        "`docs/HLD_RECONCILIATION.md`: sub-stream ingest buys throughput at an operating "
+        "point where nothing is read, so the honest number is the full-resolution one."
+    )
     A("")
-    A("A second, subtler class of error appears here. Reads such as those on the "
-      "unreadable crops are rejected by the Indian plate grammar and never become "
-      "registrations, which is the layered design working. But a read that is wrong "
-      "*and* grammatical passes every check the system has. Precision against "
-      "annotated ground truth is the only thing that measures that class; see "
-      "`reports/evidence/anpr-accuracy-*`.")
+    A(
+        "A second, subtler class of error appears here. Reads such as those on the "
+        "unreadable crops are rejected by the Indian plate grammar and never become "
+        "registrations, which is the layered design working. But a read that is wrong "
+        "*and* grammatical passes every check the system has. Precision against "
+        "annotated ground truth is the only thing that measures that class; see "
+        "`reports/evidence/anpr-accuracy-*`."
+    )
     A("")
     A("## Declared versus measured frame rate")
     A("")
-    A(f"The organiser's §2.2 warns not to trust the reported frame rate. Of {len(comparable)} "
-      f"cameras that both declare a rate and delivered frames, **{len(diverged)} diverge "
-      f"by more than 5%**. A further {len(undeclared)} delivered frames while declaring "
-      "no rate at all.")
+    A(
+        f"The organiser's §2.2 warns not to trust the reported frame rate. Of {len(comparable)} "
+        f"cameras that both declare a rate and delivered frames, **{len(diverged)} diverge "
+        f"by more than 5%**. A further {len(undeclared)} delivered frames while declaring "
+        "no rate at all."
+    )
     A("")
     A("| Camera | Declared | Measured | Drift |")
     A("|---|---:|---:|---:|")
-    for r in sorted(comparable, key=lambda x: -abs(
-            (float(x["measured_fps"]) - float(x["declared_fps"])) / float(x["declared_fps"]))):
+    for r in sorted(
+        comparable,
+        key=lambda x: -abs(
+            (float(x["measured_fps"]) - float(x["declared_fps"])) / float(x["declared_fps"])
+        ),
+    ):
         d, m = float(r["declared_fps"]), float(r["measured_fps"])
         A(f"| {r['camera_ref']} | {d:.2f} | {m:.2f} | {(m - d) / d * 100:+.1f}% |")
     A("")
     A("## Provenance and caveats")
     A("")
-    A(f"- Merged from {len(runs)} pass(es); {len(set(superseded))} camera(s) were "
-      "re-run and the later result supersedes the earlier. Every attempt is retained "
-      "in the source JSON.")
+    A(
+        f"- Merged from {len(runs)} pass(es); {len(set(superseded))} camera(s) were "
+        "re-run and the later result supersedes the earlier. Every attempt is retained "
+        "in the source JSON."
+    )
     if suspect:
-        A(f"- **{len(suspect)} result(s) carry a suspect wall-clock time** "
-          f"({', '.join(r['camera_ref'] for r in suspect)}): elapsed time exceeded the "
-          "per-camera budget by more than 2x because the host suspended mid-run. "
-          "Frame counts and PTS-derived rates for these are unaffected; only their "
-          "elapsed time is meaningless, and it is excluded from every figure above.")
-    A("- Cameras returning HTTP 500 on their playlist are a gateway-side fault, "
-      "reported in `docs/SUPPORT_QUERY.md`. Cameras that time out may be either.")
-    A("- Every detection listed is genuine inference on a live government feed, with "
-      "the evidence crop written to `data/evidence/crops/`.")
+        A(
+            f"- **{len(suspect)} result(s) carry a suspect wall-clock time** "
+            f"({', '.join(r['camera_ref'] for r in suspect)}): elapsed time exceeded the "
+            "per-camera budget by more than 2x because the host suspended mid-run. "
+            "Frame counts and PTS-derived rates for these are unaffected; only their "
+            "elapsed time is meaningless, and it is excluded from every figure above."
+        )
+    A(
+        "- Cameras returning HTTP 500 on their playlist are a gateway-side fault, "
+        "reported in `docs/SUPPORT_QUERY.md`. Cameras that time out may be either."
+    )
+    A(
+        "- Every detection listed is genuine inference on a live government feed, with "
+        "the evidence crop written to `data/evidence/crops/`."
+    )
     A("")
     A("Source records: " + ", ".join(f"`{p.name}`" for p in paths))
     A("")

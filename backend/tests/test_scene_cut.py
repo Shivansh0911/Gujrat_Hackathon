@@ -70,7 +70,7 @@ def test_high_histogram_correlation_does_not_mask_a_real_cut():
     cut = det.update(b)
 
     assert det.last_corr is not None and det.last_corr > 0.55  # histogram says "same"
-    assert det.last_mad is not None and det.last_mad > 50.0    # pixels say "different"
+    assert det.last_mad is not None and det.last_mad > 50.0  # pixels say "different"
     assert cut is True
 
 

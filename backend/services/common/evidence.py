@@ -66,7 +66,9 @@ def timestamp() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H-%M-%SZ")
 
 
-def write(kind: str, payload: dict[str, Any], markdown: str, ts: str | None = None) -> tuple[Path, Path]:
+def write(
+    kind: str, payload: dict[str, Any], markdown: str, ts: str | None = None
+) -> tuple[Path, Path]:
     """Write `<kind>-<utc>.json` and `<kind>-<utc>.md`. Returns both paths."""
     ts = ts or timestamp()
     EVIDENCE_DIR.mkdir(parents=True, exist_ok=True)

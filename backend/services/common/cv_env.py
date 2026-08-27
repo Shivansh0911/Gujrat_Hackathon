@@ -23,9 +23,7 @@ import os
 # cv2, and that race is exactly the bug this module exists to prevent.
 RTSP_TRANSPORT: str = os.environ.get("SETU_RTSP_TRANSPORT", "tcp").strip().lower()
 if RTSP_TRANSPORT not in ("tcp", "udp"):
-    raise ValueError(
-        f"SETU_RTSP_TRANSPORT must be 'tcp' or 'udp', got {RTSP_TRANSPORT!r}"
-    )
+    raise ValueError(f"SETU_RTSP_TRANSPORT must be 'tcp' or 'udp', got {RTSP_TRANSPORT!r}")
 
 _FFMPEG_LOGLEVEL: str = os.environ.get("SETU_FFMPEG_LOGLEVEL", "16")
 

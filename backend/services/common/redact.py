@@ -42,9 +42,7 @@ def redact(text: str) -> str:
     """Return `text` with credentials and upstream stream URLs masked."""
     out = _PATTERNS[0].sub(lambda m: f"{m.group('scheme')}{_REDACTED}@", text)
     out = _PATTERNS[1].sub(_REDACTED, out)
-    out = _PATTERNS[2].sub(
-        lambda m: f"{m.group('key')}{m.group('sep')}{_REDACTED}", out
-    )
+    out = _PATTERNS[2].sub(lambda m: f"{m.group('key')}{m.group('sep')}{_REDACTED}", out)
     return out
 
 

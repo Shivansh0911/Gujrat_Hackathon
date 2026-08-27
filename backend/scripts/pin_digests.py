@@ -58,9 +58,11 @@ def parse_images(text: str) -> list[tuple[str, str | None]]:
 def _via_buildx(ref: str) -> str | None:
     """Resolve through `buildx imagetools`, which needs no experimental flag."""
     proc = subprocess.run(
-        ["docker", "buildx", "imagetools", "inspect", ref,
-         "--format", "{{.Manifest.Digest}}"],
-        capture_output=True, text=True, check=False, timeout=120,
+        ["docker", "buildx", "imagetools", "inspect", ref, "--format", "{{.Manifest.Digest}}"],
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=120,
     )
     if proc.returncode != 0:
         return None
@@ -72,7 +74,10 @@ def _via_manifest(ref: str) -> str | None:
     """Resolve through `docker manifest inspect`, which may need experimental mode."""
     proc = subprocess.run(
         ["docker", "manifest", "inspect", "--verbose", ref],
-        capture_output=True, text=True, check=False, timeout=120,
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=120,
     )
     if proc.returncode != 0:
         return None
@@ -174,8 +179,7 @@ def main() -> int:
             return 1
         print("")
         print(
-            f"PASS: all {total} images across {len(present)} "
-            "compose file(s) are digest-pinned."
+            f"PASS: all {total} images across {len(present)} " "compose file(s) are digest-pinned."
         )
         return 0
 

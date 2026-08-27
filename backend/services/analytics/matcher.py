@@ -60,7 +60,7 @@ MIN_MATCH_SCORE = 0.5
 @dataclass
 class MatchResult:
     entry: WatchlistEntry
-    match_type: str          # 'exact' | 'fuzzy_1' | 'fuzzy_2'
+    match_type: str  # 'exact' | 'fuzzy_1' | 'fuzzy_2'
     score: float
     corroboration: dict[str, Any] = field(default_factory=dict)
 
@@ -99,7 +99,9 @@ def _corroborate(entry: WatchlistEntry, detection: Detection) -> dict[str, Any]:
     not the same as the colour matching, and collapsing the two would inflate
     confidence in exactly the cases where we know least.
     """
-    attributes = (detection.vehicle_bbox or {}).get("attributes", {}) if detection.vehicle_bbox else {}
+    attributes = (
+        (detection.vehicle_bbox or {}).get("attributes", {}) if detection.vehicle_bbox else {}
+    )
     out: dict[str, Any] = {}
     for field_name in ("colour", "make", "model"):
         expected = getattr(entry, field_name, None)

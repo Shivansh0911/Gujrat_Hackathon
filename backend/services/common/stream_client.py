@@ -201,9 +201,7 @@ class StreamSession:
         self.stats.declared_fps = float(declared) if declared and declared > 0 else None
         fourcc = int(cap.get(cv2.CAP_PROP_FOURCC))
         self.stats.fourcc = (
-            "".join(chr((fourcc >> (8 * i)) & 0xFF) for i in range(4)).strip()
-            if fourcc
-            else None
+            "".join(chr((fourcc >> (8 * i)) & 0xFF) for i in range(4)).strip() if fourcc else None
         )
         return True
 
@@ -220,9 +218,7 @@ class StreamSession:
         if delta < 0 or delta > PTS_DISCONTINUITY_MS:
             return True
 
-        self.stats.max_interframe_gap_ms = max(
-            self.stats.max_interframe_gap_ms, delta
-        )
+        self.stats.max_interframe_gap_ms = max(self.stats.max_interframe_gap_ms, delta)
         self._pts_history.append(pts_ms)
         if len(self._pts_history) >= 2:
             span = self._pts_history[-1] - self._pts_history[0]

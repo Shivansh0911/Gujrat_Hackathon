@@ -117,9 +117,7 @@ class WatchlistCreate(BaseModel):
 def _project(session: Session, alert: Alert) -> AlertOut:
     camera = session.get(Camera, alert.camera_id)
     entry = (
-        session.get(WatchlistEntry, alert.watchlist_entry_id)
-        if alert.watchlist_entry_id
-        else None
+        session.get(WatchlistEntry, alert.watchlist_entry_id) if alert.watchlist_entry_id else None
     )
 
     lat = lon = None
@@ -189,9 +187,7 @@ def list_alerts(
     """Alerts within the caller's camera scope, highest priority first."""
     # Scope through the camera accessor rather than querying alerts directly: an
     # alert is only visible if its camera is.
-    visible = select(Camera.id).where(
-        Camera.id.in_(select(camera_scope(actor).subquery().c.id))
-    )
+    visible = select(Camera.id).where(Camera.id.in_(select(camera_scope(actor).subquery().c.id)))
     stmt = select(Alert).where(Alert.camera_id.in_(visible))
 
     if state:
@@ -203,9 +199,11 @@ def list_alerts(
     if since is not None:
         stmt = stmt.where(Alert.raised_at >= since)
 
-    alerts = session.execute(
-        stmt.order_by(Alert.priority.desc(), Alert.raised_at.desc()).limit(limit)
-    ).scalars().all()
+    alerts = (
+        session.execute(stmt.order_by(Alert.priority.desc(), Alert.raised_at.desc()).limit(limit))
+        .scalars()
+        .all()
+    )
     return [_project(session, a) for a in alerts]
 
 
@@ -223,9 +221,7 @@ def _get_alert_in_scope(session: Session, actor: Actor, alert_id: uuid.UUID) -> 
 
 
 @router.post("/alerts/{alert_id}/ack", response_model=AlertOut)
-def acknowledge_alert(
-    alert_id: uuid.UUID, session: SessionDep, actor: CurrentActor
-) -> AlertOut:
+def acknowledge_alert(alert_id: uuid.UUID, session: SessionDep, actor: CurrentActor) -> AlertOut:
     alert = _get_alert_in_scope(session, actor, alert_id)
     if alert.state == AlertState.RESOLVED.value:
         raise HTTPException(status_code=409, detail="alert is already resolved")
@@ -235,8 +231,12 @@ def acknowledge_alert(
     alert.acknowledged_at = datetime.now(timezone.utc)
 
     audit.append(
-        session, action="ACK_ALERT", subject_type="alert", subject_id=str(alert.id),
-        actor_id=actor.subject, actor_role=actor.role,
+        session,
+        action="ACK_ALERT",
+        subject_type="alert",
+        subject_id=str(alert.id),
+        actor_id=actor.subject,
+        actor_role=actor.role,
         detail={"matched_value": alert.matched_value, "match_type": alert.match_type},
     )
     session.flush()
@@ -255,9 +255,7 @@ def resolve_alert(
     """
     valid = {d.value for d in AlertDisposition}
     if body.disposition not in valid:
-        raise HTTPException(
-            status_code=422, detail=f"disposition must be one of {sorted(valid)}"
-        )
+        raise HTTPException(status_code=422, detail=f"disposition must be one of {sorted(valid)}")
 
     alert = _get_alert_in_scope(session, actor, alert_id)
     alert.state = AlertState.RESOLVED.value
@@ -267,8 +265,12 @@ def resolve_alert(
         alert.acknowledged_at = datetime.now(timezone.utc)
 
     audit.append(
-        session, action="RESOLVE_ALERT", subject_type="alert", subject_id=str(alert.id),
-        actor_id=actor.subject, actor_role=actor.role,
+        session,
+        action="RESOLVE_ALERT",
+        subject_type="alert",
+        subject_id=str(alert.id),
+        actor_id=actor.subject,
+        actor_role=actor.role,
         detail={
             "matched_value": alert.matched_value,
             "disposition": body.disposition,
@@ -322,8 +324,12 @@ def create_watchlist_entry(
     session.flush()
 
     audit.append(
-        session, action="WATCHLIST_ENTRY_ADDED", subject_type="watchlist_entry",
-        subject_id=str(entry.id), actor_id=actor.subject, actor_role=actor.role,
+        session,
+        action="WATCHLIST_ENTRY_ADDED",
+        subject_type="watchlist_entry",
+        subject_id=str(entry.id),
+        actor_id=actor.subject,
+        actor_role=actor.role,
         detail={
             "plate": entry.plate_normalised,
             "authority": entry.authority,

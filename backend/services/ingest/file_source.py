@@ -227,7 +227,9 @@ class FileSource:
             self._scene.reset()
         log.info(
             "SCENE_DISCONTINUITY camera=%s reason=%s session=%s",
-            self.camera_ref, reason, self._session_id,
+            self.camera_ref,
+            reason,
+            self._session_id,
         )
 
     # ------------------------------------------------------------------- clock

@@ -19,13 +19,18 @@ MASTER = (
 
 def _cam(**kw) -> CameraDescriptor:
     base = dict(
-        external_id="6", name="Camera 6", location_text="06 Timbavadi",
+        external_id="6",
+        name="Camera 6",
+        location_text="06 Timbavadi",
         live=True,
         rtsp_url="rtsp://live.example.test:8554/stream/6",
         whep_url=None,
         hls_url="https://live.example.test/live/stream/6/index.m3u8",
-        declared_codec="hevc", declared_width=1920, declared_height=1080,
-        declared_fps=25.0, declared_bitrate_kbps=1923,
+        declared_codec="hevc",
+        declared_width=1920,
+        declared_height=1080,
+        declared_fps=25.0,
+        declared_bitrate_kbps=1923,
     )
     base.update(kw)
     return CameraDescriptor(**base)
@@ -68,7 +73,9 @@ def test_media_playlist_served_directly_is_returned_as_is(monkeypatch):
 
 
 def test_non_playlist_response_raises(monkeypatch):
-    monkeypatch.setattr(T.requests, "get", lambda url, timeout=None: _Resp('{"detail":"Not Found"}'))
+    monkeypatch.setattr(
+        T.requests, "get", lambda url, timeout=None: _Resp('{"detail":"Not Found"}')
+    )
     with pytest.raises(T.StreamResolutionError):
         T.resolve_hls_variant("https://h/live/stream/6/index.m3u8")
 

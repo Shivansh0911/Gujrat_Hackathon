@@ -42,10 +42,19 @@ from services.common.paths import REPORTS_DIR  # noqa: E402
 log = logging.getLogger("report")
 
 COLUMNS = [
-    "observed_at_utc", "camera_ref", "camera_name", "location",
-    "plate", "grammar_valid", "corrections", "confidence",
-    "stream_pts_ms", "ingested_at_utc", "clock_confidence",
-    "source_type", "evidence_crop",
+    "observed_at_utc",
+    "camera_ref",
+    "camera_name",
+    "location",
+    "plate",
+    "grammar_valid",
+    "corrections",
+    "confidence",
+    "stream_pts_ms",
+    "ingested_at_utc",
+    "clock_confidence",
+    "source_type",
+    "evidence_crop",
 ]
 
 
@@ -93,21 +102,23 @@ def _to_csv(rows: list[dict]) -> str:
     writer = csv.DictWriter(buf, fieldnames=COLUMNS, lineterminator="\n")
     writer.writeheader()
     for r in rows:
-        writer.writerow({
-            "observed_at_utc": r["observed_at_utc"].isoformat(),
-            "camera_ref": r["camera_ref"],
-            "camera_name": r["camera_name"],
-            "location": r["location_text"] or "",
-            "plate": r["plate_normalised"],
-            "grammar_valid": "yes" if _grammar_valid(r["plate_normalised"]) else "no",
-            "corrections": len(r["corrections"] or []),
-            "confidence": f"{float(r['confidence'] or 0):.3f}",
-            "stream_pts_ms": f"{float(r['pts_ms'] or 0):.0f}",
-            "ingested_at_utc": r["ingested_at_utc"].isoformat() if r["ingested_at_utc"] else "",
-            "clock_confidence": f"{float(r['clock_confidence'] or 0):.2f}",
-            "source_type": r["source_type"],
-            "evidence_crop": Path(r["crop_path"]).name if r["crop_path"] else "",
-        })
+        writer.writerow(
+            {
+                "observed_at_utc": r["observed_at_utc"].isoformat(),
+                "camera_ref": r["camera_ref"],
+                "camera_name": r["camera_name"],
+                "location": r["location_text"] or "",
+                "plate": r["plate_normalised"],
+                "grammar_valid": "yes" if _grammar_valid(r["plate_normalised"]) else "no",
+                "corrections": len(r["corrections"] or []),
+                "confidence": f"{float(r['confidence'] or 0):.3f}",
+                "stream_pts_ms": f"{float(r['pts_ms'] or 0):.0f}",
+                "ingested_at_utc": r["ingested_at_utc"].isoformat() if r["ingested_at_utc"] else "",
+                "clock_confidence": f"{float(r['clock_confidence'] or 0):.2f}",
+                "source_type": r["source_type"],
+                "evidence_crop": Path(r["crop_path"]).name if r["crop_path"] else "",
+            }
+        )
     return buf.getvalue()
 
 
@@ -120,8 +131,12 @@ def _to_pdf(rows: list[dict], gateway_note: str) -> bytes:
 
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(
-        buffer, pagesize=landscape(A4),
-        leftMargin=12 * mm, rightMargin=12 * mm, topMargin=12 * mm, bottomMargin=12 * mm,
+        buffer,
+        pagesize=landscape(A4),
+        leftMargin=12 * mm,
+        rightMargin=12 * mm,
+        topMargin=12 * mm,
+        bottomMargin=12 * mm,
         title="SETU detected vehicles and number plates",
     )
     styles = getSampleStyleSheet()
@@ -150,39 +165,67 @@ def _to_pdf(rows: list[dict], gateway_note: str) -> bytes:
             "Rows whose text did not match plate grammar are included. A detection that "
             "could not be parsed is still evidence that a vehicle passed a camera at a "
             "time, and omitting those rows would make this report look cleaner and be "
-            "less true.", small,
+            "less true.",
+            small,
         ),
         Spacer(1, 8),
     ]
 
-    header = ["Observed (UTC)", "Camera", "Location", "Plate", "Valid",
-              "Corr", "Conf", "PTS ms", "Source"]
+    header = [
+        "Observed (UTC)",
+        "Camera",
+        "Location",
+        "Plate",
+        "Valid",
+        "Corr",
+        "Conf",
+        "PTS ms",
+        "Source",
+    ]
     data = [header]
     for r in rows:
-        data.append([
-            r["observed_at_utc"].strftime("%Y-%m-%d %H:%M:%S"),
-            r["camera_ref"],
-            (r["location_text"] or "")[:26],
-            r["plate_normalised"],
-            "yes" if _grammar_valid(r["plate_normalised"]) else "no",
-            str(len(r["corrections"] or [])),
-            f"{float(r['confidence'] or 0):.2f}",
-            f"{float(r['pts_ms'] or 0):.0f}",
-            r["source_type"],
-        ])
+        data.append(
+            [
+                r["observed_at_utc"].strftime("%Y-%m-%d %H:%M:%S"),
+                r["camera_ref"],
+                (r["location_text"] or "")[:26],
+                r["plate_normalised"],
+                "yes" if _grammar_valid(r["plate_normalised"]) else "no",
+                str(len(r["corrections"] or [])),
+                f"{float(r['confidence'] or 0):.2f}",
+                f"{float(r['pts_ms'] or 0):.0f}",
+                r["source_type"],
+            ]
+        )
 
-    table = Table(data, repeatRows=1, colWidths=[
-        34 * mm, 24 * mm, 48 * mm, 26 * mm, 12 * mm, 12 * mm, 14 * mm, 18 * mm, 20 * mm,
-    ])
-    table.setStyle(TableStyle([
-        ("FONTSIZE", (0, 0), (-1, -1), 7),
-        ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#DDDDDD")),
-        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#EEEEEE")),
-        ("FONTNAME", (3, 1), (3, -1), "Courier"),
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("TOPPADDING", (0, 0), (-1, -1), 2),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
-    ]))
+    table = Table(
+        data,
+        repeatRows=1,
+        colWidths=[
+            34 * mm,
+            24 * mm,
+            48 * mm,
+            26 * mm,
+            12 * mm,
+            12 * mm,
+            14 * mm,
+            18 * mm,
+            20 * mm,
+        ],
+    )
+    table.setStyle(
+        TableStyle(
+            [
+                ("FONTSIZE", (0, 0), (-1, -1), 7),
+                ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#DDDDDD")),
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#EEEEEE")),
+                ("FONTNAME", (3, 1), (3, -1), "Courier"),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("TOPPADDING", (0, 0), (-1, -1), 2),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+            ]
+        )
+    )
     story.append(table)
     doc.build(story)
     return buffer.getvalue()
@@ -267,9 +310,12 @@ def main() -> int:
             ],
         }
         md = [
-            "# Detected vehicles and number plates", "",
-            payload["gateway_note"], "",
-            "| metric | value |", "|---|---:|",
+            "# Detected vehicles and number plates",
+            "",
+            payload["gateway_note"],
+            "",
+            "| metric | value |",
+            "|---|---:|",
             f"| Detections | {len(rows)} |",
             f"| Cameras | {payload['cameras']} |",
             f"| Parse as Indian registrations | {len(valid)} |",
@@ -278,7 +324,8 @@ def main() -> int:
             "",
             "Full rows in the accompanying CSV and PDF. Unparsed reads are included: a",
             "detection that did not match plate grammar is still evidence a vehicle",
-            "passed a camera at a time.", "",
+            "passed a camera at a time.",
+            "",
         ]
         j, m = evidence.write("detection-report", payload, "\n".join(md) + "\n")
         print(f"evidence: {j.name}, {m.name}\n")

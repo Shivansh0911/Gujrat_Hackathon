@@ -160,8 +160,11 @@ class PlateTracker:
                 unmatched_tracks.discard(best_id)
             else:
                 track = PlateTrack(
-                    track_id=self._next_id, bbox=box,
-                    first_pts_ms=pts_ms, last_pts_ms=pts_ms, session_id=session_id,
+                    track_id=self._next_id,
+                    bbox=box,
+                    first_pts_ms=pts_ms,
+                    last_pts_ms=pts_ms,
+                    session_id=session_id,
                 )
                 self._tracks[self._next_id] = track
                 self._next_id += 1
@@ -188,13 +191,11 @@ class PlateTracker:
 
 
 class PlateDetector(Protocol):
-    def detect(self, image: np.ndarray) -> list[tuple[tuple[int, int, int, int], float]]:
-        ...
+    def detect(self, image: np.ndarray) -> list[tuple[tuple[int, int, int, int], float]]: ...
 
 
 class PlateRecogniser(Protocol):
-    def read(self, crop: np.ndarray) -> tuple[str, list[float]]:
-        ...
+    def read(self, crop: np.ndarray) -> tuple[str, list[float]]: ...
 
 
 class OpenImagePlateDetector:
@@ -370,8 +371,9 @@ class AnprPipeline:
                 # Keep the sharpest crop as the evidence image, not the last one: the
                 # frame a reviewer sees should be the best available, and sharpness is
                 # a good proxy for legibility.
-                sharpness = float(cv2.Laplacian(cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY),
-                                                cv2.CV_64F).var())
+                sharpness = float(
+                    cv2.Laplacian(cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY), cv2.CV_64F).var()
+                )
                 score = sharpness * confs.get(box, 0.0)
                 if score > track.best_crop_score:
                     track.best_crop_score = score
@@ -411,9 +413,7 @@ class AnprPipeline:
             return None
         return image[y1:y2, x1:x2]
 
-    def _finalise(
-        self, track: PlateTrack, source: CameraSource
-    ) -> PlateDetectionRecord | None:
+    def _finalise(self, track: PlateTrack, source: CameraSource) -> PlateDetectionRecord | None:
         fused = track.accumulator.fused()
         if fused is None or not fused.normalised:
             return None
@@ -424,15 +424,21 @@ class AnprPipeline:
             name = f"{source.camera_ref}_{int(track.first_pts_ms)}_{fused.normalised}.jpg"
             path = self._crop_dir / name
             cv2.imwrite(str(path), track.best_crop)
-            crop_path = str(path.relative_to(self._crop_dir.parent.parent)) \
-                if self._crop_dir.is_absolute() is False else str(path)
+            crop_path = (
+                str(path.relative_to(self._crop_dir.parent.parent))
+                if self._crop_dir.is_absolute() is False
+                else str(path)
+            )
 
         # Timestamp from the FIRST observation of the track: that is when the vehicle
         # was at this camera. Using the last would bias every sighting later by the
         # duration the vehicle stayed in frame.
         anchor = Frame(
-            image=np.empty((0, 0)), pts_ms=track.first_pts_ms, seq=0,
-            session_id=track.session_id, wall_recv_ts=0.0,
+            image=np.empty((0, 0)),
+            pts_ms=track.first_pts_ms,
+            seq=0,
+            session_id=track.session_id,
+            wall_recv_ts=0.0,
         )
         return PlateDetectionRecord(
             camera_ref=source.camera_ref,

@@ -48,11 +48,13 @@ def _percentiles(samples: list[float]) -> dict[str, float]:
     if not samples:
         return {}
     ordered = sorted(samples)
+
     def pct(p: float) -> float:
         # Nearest-rank. With 20 samples an interpolated p95 invents precision the
         # sample size does not support.
         idx = min(len(ordered) - 1, max(0, int(round(p / 100 * len(ordered))) - 1))
         return ordered[idx]
+
     return {
         "min_ms": round(ordered[0], 2),
         "median_ms": round(statistics.median(ordered), 2),
@@ -80,13 +82,17 @@ def bench_journey(runs: int) -> dict:
     actor = Actor(subject="benchmark", role="admin", department_id=None)
 
     try:
-        plates = session.execute(
-            text(
-                "SELECT plate_normalised, count(*) n FROM detection "
-                "WHERE plate_normalised ~ '^[A-Z]{2}[0-9]{1,2}[A-Z]{1,3}[0-9]{1,4}$' "
-                "GROUP BY plate_normalised ORDER BY n DESC LIMIT 5"
+        plates = (
+            session.execute(
+                text(
+                    "SELECT plate_normalised, count(*) n FROM detection "
+                    "WHERE plate_normalised ~ '^[A-Z]{2}[0-9]{1,2}[A-Z]{1,3}[0-9]{1,4}$' "
+                    "GROUP BY plate_normalised ORDER BY n DESC LIMIT 5"
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         if not plates:
             log.warning("no parseable plates; journey benchmark skipped")
             return {"skipped": "no detections"}
@@ -100,8 +106,12 @@ def bench_journey(runs: int) -> dict:
             plate = plates[i % len(plates)]
             t0 = time.perf_counter()
             result = reconstruct_journey(
-                session=session, actor=actor, settings=settings,
-                plate=plate, from_=window_start, to=now,
+                session=session,
+                actor=actor,
+                settings=settings,
+                plate=plate,
+                from_=window_start,
+                to=now,
                 purpose="Automated performance benchmark, not an investigation",
                 fuzzy=True,
             )
@@ -110,13 +120,15 @@ def bench_journey(runs: int) -> dict:
         session.rollback()  # benchmark audit entries are not evidence of a real query
 
         stats = _percentiles(samples)
-        stats.update({
-            "window_hours": 12,
-            "plates_exercised": len(set(plates)),
-            "mean_hops": round(statistics.fmean(hop_counts), 1),
-            "hld_claim_ms": HLD_JOURNEY_MS,
-            "meets_hld_claim": stats["p95_ms"] < HLD_JOURNEY_MS,
-        })
+        stats.update(
+            {
+                "window_hours": 12,
+                "plates_exercised": len(set(plates)),
+                "mean_hops": round(statistics.fmean(hop_counts), 1),
+                "hld_claim_ms": HLD_JOURNEY_MS,
+                "meets_hld_claim": stats["p95_ms"] < HLD_JOURNEY_MS,
+            }
+        )
         return stats
     finally:
         session.close()
@@ -131,15 +143,18 @@ def bench_decode_to_alert() -> dict:
     run, with the clock started before the decode.
     """
     from services.analytics.anpr import (
-        AnprPipeline, FastPlateRecogniser, OpenImagePlateDetector,
+        AnprPipeline,
+        FastPlateRecogniser,
+        OpenImagePlateDetector,
     )
     from services.analytics.matcher import match_detection, raise_or_update_alert
     from services.analytics.persistence import DetectionWriter
     from services.ingest.file_source import FileSource
     from services.registry.models import Detection
 
-    clips = sorted(p for p in OWN_FEED_DIR.glob("*")
-                   if p.suffix.lower() in {".mp4", ".mkv", ".avi", ".webm"})
+    clips = sorted(
+        p for p in OWN_FEED_DIR.glob("*") if p.suffix.lower() in {".mp4", ".mkv", ".avi", ".webm"}
+    )
     if not clips:
         return {"skipped": "no own-feed clip"}
 
@@ -170,13 +185,17 @@ def bench_decode_to_alert() -> dict:
             writer.add(record)
             writer.flush()
 
-            row = session.execute(
-                text(
-                    "SELECT * FROM detection WHERE plate_normalised = :p "
-                    "ORDER BY ingested_at_utc DESC LIMIT 1"
-                ),
-                {"p": record.plate.normalised},
-            ).mappings().first()
+            row = (
+                session.execute(
+                    text(
+                        "SELECT * FROM detection WHERE plate_normalised = :p "
+                        "ORDER BY ingested_at_utc DESC LIMIT 1"
+                    ),
+                    {"p": record.plate.normalised},
+                )
+                .mappings()
+                .first()
+            )
             if row is None:
                 continue
             detection = session.get(Detection, (row["id"], row["observed_at_utc"]))
@@ -210,19 +229,21 @@ def bench_decode_to_alert() -> dict:
         steady = samples[warmup:] if warmup else samples
 
         stats = _percentiles(steady)
-        stats.update({
-            "hld_claim_ms": HLD_ALERT_MS,
-            "meets_hld_claim": stats["p95_ms"] < HLD_ALERT_MS,
-            "warmup_discarded": warmup,
-            "cold_start_ms": round(max(samples[:warmup]), 2) if warmup else None,
-            "note": (
-                "Measured on a live pipeline run: decode, motion gate, plate detection, "
-                "OCR, fusion, persistence and watchlist matching. Excludes WebSocket "
-                "delivery to a connected client. The first observations are discarded as "
-                "warm-up because they carry ONNX session initialisation; the cold-start "
-                "cost is reported separately rather than hidden."
-            ),
-        })
+        stats.update(
+            {
+                "hld_claim_ms": HLD_ALERT_MS,
+                "meets_hld_claim": stats["p95_ms"] < HLD_ALERT_MS,
+                "warmup_discarded": warmup,
+                "cold_start_ms": round(max(samples[:warmup]), 2) if warmup else None,
+                "note": (
+                    "Measured on a live pipeline run: decode, motion gate, plate detection, "
+                    "OCR, fusion, persistence and watchlist matching. Excludes WebSocket "
+                    "delivery to a connected client. The first observations are discarded as "
+                    "warm-up because they carry ONNX session initialisation; the cold-start "
+                    "cost is reported separately rather than hidden."
+                ),
+            }
+        )
         return stats
     finally:
         session.close()
@@ -231,7 +252,9 @@ def bench_decode_to_alert() -> dict:
 def _throughput_of(clip, label: str) -> dict:
     """Decode-and-analyse rate for one clip."""
     from services.analytics.anpr import (
-        AnprPipeline, FastPlateRecogniser, OpenImagePlateDetector,
+        AnprPipeline,
+        FastPlateRecogniser,
+        OpenImagePlateDetector,
     )
     from services.ingest.file_source import FileSource
 
@@ -282,9 +305,9 @@ def bench_throughput() -> dict:
     sub-stream ingest.
     """
     clips = sorted(
-        c for c in OWN_FEED_DIR.glob("*")
-        if c.suffix.lower() in {".mp4", ".mkv", ".avi", ".webm"}
-        and not c.name.startswith(".")
+        c
+        for c in OWN_FEED_DIR.glob("*")
+        if c.suffix.lower() in {".mp4", ".mkv", ".avi", ".webm"} and not c.name.startswith(".")
     )
     if not clips:
         return {"skipped": "no own-feed clip"}
@@ -343,8 +366,9 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--journey-runs", type=int, default=20)
     ap.add_argument("--emit-evidence", action="store_true")
-    ap.add_argument("--skip-pipeline", action="store_true",
-                    help="skip the benchmarks that run inference (slow)")
+    ap.add_argument(
+        "--skip-pipeline", action="store_true", help="skip the benchmarks that run inference (slow)"
+    )
     args = ap.parse_args()
     redact.install(level=logging.WARNING)
 
@@ -375,8 +399,10 @@ def _verdict(block: dict) -> str:
     if block.get("meets_hld_claim") is True:
         return f"MEETS the HLD claim of under {block['hld_claim_ms']:.0f} ms"
     if block.get("meets_hld_claim") is False:
-        return (f"CONTRADICTS the HLD claim of under {block['hld_claim_ms']:.0f} ms "
-                f"— p95 measured {block['p95_ms']:.0f} ms. Change the document.")
+        return (
+            f"CONTRADICTS the HLD claim of under {block['hld_claim_ms']:.0f} ms "
+            f"— p95 measured {block['p95_ms']:.0f} ms. Change the document."
+        )
     return ""
 
 
@@ -387,10 +413,14 @@ def _report(r: dict) -> None:
 
     j = r.get("journey_query", {})
     if "skipped" not in j:
-        print(f"\n  Journey query, 12-hour window ({j['samples']} runs, "
-              f"mean {j['mean_hops']} hops)")
-        print(f"    median {j['median_ms']:.0f} ms · p95 {j['p95_ms']:.0f} ms · "
-              f"max {j['max_ms']:.0f} ms")
+        print(
+            f"\n  Journey query, 12-hour window ({j['samples']} runs, "
+            f"mean {j['mean_hops']} hops)"
+        )
+        print(
+            f"    median {j['median_ms']:.0f} ms · p95 {j['p95_ms']:.0f} ms · "
+            f"max {j['max_ms']:.0f} ms"
+        )
         print(f"    {_verdict(j)}")
 
     a = r.get("decode_to_alert", {})
@@ -406,26 +436,37 @@ def _report(r: dict) -> None:
         print(f"\n  Throughput - {t['hardware']}")
         for case in t["cases"]:
             print(f"    {case['label']}")
-            print(f"      {case['resolution']} - {case['decode_fps']:.1f} fps decoded "
-                  f"against {case['source_fps']:.1f} fps source - "
-                  f"gate {case['gate_pass_rate']:.1%}")
-            print(f"      {case['cameras_per_worker_realtime']:.2f} cameras per worker "
-                  f"-> ~{case['workers_for_80k']:,} workers for 80,000 cameras")
+            print(
+                f"      {case['resolution']} - {case['decode_fps']:.1f} fps decoded "
+                f"against {case['source_fps']:.1f} fps source - "
+                f"gate {case['gate_pass_rate']:.1%}"
+            )
+            print(
+                f"      {case['cameras_per_worker_realtime']:.2f} cameras per worker "
+                f"-> ~{case['workers_for_80k']:,} workers for 80,000 cameras"
+            )
     print("=" * 64 + "\n")
 
 
 def _markdown(r: dict) -> str:
-    lines = ["# Measured performance", "",
-             "Produced by running the system, not by estimating. Where a measurement",
-             "contradicts the High-Level Design, the measurement stands and the",
-             "document is what changes.", ""]
+    lines = [
+        "# Measured performance",
+        "",
+        "Produced by running the system, not by estimating. Where a measurement",
+        "contradicts the High-Level Design, the measurement stands and the",
+        "document is what changes.",
+        "",
+    ]
 
     j = r.get("journey_query", {})
     if "skipped" not in j:
         lines += [
-            "## Journey query latency", "",
-            f"12-hour window, {j['samples']} runs, mean {j['mean_hops']} hops.", "",
-            "| metric | value |", "|---|---:|",
+            "## Journey query latency",
+            "",
+            f"12-hour window, {j['samples']} runs, mean {j['mean_hops']} hops.",
+            "",
+            "| metric | value |",
+            "|---|---:|",
             f"| median | {j['median_ms']:.0f} ms |",
             f"| p95 | **{j['p95_ms']:.0f} ms** |",
             f"| max | {j['max_ms']:.0f} ms |",
@@ -437,9 +478,12 @@ def _markdown(r: dict) -> str:
     a = r.get("decode_to_alert", {})
     if a and "skipped" not in a:
         lines += [
-            "## Decode-to-alert latency", "",
-            a.get("note", ""), "",
-            "| metric | value |", "|---|---:|",
+            "## Decode-to-alert latency",
+            "",
+            a.get("note", ""),
+            "",
+            "| metric | value |",
+            "|---|---:|",
             f"| median | {a['median_ms']:.0f} ms |",
             f"| p95 | **{a['p95_ms']:.0f} ms** |",
             f"| HLD claim | under {a['hld_claim_ms']:.0f} ms |",
@@ -453,7 +497,10 @@ def _markdown(r: dict) -> str:
     if t and "skipped" not in t:
         ex = t.get("extrapolation_80k", {})
         lines += [
-            "## Throughput and scale", "", t["hardware"], "",
+            "## Throughput and scale",
+            "",
+            t["hardware"],
+            "",
             "| case | resolution | decode fps | cameras/worker | workers for 80,000 |",
             "|---|---|---:|---:|---:|",
         ]
@@ -473,10 +520,13 @@ def _markdown(r: dict) -> str:
         ]
         if ex and "skipped" not in ex:
             lines += [
-                f"### Extrapolation to {ex['target_cameras']:,} cameras", "",
+                f"### Extrapolation to {ex['target_cameras']:,} cameras",
+                "",
                 f"Approximately **{ex['workers_at_measured_rate']:,} workers** at the "
-                "best measured rate.", "",
-                "Assumptions, stated so they can be argued with:", "",
+                "best measured rate.",
+                "",
+                "Assumptions, stated so they can be argued with:",
+                "",
             ]
             lines += [f"- {a}" for a in ex["assumptions"]]
             lines += ["", f"**Honest reading:** {ex['honest_reading']}", ""]

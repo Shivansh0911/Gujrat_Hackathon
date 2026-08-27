@@ -27,8 +27,9 @@ def fetch(label: str, load) -> bool:
             print(f"  {label}: cached")
             return True
         except Exception as exc:
-            print(f"  {label}: attempt {attempt}/{ATTEMPTS} failed — "
-                  f"{type(exc).__name__}: {exc}")
+            print(
+                f"  {label}: attempt {attempt}/{ATTEMPTS} failed — " f"{type(exc).__name__}: {exc}"
+            )
             if attempt < ATTEMPTS:
                 time.sleep(BACKOFF_S)
     return False

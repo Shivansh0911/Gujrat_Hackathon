@@ -33,9 +33,16 @@ ALLOWED_SCHEMES: frozenset[str] = frozenset({"http", "https", "rtsp", "rtsps"})
 
 ALLOWED_PORTS: frozenset[int] = frozenset(
     {
-        80, 443,      # HTTP(S) / HLS
-        554, 322,     # RTSP, RTSPS
-        8000, 8080, 8081, 8443, 8554, 8889,  # common camera/VMS/gateway ports
+        80,
+        443,  # HTTP(S) / HLS
+        554,
+        322,  # RTSP, RTSPS
+        8000,
+        8080,
+        8081,
+        8443,
+        8554,
+        8889,  # common camera/VMS/gateway ports
     }
 )
 
@@ -91,7 +98,7 @@ def _is_forbidden_ip(ip: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
     if (
         ip.is_private
         or ip.is_loopback
-        or ip.is_link_local        # covers 169.254.0.0/16, i.e. cloud metadata
+        or ip.is_link_local  # covers 169.254.0.0/16, i.e. cloud metadata
         or ip.is_multicast
         or ip.is_reserved
         or ip.is_unspecified
@@ -111,7 +118,9 @@ def _resolve(host: str) -> list[str]:
     try:
         infos = socket.getaddrinfo(host, None, proto=socket.IPPROTO_TCP)
     except socket.gaierror as exc:
-        raise HostNotResolvable(f"host could not be resolved: {exc.strerror or 'DNS failure'}") from exc
+        raise HostNotResolvable(
+            f"host could not be resolved: {exc.strerror or 'DNS failure'}"
+        ) from exc
     return sorted({info[4][0] for info in infos})
 
 
@@ -204,8 +213,9 @@ def reverify_before_connect(target: ValidatedTarget) -> None:
         raise DnsRebindingDetected("target host resolution changed between check and connect")
 
 
-def safe_fetch(uri: str, *, max_bytes: int = MAX_RESPONSE_BYTES,
-               timeout_s: float = CONNECT_TIMEOUT_S) -> bytes:
+def safe_fetch(
+    uri: str, *, max_bytes: int = MAX_RESPONSE_BYTES, timeout_s: float = CONNECT_TIMEOUT_S
+) -> bytes:
     """Fetch an http(s) URI under every SSRF control. Returns the body.
 
     Redirects are disabled rather than followed-and-revalidated. Following them
@@ -226,8 +236,8 @@ def safe_fetch(uri: str, *, max_bytes: int = MAX_RESPONSE_BYTES,
     resp = requests.get(
         target.url,
         timeout=timeout_s,
-        allow_redirects=False,   # see docstring
-        stream=True,             # so the size cap applies before the body is buffered
+        allow_redirects=False,  # see docstring
+        stream=True,  # so the size cap applies before the body is buffered
     )
     try:
         if resp.is_redirect or resp.is_permanent_redirect:

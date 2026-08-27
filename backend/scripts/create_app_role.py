@@ -51,8 +51,14 @@ APP_ROLE = "setu_app"
 # granted schema-wide: a future table is unreachable until someone decides it should
 # be, which is the behaviour that keeps a privilege audit meaningful.
 TABLES = (
-    "department", "site", "camera", "camera_capability",
-    "detection", "watchlist_entry", "alert", "audit_entry",
+    "department",
+    "site",
+    "camera",
+    "camera_capability",
+    "detection",
+    "watchlist_entry",
+    "alert",
+    "audit_entry",
 )
 
 # The audit ledger is append-only for the application. Nothing in the API updates or
@@ -113,15 +119,11 @@ def main() -> int:
         # password must be embedded as a literal. It is escaped by Postgres itself
         # via quote_literal rather than by hand -- hand-rolled SQL escaping is how
         # injection bugs are written, and the database already knows its own rules.
-        quoted = conn.execute(
-            text("SELECT quote_literal(:pw)"), {"pw": app_password}
-        ).scalar_one()
+        quoted = conn.execute(text("SELECT quote_literal(:pw)"), {"pw": app_password}).scalar_one()
         attributes = "NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE NOINHERIT"
 
         verb = "ALTER" if exists else "CREATE"
-        conn.execute(
-            text(f'{verb} ROLE "{APP_ROLE}" WITH LOGIN PASSWORD {quoted} {attributes}')
-        )
+        conn.execute(text(f'{verb} ROLE "{APP_ROLE}" WITH LOGIN PASSWORD {quoted} {attributes}'))
         log.info("%s role %s", "updated" if exists else "created", APP_ROLE)
 
         conn.execute(text(f'GRANT CONNECT ON DATABASE "{database}" TO "{APP_ROLE}"'))
@@ -153,26 +155,32 @@ def main() -> int:
 
         # Sequences backing bigserial columns; without USAGE an INSERT fails on the
         # nextval() rather than on the table, which is a confusing way to find out.
-        conn.execute(
-            text(f'GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO "{APP_ROLE}"')
-        )
+        conn.execute(text(f'GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO "{APP_ROLE}"'))
 
         # TimescaleDB places hypertable chunks in an internal schema. Without these the
         # role can read `detection` but not the chunks that actually hold its rows.
         conn.execute(text(f'GRANT USAGE ON SCHEMA _timescaledb_internal TO "{APP_ROLE}"'))
         conn.execute(
-            text("GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA "
-                 f'_timescaledb_internal TO "{APP_ROLE}"')
+            text(
+                "GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA "
+                f'_timescaledb_internal TO "{APP_ROLE}"'
+            )
         )
         conn.execute(
-            text("ALTER DEFAULT PRIVILEGES IN SCHEMA _timescaledb_internal "
-                 f'GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO "{APP_ROLE}"')
+            text(
+                "ALTER DEFAULT PRIVILEGES IN SCHEMA _timescaledb_internal "
+                f'GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO "{APP_ROLE}"'
+            )
         )
 
-        role = conn.execute(
-            text("SELECT rolsuper, rolbypassrls FROM pg_roles WHERE rolname = :r"),
-            {"r": APP_ROLE},
-        ).mappings().one()
+        role = (
+            conn.execute(
+                text("SELECT rolsuper, rolbypassrls FROM pg_roles WHERE rolname = :r"),
+                {"r": APP_ROLE},
+            )
+            .mappings()
+            .one()
+        )
 
     engine.dispose()
 
@@ -181,7 +189,9 @@ def main() -> int:
     if role["rolsuper"] or role["rolbypassrls"]:
         log.error(
             "%s has rolsuper=%s rolbypassrls=%s; row-level security would not bind",
-            APP_ROLE, role["rolsuper"], role["rolbypassrls"],
+            APP_ROLE,
+            role["rolsuper"],
+            role["rolbypassrls"],
         )
         return 1
 

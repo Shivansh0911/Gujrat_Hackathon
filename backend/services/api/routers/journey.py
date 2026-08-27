@@ -63,7 +63,7 @@ class JourneyHop(BaseModel):
     clock_confidence: float
 
     plate_read: str
-    evidence_type: str            # anpr_exact | anpr_fuzzy
+    evidence_type: str  # anpr_exact | anpr_fuzzy
     corrections: list[dict[str, Any]]
     confidence: float
     crop_url: str | None
@@ -193,9 +193,10 @@ def reconstruct_journey(
     # Exact matches, plus same-length candidates for confusion-aware comparison.
     # Fuzzy filtering happens in Python because the confusion sets are ours, not the
     # database's, and encoding them in SQL would duplicate the rule.
-    rows = session.execute(
-        text(
-            """
+    rows = (
+        session.execute(
+            text(
+                """
             SELECT d.plate_normalised, d.observed_at_utc, d.pts_ms, d.confidence,
                    d.corrections, d.crop_path, d.clock_confidence,
                    c.id AS camera_id, c.camera_ref, c.name AS camera_name,
@@ -209,9 +210,12 @@ def reconstruct_journey(
                    OR (:fuzzy AND length(d.plate_normalised) = length(:plate)))
             ORDER BY d.observed_at_utc ASC
             """
-        ),
-        {"from_": from_, "to": to, "plate": normalised, "fuzzy": fuzzy},
-    ).mappings().all()
+            ),
+            {"from_": from_, "to": to, "plate": normalised, "fuzzy": fuzzy},
+        )
+        .mappings()
+        .all()
+    )
 
     from services.analytics.plate_grammar import confusion_aware_distance
 
@@ -227,15 +231,21 @@ def reconstruct_journey(
                 continue
         sightings.append(
             _Sighting(
-                camera_id=row["camera_id"], camera_ref=row["camera_ref"],
-                camera_name=row["camera_name"], location_text=row["location_text"] or "",
-                lat=float(row["lat"]), lon=float(row["lon"]),
+                camera_id=row["camera_id"],
+                camera_ref=row["camera_ref"],
+                camera_name=row["camera_name"],
+                location_text=row["location_text"] or "",
+                lat=float(row["lat"]),
+                lon=float(row["lon"]),
                 geom_source=row["geom_source"],
                 radius_m=float(row["confidence_radius_m"]) if row["confidence_radius_m"] else None,
-                observed_at_utc=row["observed_at_utc"], pts_ms=float(row["pts_ms"] or 0),
+                observed_at_utc=row["observed_at_utc"],
+                pts_ms=float(row["pts_ms"] or 0),
                 clock_confidence=float(row["clock_confidence"] or 1.0),
-                plate_read=read, corrections=row["corrections"] or [],
-                confidence=float(row["confidence"] or 0), crop_path=row["crop_path"],
+                plate_read=read,
+                corrections=row["corrections"] or [],
+                confidence=float(row["confidence"] or 0),
+                crop_path=row["crop_path"],
                 exact=exact,
             )
         )
@@ -256,8 +266,12 @@ def reconstruct_journey(
                 "  ST_SetSRID(ST_MakePoint(:lon1, :lat1), 4326)::geography,"
                 "  ST_SetSRID(ST_MakePoint(:lon2, :lat2), 4326)::geography)"
             ),
-            {"lon1": previous.lon, "lat1": previous.lat,
-             "lon2": candidate.lon, "lat2": candidate.lat},
+            {
+                "lon1": previous.lon,
+                "lat1": previous.lat,
+                "lon2": candidate.lon,
+                "lat2": candidate.lat,
+            },
         ).scalar_one()
         road_distance = float(distance_m) * settings.detour_factor
 
@@ -265,12 +279,14 @@ def reconstruct_journey(
         if delta_s <= 0:
             # Same instant at a different camera is physically impossible; keep the
             # first and record why the second was refused.
-            rejected.append(RejectedHop(
-                camera_ref=candidate.camera_ref,
-                observed_at_utc=candidate.observed_at_utc,
-                implied_speed_kmph=None,
-                reason="not after the previous sighting",
-            ))
+            rejected.append(
+                RejectedHop(
+                    camera_ref=candidate.camera_ref,
+                    observed_at_utc=candidate.observed_at_utc,
+                    implied_speed_kmph=None,
+                    reason="not after the previous sighting",
+                )
+            )
             continue
 
         # Coordinate uncertainty widens the permitted distance. Without this, a
@@ -287,16 +303,18 @@ def reconstruct_journey(
         )
 
         if tolerant_speed > ceiling:
-            rejected.append(RejectedHop(
-                camera_ref=candidate.camera_ref,
-                observed_at_utc=candidate.observed_at_utc,
-                implied_speed_kmph=round(nominal_speed, 1),
-                reason=(
-                    f"implied speed {tolerant_speed:.0f} km/h exceeds the "
-                    f"{ceiling:.0f} km/h ceiling even allowing {tolerance_m:.0f} m "
-                    "of coordinate uncertainty"
-                ),
-            ))
+            rejected.append(
+                RejectedHop(
+                    camera_ref=candidate.camera_ref,
+                    observed_at_utc=candidate.observed_at_utc,
+                    implied_speed_kmph=round(nominal_speed, 1),
+                    reason=(
+                        f"implied speed {tolerant_speed:.0f} km/h exceeds the "
+                        f"{ceiling:.0f} km/h ceiling even allowing {tolerance_m:.0f} m "
+                        "of coordinate uncertainty"
+                    ),
+                )
+            )
             continue
 
         hop = _to_hop(candidate, len(hops) + 1)
@@ -311,7 +329,8 @@ def reconstruct_journey(
 
     duration = (
         (hops[-1].observed_at_utc - hops[0].observed_at_utc).total_seconds()
-        if len(hops) > 1 else 0.0
+        if len(hops) > 1
+        else 0.0
     )
     # Journey confidence is the mean per-hop confidence discounted by the share of
     # hops that needed a correction: a route pinned by clean reads deserves more
@@ -375,9 +394,10 @@ def _coverage_gaps(session: Session, hops: list[JourneyHop]) -> list[CoverageGap
     gaps: list[CoverageGap] = []
     for i in range(len(hops) - 1):
         a, b = hops[i], hops[i + 1]
-        rows = session.execute(
-            text(
-                """
+        rows = (
+            session.execute(
+                text(
+                    """
                 SELECT c.id, c.camera_ref, c.name,
                        ST_Y(c.geom::geometry) AS lat, ST_X(c.geom::geometry) AS lon
                 FROM camera c
@@ -391,15 +411,22 @@ def _coverage_gaps(session: Session, hops: list[JourneyHop]) -> list[CoverageGap
                         )::geography,
                         :corridor_m)
                 """
-            ),
-            {
-                "a": a.camera_id, "b": b.camera_id,
-                "lon1": a.lon, "lat1": a.lat, "lon2": b.lon, "lat2": b.lat,
-                # Corridor half-width. Wide enough to catch cameras genuinely on the
-                # route, narrow enough not to sweep in the whole district.
-                "corridor_m": 2000.0,
-            },
-        ).mappings().all()
+                ),
+                {
+                    "a": a.camera_id,
+                    "b": b.camera_id,
+                    "lon1": a.lon,
+                    "lat1": a.lat,
+                    "lon2": b.lon,
+                    "lat2": b.lat,
+                    # Corridor half-width. Wide enough to catch cameras genuinely on the
+                    # route, narrow enough not to sweep in the whole district.
+                    "corridor_m": 2000.0,
+                },
+            )
+            .mappings()
+            .all()
+        )
 
         for row in rows:
             seen = session.execute(
@@ -416,15 +443,17 @@ def _coverage_gaps(session: Session, hops: list[JourneyHop]) -> list[CoverageGap
             ).scalar_one()
             if seen:
                 continue
-            gaps.append(CoverageGap(
-                after_seq=a.seq,
-                camera_id=row["id"],
-                camera_ref=row["camera_ref"],
-                camera_name=row["name"],
-                lat=float(row["lat"]),
-                lon=float(row["lon"]),
-                reason=f"no detection at {row['camera_ref']} - coverage gap",
-            ))
+            gaps.append(
+                CoverageGap(
+                    after_seq=a.seq,
+                    camera_id=row["id"],
+                    camera_ref=row["camera_ref"],
+                    camera_name=row["name"],
+                    lat=float(row["lat"]),
+                    lon=float(row["lon"]),
+                    reason=f"no detection at {row['camera_ref']} - coverage gap",
+                )
+            )
     return gaps
 
 
@@ -456,8 +485,14 @@ def export_journey_pdf(
     from services.api.evidence_export import export_journey
 
     result = reconstruct_journey(
-        session=session, actor=actor, settings=settings,
-        plate=plate, from_=from_, to=to, purpose=purpose, fuzzy=fuzzy,
+        session=session,
+        actor=actor,
+        settings=settings,
+        plate=plate,
+        from_=from_,
+        to=to,
+        purpose=purpose,
+        fuzzy=fuzzy,
     )
 
     entry = audit.append(

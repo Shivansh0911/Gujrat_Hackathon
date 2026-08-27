@@ -42,7 +42,7 @@ class GatewaySource:
         source = select_transport(descriptor, self._settings, rtsp_available=rtsp_available)
         self.transport = source.transport
         self._session = StreamSession(
-            source.url,   # callable for HLS: variant URLs expire and are re-resolved
+            source.url,  # callable for HLS: variant URLs expire and are re-resolved
             descriptor.external_id,
             transport=source.transport,
             join_timeout_s=self._settings.join_timeout_s,

@@ -40,9 +40,7 @@ class Settings(BaseSettings):
         # Guard against someone pasting a full URL into the host field, which would
         # produce silently malformed stream URLs that fail far from the cause.
         if "://" in v or "/" in v:
-            raise ValueError(
-                f"SETU_GATEWAY_HOST must be a bare host, not a URL: {v!r}"
-            )
+            raise ValueError(f"SETU_GATEWAY_HOST must be a bare host, not a URL: {v!r}")
         return v.strip()
 
     @field_validator("backoff_max_s")

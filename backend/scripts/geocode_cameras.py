@@ -72,11 +72,39 @@ RADIUS_APPROXIMATE = 5000.0
 # Gujarat district NAMES, used for parsing location strings. Their coordinates are
 # still fetched from the geocoder and cached -- never written from memory.
 GUJARAT_DISTRICTS = [
-    "Ahmedabad", "Amreli", "Anand", "Aravalli", "Banaskantha", "Bharuch", "Bhavnagar",
-    "Botad", "Chhota Udaipur", "Dahod", "Dang", "Devbhoomi Dwarka", "Gandhinagar",
-    "Gir Somnath", "Jamnagar", "Junagadh", "Kutch", "Kheda", "Mahisagar", "Mehsana",
-    "Morbi", "Narmada", "Navsari", "Panchmahal", "Patan", "Porbandar", "Rajkot",
-    "Sabarkantha", "Surat", "Surendranagar", "Tapi", "Vadodara", "Valsad",
+    "Ahmedabad",
+    "Amreli",
+    "Anand",
+    "Aravalli",
+    "Banaskantha",
+    "Bharuch",
+    "Bhavnagar",
+    "Botad",
+    "Chhota Udaipur",
+    "Dahod",
+    "Dang",
+    "Devbhoomi Dwarka",
+    "Gandhinagar",
+    "Gir Somnath",
+    "Jamnagar",
+    "Junagadh",
+    "Kutch",
+    "Kheda",
+    "Mahisagar",
+    "Mehsana",
+    "Morbi",
+    "Narmada",
+    "Navsari",
+    "Panchmahal",
+    "Patan",
+    "Porbandar",
+    "Rajkot",
+    "Sabarkantha",
+    "Surat",
+    "Surendranagar",
+    "Tapi",
+    "Vadodara",
+    "Valsad",
 ]
 
 # Tokens appearing in catalogue location strings that imply a district. Parsing hints
@@ -100,8 +128,16 @@ TOKEN_HINTS: dict[str, str] = {
 # Used only to choose which CITY to geocode within; the coordinate still comes from
 # Nominatim.
 AHMEDABAD_HINTS = {
-    "chiman bhai", "janpath", "o.n.g.c", "ongc", "paldi", "visat", "cn vidhyalaya",
-    "delight", "suvidha park", "mohanpura",
+    "chiman bhai",
+    "janpath",
+    "o.n.g.c",
+    "ongc",
+    "paldi",
+    "visat",
+    "cn vidhyalaya",
+    "delight",
+    "suvidha park",
+    "mohanpura",
 }
 
 
@@ -211,9 +247,9 @@ RANK_SUBURB_OR_FINER = 19
 RANK_TOWN_OR_FINER = 16
 
 RADIUS_BY_RANK = [
-    (RANK_ROAD_OR_FINER, 300.0),      # a specific road or building
-    (RANK_SUBURB_OR_FINER, 1500.0),   # a named suburb or village
-    (RANK_TOWN_OR_FINER, 4000.0),     # a town centre
+    (RANK_ROAD_OR_FINER, 300.0),  # a specific road or building
+    (RANK_SUBURB_OR_FINER, 1500.0),  # a named suburb or village
+    (RANK_TOWN_OR_FINER, 4000.0),  # a town centre
 ]
 
 # Words that describe the KIND of place rather than naming it. Indian junction and
@@ -221,10 +257,29 @@ RADIUS_BY_RANK = [
 # nothing, "Visat" resolves. ("teen/char/tran rasta" are three/four/three-way
 # junctions; "tollnaka" a toll plaza; "char chowk" a crossroads.)
 NOISE_TOKENS = [
-    "teen rasta", "char rasta", "tran rasta", "char chowk", "chowk",
-    "tollnaka", "toll naka", "gram panchayat", "taluka", "district",
-    "bus port", "showroom", "circle", "bypass", "near by", "gate",
-    "cctv", "office", "road", "bridge", "new", "p2", "p1",
+    "teen rasta",
+    "char rasta",
+    "tran rasta",
+    "char chowk",
+    "chowk",
+    "tollnaka",
+    "toll naka",
+    "gram panchayat",
+    "taluka",
+    "district",
+    "bus port",
+    "showroom",
+    "circle",
+    "bypass",
+    "near by",
+    "gate",
+    "cctv",
+    "office",
+    "road",
+    "bridge",
+    "new",
+    "p2",
+    "p1",
 ]
 
 
@@ -233,7 +288,7 @@ def _strip_noise(text: str) -> str:
     out = text.lower()
     for token in NOISE_TOKENS:
         out = re.sub(rf"\b{re.escape(token)}\b", " ", out)
-    out = re.sub(r"\b\d+\b", " ", out)          # stray index numbers
+    out = re.sub(r"\b\d+\b", " ", out)  # stray index numbers
     out = re.sub(r"\s+", " ", out).strip(" ,-")
     return out
 
@@ -283,7 +338,7 @@ def _radius_for(rank: int) -> float | None:
 # those types are preferred and arbitrary POIs are only a last resort.
 PREFERRED_TYPES = (
     ("place", {"suburb", "neighbourhood", "quarter", "city_block"}),
-    ("highway", None),          # a named road or junction
+    ("highway", None),  # a named road or junction
     ("junction", None),
     ("place", {"town", "village", "hamlet"}),
 )
@@ -408,8 +463,14 @@ def main() -> int:
 
         if ref in published:
             lat, lon = published[ref]
-            res = Resolution(lat, lon, "published", RADIUS_PUBLISHED,
-                             "organiser catalogue", "published by organiser")
+            res = Resolution(
+                lat,
+                lon,
+                "published",
+                RADIUS_PUBLISHED,
+                "organiser catalogue",
+                "published by organiser",
+            )
         else:
             res = resolve_camera(loc, cache, args.refresh)
 
@@ -434,8 +495,16 @@ def main() -> int:
         print("dry run: CSV not written")
         return 0
 
-    fields = ["camera_ref", "location_text", "lat", "lon", "geom_source",
-              "confidence_radius_m", "resolved_by", "resolved_at"]
+    fields = [
+        "camera_ref",
+        "location_text",
+        "lat",
+        "lon",
+        "geom_source",
+        "confidence_radius_m",
+        "resolved_by",
+        "resolved_at",
+    ]
     with SEED_CSV.open("w", encoding="utf-8", newline="") as fh:
         writer = csv.DictWriter(fh, fieldnames=fields)
         writer.writeheader()

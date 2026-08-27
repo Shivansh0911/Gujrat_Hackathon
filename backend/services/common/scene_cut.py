@@ -86,11 +86,7 @@ class SceneCutDetector:
 
     @staticmethod
     def _prepare(frame: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-        grey = (
-            cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            if frame.ndim == 3
-            else frame
-        )
+        grey = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY) if frame.ndim == 3 else frame
         small = cv2.resize(grey, (_WORK_W, _WORK_H), interpolation=cv2.INTER_AREA)
         hist = cv2.calcHist([small], [0], None, [64], [0, 256])
         cv2.normalize(hist, hist, 0, 1, cv2.NORM_MINMAX)

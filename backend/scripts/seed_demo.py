@@ -71,16 +71,17 @@ OWN_FEED_DIR = REPO_ROOT / "data" / "own_feed"
 # demo in which the system discards a legitimate sighting reads as a defect even when
 # the gate is doing exactly its job.
 REPLAY_CAMERAS = [
-    ("REPLAY-01", "11", 0),     # Dolatpara, Junagadh   (1.5 km radius)
-    ("REPLAY-02", "17", 100),   # Rajkot Bus Port       (4 km radius)   ~60 km/h
-    ("REPLAY-03", "4", 300),    # Paldi, Ahmedabad      (5 km radius)   ~65 km/h
-    ("REPLAY-04", "12", 340),   # Adalaj, Gandhinagar   (5 km radius)   ~38 km/h
+    ("REPLAY-01", "11", 0),  # Dolatpara, Junagadh   (1.5 km radius)
+    ("REPLAY-02", "17", 100),  # Rajkot Bus Port       (4 km radius)   ~60 km/h
+    ("REPLAY-03", "4", 300),  # Paldi, Ahmedabad      (5 km radius)   ~65 km/h
+    ("REPLAY-04", "12", 340),  # Adalaj, Gandhinagar   (5 km radius)   ~38 km/h
 ]
 
 
 def _pick_clip() -> Path:
     clips = sorted(
-        p for p in OWN_FEED_DIR.glob("*")
+        p
+        for p in OWN_FEED_DIR.glob("*")
         if p.suffix.lower() in {".mp4", ".mkv", ".avi", ".mov", ".webm"}
     )
     if not clips:
@@ -216,28 +217,36 @@ def main() -> int:
         detections = session.execute(select(func.count()).select_from(Detection)).scalar_one()
         alerts = session.execute(select(func.count()).select_from(Alert)).scalar_one()
 
-        multi = session.execute(
-            text(
-                # Only plates that parse as Indian registrations: an unparsed read
-                # is still evidence a vehicle passed, but it is useless as something
-                # to type into the journey box during a demonstration.
-                "SELECT d.plate_normalised, count(DISTINCT d.camera_id) AS cams, "
-                "       count(*) AS n, max(d.confidence) AS best "
-                "FROM detection d "
-                "WHERE d.plate_normalised ~ '^[A-Z]{2}[0-9]{1,2}[A-Z]{1,3}[0-9]{1,4}$' "
-                "GROUP BY d.plate_normalised "
-                "HAVING count(DISTINCT d.camera_id) > 1 "
-                "ORDER BY cams DESC, best DESC LIMIT 5"
+        multi = (
+            session.execute(
+                text(
+                    # Only plates that parse as Indian registrations: an unparsed read
+                    # is still evidence a vehicle passed, but it is useless as something
+                    # to type into the journey box during a demonstration.
+                    "SELECT d.plate_normalised, count(DISTINCT d.camera_id) AS cams, "
+                    "       count(*) AS n, max(d.confidence) AS best "
+                    "FROM detection d "
+                    "WHERE d.plate_normalised ~ '^[A-Z]{2}[0-9]{1,2}[A-Z]{1,3}[0-9]{1,4}$' "
+                    "GROUP BY d.plate_normalised "
+                    "HAVING count(DISTINCT d.camera_id) > 1 "
+                    "ORDER BY cams DESC, best DESC LIMIT 5"
+                )
             )
-        ).mappings().all()
+            .mappings()
+            .all()
+        )
 
         print(f"\n  detections in database : {detections}")
-        print(f"  alerts raised          : {alerts} "
-              f"(matched {stats.matched}, dedup {stats.deduplicated}, movement {stats.movement})")
+        print(
+            f"  alerts raised          : {alerts} "
+            f"(matched {stats.matched}, dedup {stats.deduplicated}, movement {stats.movement})"
+        )
         print("\n  plates seen at more than one camera (use these for the journey demo):")
         for row in multi:
-            print(f"    {row['plate_normalised']:<12} {row['cams']} cameras, "
-                  f"{row['n']} sightings, best confidence {row['best']:.2f}")
+            print(
+                f"    {row['plate_normalised']:<12} {row['cams']} cameras, "
+                f"{row['n']} sightings, best confidence {row['best']:.2f}"
+            )
         if not multi:
             print("    none - the journey demo will show a single hop")
         print()

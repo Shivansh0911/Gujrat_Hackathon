@@ -166,9 +166,7 @@ def probe_one(cam: CameraDescriptor, seconds: float, rtsp_available: bool) -> Pr
         measured_res=f"{st.width}x{st.height}" if st.width and st.height else None,
         declared_fps=cam.declared_fps,
         measured_fps=round(st.measured_fps, 2) if st.measured_fps else None,
-        join_latency_s=round(st.first_frame_latency_s, 2)
-        if st.first_frame_latency_s
-        else None,
+        join_latency_s=round(st.first_frame_latency_s, 2) if st.first_frame_latency_s else None,
         max_gap_ms=round(st.max_interframe_gap_ms, 1),
         join_warnings=st.join_decode_warnings,
         discontinuities=st.discontinuities,
@@ -178,9 +176,7 @@ def probe_one(cam: CameraDescriptor, seconds: float, rtsp_available: bool) -> Pr
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--seconds", type=float, default=8.0, help="probe window per camera")
-    ap.add_argument(
-        "--camera", action="append", default=None, help="external id; repeatable"
-    )
+    ap.add_argument("--camera", action="append", default=None, help="external id; repeatable")
     ap.add_argument(
         "--out",
         type=Path,
@@ -230,9 +226,7 @@ def main() -> int:
         for cam in cameras:
             with capture_stderr_fd() as cap:
                 result = probe_one(cam, args.seconds, rtsp_available)
-            result.decoder_messages = [
-                redact.redact(m) for m in _read_captured(cap)
-            ]
+            result.decoder_messages = [redact.redact(m) for m in _read_captured(cap)]
             log.info(
                 "camera %s: %d frames, %d decoder message(s)",
                 result.external_id,
@@ -244,10 +238,7 @@ def main() -> int:
         # Bounded concurrency: each connected client gets its own copy of the stream, so
         # an unbounded fan-out is a load test against infrastructure we do not own (§2.2).
         with ThreadPoolExecutor(max_workers=settings.max_concurrent_captures) as pool:
-            futures = {
-                pool.submit(probe_one, c, args.seconds, rtsp_available): c
-                for c in cameras
-            }
+            futures = {pool.submit(probe_one, c, args.seconds, rtsp_available): c for c in cameras}
             for fut in as_completed(futures):
                 results.append(fut.result())
 
@@ -338,7 +329,7 @@ def _markdown_report(results, settings, rtsp_available: bool, args) -> str:
         "",
         "## Why this exists",
         "",
-        "The catalogue reports `codec: \"\"`, `0x0` and `fps: 0.0` for most cameras, and",
+        'The catalogue reports `codec: ""`, `0x0` and `fps: 0.0` for most cameras, and',
         "where it does declare an FPS that figure is a declaration, not a measurement.",
         "§2.2 forbids using declared FPS for timing, so every property below marked",
         "*measured* was derived from PTS deltas on real decoded frames.",

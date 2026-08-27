@@ -99,8 +99,13 @@ def session() -> Session:
 
 def _append(sess: Session, action: str, subject_id: str = "cam-1") -> AuditEntry:
     entry = audit.append(
-        sess, action=action, subject_type="camera", subject_id=subject_id,
-        actor_id="tester", actor_role="admin", detail={"note": action},
+        sess,
+        action=action,
+        subject_type="camera",
+        subject_id=subject_id,
+        actor_id="tester",
+        actor_role="admin",
+        detail={"note": action},
     )
     sess.commit()
     return entry

@@ -43,9 +43,7 @@ class PersistStats:
 class DetectionWriter:
     """Batching, idempotent writer for ANPR records."""
 
-    def __init__(
-        self, session: Session, *, batch_size: int = DEFAULT_BATCH_SIZE
-    ) -> None:
+    def __init__(self, session: Session, *, batch_size: int = DEFAULT_BATCH_SIZE) -> None:
         self._session = session
         self._batch_size = batch_size
         self._pending: list[PlateDetectionRecord] = []

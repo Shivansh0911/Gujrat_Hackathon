@@ -224,8 +224,12 @@ def sync_catalogue(session: SessionDep, actor: AdminActor) -> SyncResult:
             added.append(desc.external_id)
             event_bus.publish(CameraEvent.ADDED, {"camera_ref": desc.external_id})
             audit.append(
-                session, action="CAMERA_ADDED", subject_type="camera",
-                subject_id=str(camera.id), actor_id=actor.subject, actor_role=actor.role,
+                session,
+                action="CAMERA_ADDED",
+                subject_type="camera",
+                subject_id=str(camera.id),
+                actor_id=actor.subject,
+                actor_role=actor.role,
                 detail={"camera_ref": desc.external_id, "source": "catalogue_sync"},
             )
             continue
@@ -251,8 +255,12 @@ def sync_catalogue(session: SessionDep, actor: AdminActor) -> SyncResult:
                 CameraEvent.PROPERTIES_CHANGED, {"camera_ref": desc.external_id, "diff": diff}
             )
             audit.append(
-                session, action="CAMERA_PROPERTIES_CHANGED", subject_type="camera",
-                subject_id=str(camera.id), actor_id=actor.subject, actor_role=actor.role,
+                session,
+                action="CAMERA_PROPERTIES_CHANGED",
+                subject_type="camera",
+                subject_id=str(camera.id),
+                actor_id=actor.subject,
+                actor_role=actor.role,
                 detail={"camera_ref": desc.external_id, "diff": diff},
             )
         else:
@@ -272,10 +280,17 @@ def sync_catalogue(session: SessionDep, actor: AdminActor) -> SyncResult:
         removed.append(ref)
         event_bus.publish(CameraEvent.REMOVED, {"camera_ref": ref})
         audit.append(
-            session, action="CAMERA_REMOVED", subject_type="camera",
-            subject_id=str(camera.id), actor_id=actor.subject, actor_role=actor.role,
-            detail={"camera_ref": ref, "new_status": CameraStatus.UNREACHABLE.value,
-                    "note": "absent from catalogue; row retained, evidence references it"},
+            session,
+            action="CAMERA_REMOVED",
+            subject_type="camera",
+            subject_id=str(camera.id),
+            actor_id=actor.subject,
+            actor_role=actor.role,
+            detail={
+                "camera_ref": ref,
+                "new_status": CameraStatus.UNREACHABLE.value,
+                "note": "absent from catalogue; row retained, evidence references it",
+            },
         )
 
     return SyncResult(
@@ -318,8 +333,12 @@ def get_stream_url(
         )
 
     audit.append(
-        session, action="VIEW_STREAM", subject_type="camera", subject_id=str(camera.id),
-        actor_id=actor.subject, actor_role=actor.role,
+        session,
+        action="VIEW_STREAM",
+        subject_type="camera",
+        subject_id=str(camera.id),
+        actor_id=actor.subject,
+        actor_role=actor.role,
         detail={"camera_ref": camera.camera_ref, "transport": transport},
     )
     return StreamUrlOut(

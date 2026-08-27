@@ -82,8 +82,9 @@ def _near_miss(plate: str) -> str | None:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--reset", action="store_true", help="remove existing entries first")
-    ap.add_argument("--match-count", type=int, default=3,
-                    help="how many genuinely-present plates to watchlist")
+    ap.add_argument(
+        "--match-count", type=int, default=3, help="how many genuinely-present plates to watchlist"
+    )
     args = ap.parse_args()
 
     redact.install(level=logging.INFO)
@@ -158,7 +159,8 @@ def main() -> int:
                 "LOCAL_REPRESENTATIVE",
                 [85, 65, 45][i % 3],
                 f"GJ/SETU/2026/{1000 + i}",
-                None, None,
+                None,
+                None,
                 f"Representative entry; plate observed {row.sightings} time(s) "
                 f"at confidence {row.best:.2f}",
             )
@@ -166,23 +168,36 @@ def main() -> int:
         # Draw the near-miss from a plate NOT already watchlisted exactly, so the
         # only route from footage to alert is the fuzzy matcher. Taking it from an
         # exact entry would let the exact match win and hide the capability.
-        remaining = present[args.match_count:]
+        remaining = present[args.match_count :]
         base = remaining[0].plate_normalised if remaining else chosen[-1].plate_normalised
         strongest = base
         near = _near_miss(base)
         if near and near != strongest:
             add(
-                near, "Stolen Vehicles", "LOCAL_REPRESENTATIVE", 75,
-                "GJ/SETU/2026/2001", None, None,
+                near,
+                "Stolen Vehicles",
+                "LOCAL_REPRESENTATIVE",
+                75,
+                "GJ/SETU/2026/2001",
+                None,
+                None,
                 f"Near-miss of {strongest}: one OCR-confusable character differs. "
                 "Only a confusion-aware matcher finds this; exact matching misses it.",
             )
             log.info("near-miss entry %s (from %s)", near, strongest)
 
         for plate, state, name, priority, case_ref, colour, make in DECOYS:
-            add(plate, name, "LOCAL_REPRESENTATIVE", priority, case_ref, colour, make,
+            add(
+                plate,
+                name,
+                "LOCAL_REPRESENTATIVE",
+                priority,
+                case_ref,
+                colour,
+                make,
                 f"Decoy: valid {state} registration, absent from this footage. "
-                "Present so the demo shows discrimination rather than blanket matching.")
+                "Present so the demo shows discrimination rather than blanket matching.",
+            )
 
         session.commit()
 
@@ -194,8 +209,10 @@ def main() -> int:
         for entry in session.execute(
             select(WatchlistEntry).order_by(WatchlistEntry.priority.desc())
         ).scalars():
-            print(f"  {entry.plate_normalised:<12} p={entry.priority:<3} "
-                  f"{entry.watchlist_name:<18} {entry.case_ref}")
+            print(
+                f"  {entry.plate_normalised:<12} p={entry.priority:<3} "
+                f"{entry.watchlist_name:<18} {entry.case_ref}"
+            )
         print()
         return 0
     finally:

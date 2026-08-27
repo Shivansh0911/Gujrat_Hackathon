@@ -48,7 +48,7 @@ def test_disallowed_schemes_are_rejected(uri):
 @pytest.mark.parametrize(
     "uri",
     [
-        "http://169.254.169.254/",                 # cloud metadata
+        "http://169.254.169.254/",  # cloud metadata
         "http://169.254.169.254/latest/meta-data/",
         "http://127.0.0.1:8080/",
         "http://[::1]:8080/",
@@ -56,7 +56,7 @@ def test_disallowed_schemes_are_rejected(uri):
         "http://192.168.1.1:80/",
         "http://172.16.0.1:80/",
         "http://0.0.0.0:80/",
-        "http://[::ffff:169.254.169.254]:80/",     # v4-mapped metadata address
+        "http://[::ffff:169.254.169.254]:80/",  # v4-mapped metadata address
     ],
 )
 def test_private_and_link_local_literals_are_blocked(uri):
@@ -174,7 +174,8 @@ def test_ip_literal_cannot_rebind(monkeypatch):
     target = validate_uri("http://93.184.216.34/")
     # No DNS is consulted, so no rebinding is possible; must not raise or resolve.
     monkeypatch.setattr(
-        ssrf.socket, "getaddrinfo",
+        ssrf.socket,
+        "getaddrinfo",
         lambda *a, **k: pytest.fail("a literal address must not trigger a DNS lookup"),
     )
     ssrf.reverify_before_connect(target)

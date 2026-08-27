@@ -45,7 +45,6 @@ DEPARTMENTS = [
 ]
 
 
-
 class SeedValidationError(ValueError):
     """The coordinate seed file is malformed. Raised before anything is written."""
 
@@ -209,10 +208,14 @@ def main() -> int:
 
     print("\nSeed complete")
     print(f"  departments : {len(DEPARTMENTS)}")
-    print(f"  cameras     : {counts.get('created', 0)} created, "
-          f"{counts.get('updated', 0)} updated")
-    print(f"  coordinate missing: {counts.get('unset', 0)} "
-          f"(excluded from spatial queries, shown in the UI)\n")
+    print(
+        f"  cameras     : {counts.get('created', 0)} created, "
+        f"{counts.get('updated', 0)} updated"
+    )
+    print(
+        f"  coordinate missing: {counts.get('unset', 0)} "
+        f"(excluded from spatial queries, shown in the UI)\n"
+    )
     return 0
 
 

@@ -67,10 +67,15 @@ def tenants():
 
     session.execute(text("SELECT set_config('setu.is_admin', 'on', false)"))
     session.execute(
-        text("INSERT INTO department (id, code, name) VALUES (:a, :ca, 'Dept A'), (:b, :cb, 'Dept B')"),
+        text(
+            "INSERT INTO department (id, code, name) VALUES (:a, :ca, 'Dept A'), (:b, :cb, 'Dept B')"
+        ),
         {"a": dept_a, "b": dept_b, "ca": f"RLSA_{suffix}", "cb": f"RLSB_{suffix}"},
     )
-    for cam_id, dept_id, ref in ((cam_a, dept_a, f"rls-a-{suffix}"), (cam_b, dept_b, f"rls-b-{suffix}")):
+    for cam_id, dept_id, ref in (
+        (cam_a, dept_a, f"rls-a-{suffix}"),
+        (cam_b, dept_b, f"rls-b-{suffix}"),
+    ):
         session.execute(
             text(
                 "INSERT INTO camera (id, camera_ref, name, location_text, department_id,"
@@ -93,15 +98,14 @@ def tenants():
         )
     session.commit()
 
-    yield {"session": session, "dept_a": dept_a, "dept_b": dept_b,
-           "cam_a": cam_a, "cam_b": cam_b}
+    yield {"session": session, "dept_a": dept_a, "dept_b": dept_b, "cam_a": cam_a, "cam_b": cam_b}
 
     session.execute(text("SELECT set_config('setu.is_admin', 'on', false)"))
-    session.execute(text("DELETE FROM detection WHERE camera_id IN (:a, :b)"),
-                    {"a": cam_a, "b": cam_b})
+    session.execute(
+        text("DELETE FROM detection WHERE camera_id IN (:a, :b)"), {"a": cam_a, "b": cam_b}
+    )
     session.execute(text("DELETE FROM camera WHERE id IN (:a, :b)"), {"a": cam_a, "b": cam_b})
-    session.execute(text("DELETE FROM department WHERE id IN (:a, :b)"),
-                    {"a": dept_a, "b": dept_b})
+    session.execute(text("DELETE FROM department WHERE id IN (:a, :b)"), {"a": dept_a, "b": dept_b})
     session.commit()
     session.close()
     engine.dispose()
@@ -120,9 +124,13 @@ def _as_admin(session: Session) -> None:
 
 
 def _visible_cameras(session: Session, ids) -> set:
-    rows = session.execute(
-        text("SELECT id FROM camera WHERE id IN (:a, :b)"), {"a": ids[0], "b": ids[1]}
-    ).scalars().all()
+    rows = (
+        session.execute(
+            text("SELECT id FROM camera WHERE id IN (:a, :b)"), {"a": ids[0], "b": ids[1]}
+        )
+        .scalars()
+        .all()
+    )
     return set(rows)
 
 
@@ -152,10 +160,14 @@ def test_detections_are_isolated_through_their_camera(tenants):
     """`detection` has no department column; its policy joins through `camera`."""
     s = tenants["session"]
     _as_department(s, tenants["dept_a"])
-    rows = s.execute(
-        text("SELECT camera_id FROM detection WHERE camera_id IN (:a, :b)"),
-        {"a": tenants["cam_a"], "b": tenants["cam_b"]},
-    ).scalars().all()
+    rows = (
+        s.execute(
+            text("SELECT camera_id FROM detection WHERE camera_id IN (:a, :b)"),
+            {"a": tenants["cam_a"], "b": tenants["cam_b"]},
+        )
+        .scalars()
+        .all()
+    )
     assert set(rows) == {tenants["cam_a"]}
 
 
@@ -223,12 +235,16 @@ def test_rls_is_forced_for_the_table_owner(tenants):
     """FORCE is required or the owning role bypasses every policy silently."""
     s = tenants["session"]
     _as_admin(s)
-    rows = s.execute(
-        text(
-            "SELECT relname, relrowsecurity, relforcerowsecurity FROM pg_class "
-            "WHERE relname IN ('camera','site','detection','alert')"
+    rows = (
+        s.execute(
+            text(
+                "SELECT relname, relrowsecurity, relforcerowsecurity FROM pg_class "
+                "WHERE relname IN ('camera','site','detection','alert')"
+            )
         )
-    ).mappings().all()
+        .mappings()
+        .all()
+    )
     assert len(rows) == 4
     for row in rows:
         assert row["relrowsecurity"], f"RLS not enabled on {row['relname']}"

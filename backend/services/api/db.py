@@ -17,7 +17,7 @@ def get_engine() -> Engine:
     settings = get_api_settings()
     return create_engine(
         settings.database_url,
-        pool_pre_ping=True,   # a connection idle across a Postgres restart is reaped
+        pool_pre_ping=True,  # a connection idle across a Postgres restart is reaped
         pool_size=10,
         max_overflow=20,
         future=True,

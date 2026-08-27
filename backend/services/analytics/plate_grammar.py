@@ -32,18 +32,34 @@ from typing import Sequence
 # Confusion sets: characters an OCR genuinely confuses because they look alike. Each
 # maps a character to the character of the *other* class it is mistaken for.
 DIGIT_TO_LETTER: dict[str, str] = {
-    "0": "O", "1": "I", "8": "B", "5": "S", "2": "Z", "6": "G", "7": "T", "4": "A", "9": "P",
+    "0": "O",
+    "1": "I",
+    "8": "B",
+    "5": "S",
+    "2": "Z",
+    "6": "G",
+    "7": "T",
+    "4": "A",
+    "9": "P",
 }
 LETTER_TO_DIGIT: dict[str, str] = {
-    "O": "0", "D": "0", "Q": "0", "I": "1", "L": "1", "B": "8",
-    "S": "5", "Z": "2", "G": "6", "T": "7", "A": "4", "P": "9",
+    "O": "0",
+    "D": "0",
+    "Q": "0",
+    "I": "1",
+    "L": "1",
+    "B": "8",
+    "S": "5",
+    "Z": "2",
+    "G": "6",
+    "T": "7",
+    "A": "4",
+    "P": "9",
 }
 
 # Every pair the sets above consider confusable, used to score fuzzy matches.
 CONFUSABLE_PAIRS: frozenset[frozenset[str]] = frozenset(
-    frozenset(pair)
-    for mapping in (DIGIT_TO_LETTER, LETTER_TO_DIGIT)
-    for pair in mapping.items()
+    frozenset(pair) for mapping in (DIGIT_TO_LETTER, LETTER_TO_DIGIT) for pair in mapping.items()
 )
 
 # At most this many characters may be rewritten before a read is rejected as
@@ -145,14 +161,10 @@ def _apply_class_corrections(
     return "".join(chars), corrections
 
 
-def normalise_plate(
-    raw: str, char_confidences: Sequence[float] | None = None
-) -> NormalisedPlate:
+def normalise_plate(raw: str, char_confidences: Sequence[float] | None = None) -> NormalisedPlate:
     """Normalise an OCR string to canonical Indian form, recording every correction."""
     cleaned = _strip(raw)
-    mean_conf = (
-        sum(char_confidences) / len(char_confidences) if char_confidences else 0.0
-    )
+    mean_conf = sum(char_confidences) / len(char_confidences) if char_confidences else 0.0
 
     if not cleaned:
         return NormalisedPlate(raw=raw, normalised="", valid=False, confidence=mean_conf)
@@ -160,13 +172,19 @@ def normalise_plate(
     # Bharat series first: its trailing letters would be destroyed by the state layout.
     if BH_SERIES_RE.match(cleaned):
         return NormalisedPlate(
-            raw=raw, normalised=cleaned, valid=True, pattern="bh_series",
+            raw=raw,
+            normalised=cleaned,
+            valid=True,
+            pattern="bh_series",
             confidence=mean_conf,
         )
 
     if PLATE_RE.match(cleaned):
         return NormalisedPlate(
-            raw=raw, normalised=cleaned, valid=True, pattern="standard",
+            raw=raw,
+            normalised=cleaned,
+            valid=True,
+            pattern="standard",
             confidence=mean_conf,
         )
 
@@ -175,7 +193,10 @@ def normalise_plate(
         # Length gives no unambiguous layout. Keep the raw reading rather than
         # inventing structure -- an unparseable plate is still evidence of a vehicle.
         return NormalisedPlate(
-            raw=raw, normalised=cleaned, valid=False, pattern="unparsed",
+            raw=raw,
+            normalised=cleaned,
+            valid=False,
+            pattern="unparsed",
             confidence=mean_conf,
         )
 
@@ -187,20 +208,30 @@ def normalise_plate(
     # a 9-character string with 4 substitutions is not evidence of anything.
     if len(corrections) > MAX_CORRECTIONS:
         return NormalisedPlate(
-            raw=raw, normalised=cleaned, valid=False, pattern="too_many_corrections",
+            raw=raw,
+            normalised=cleaned,
+            valid=False,
+            pattern="too_many_corrections",
             confidence=mean_conf,
         )
 
     if PLATE_RE.match(corrected):
         return NormalisedPlate(
-            raw=raw, normalised=corrected, valid=True, corrections=corrections,
-            pattern="standard_corrected", confidence=mean_conf,
+            raw=raw,
+            normalised=corrected,
+            valid=True,
+            corrections=corrections,
+            pattern="standard_corrected",
+            confidence=mean_conf,
         )
 
     # Corrections did not produce a legal plate, so they were not justified. Discard
     # them: a correction that does not resolve the grammar is a guess, not a fix.
     return NormalisedPlate(
-        raw=raw, normalised=cleaned, valid=False, pattern="unparsed",
+        raw=raw,
+        normalised=cleaned,
+        valid=False,
+        pattern="unparsed",
         confidence=mean_conf,
     )
 

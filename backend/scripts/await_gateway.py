@@ -54,9 +54,7 @@ def media_plane_ready(settings, sample: int = 3) -> tuple[bool, list[str]]:
         url = settings.hls_url(cam.external_id)
         try:
             # cookieCheck is the gateway's gate; without it every request 302s.
-            resp = requests.get(
-                url, params={"cookieCheck": "1"}, timeout=15, allow_redirects=True
-            )
+            resp = requests.get(url, params={"cookieCheck": "1"}, timeout=15, allow_redirects=True)
             notes.append(f"camera {cam.external_id}: HTTP {resp.status_code}")
             if resp.status_code == 200 and "#EXTM3U" in resp.text:
                 ok += 1
@@ -81,7 +79,9 @@ def main() -> int:
     while time.monotonic() < deadline:
         attempt += 1
         ready, notes = media_plane_ready(settings)
-        log.info("attempt %d: %s | %s", attempt, "READY" if ready else "not ready", "; ".join(notes))
+        log.info(
+            "attempt %d: %s | %s", attempt, "READY" if ready else "not ready", "; ".join(notes)
+        )
         if ready:
             break
         time.sleep(args.interval_s)
@@ -95,14 +95,23 @@ def main() -> int:
         log.info("running preflight with evidence emission")
         rc |= subprocess.run(
             [py, "-u", "scripts/preflight_check.py", "--seconds", "10", "--emit-evidence"],
-            cwd=REPO_ROOT, check=False,
+            cwd=REPO_ROOT,
+            check=False,
         ).returncode
     if args.then_probe:
         log.info("running 30-camera probe with evidence emission")
         rc |= subprocess.run(
-            [py, "-u", "scripts/probe_catalogue.py", "--seconds", "8",
-             "--sequential", "--emit-evidence"],
-            cwd=REPO_ROOT, check=False,
+            [
+                py,
+                "-u",
+                "scripts/probe_catalogue.py",
+                "--seconds",
+                "8",
+                "--sequential",
+                "--emit-evidence",
+            ],
+            cwd=REPO_ROOT,
+            check=False,
         ).returncode
     return rc
 

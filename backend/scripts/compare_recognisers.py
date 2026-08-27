@@ -132,9 +132,7 @@ def score_model(name: str, rows: list[dict[str, str]]) -> dict[str, Any]:
         "recall": round(correct / legible, 4) if legible else 0.0,
         "character_error_rate": round(distance / chars, 4) if chars else 0.0,
         "seconds": round(time.monotonic() - started, 1),
-        "examples": [
-            {"crop": c, "read": r, "truth": t} for c, r, t in wrong[:6]
-        ],
+        "examples": [{"crop": c, "read": r, "truth": t} for c, r, t in wrong[:6]],
     }
 
 
@@ -159,10 +157,12 @@ def main() -> int:
             print(f"  failed: {type(exc).__name__}: {exc}")
             continue
         results.append(res)
-        print(f"  precision {res['precision']:.1%}  recall {res['recall']:.1%}  "
-              f"CER {res['character_error_rate']:.1%}  "
-              f"({res['correct']}/{res['crops_legible']} exact, "
-              f"{res['asserted_on_illegible']} asserted on illegible, {res['seconds']}s)")
+        print(
+            f"  precision {res['precision']:.1%}  recall {res['recall']:.1%}  "
+            f"CER {res['character_error_rate']:.1%}  "
+            f"({res['correct']}/{res['crops_legible']} exact, "
+            f"{res['asserted_on_illegible']} asserted on illegible, {res['seconds']}s)"
+        )
 
     if not results:
         print("no model scored successfully")
@@ -176,21 +176,29 @@ def main() -> int:
     print("=" * 70)
     print(f"  {'model':<38} {'exact':>7} {'prec':>7} {'CER':>7}")
     for r in results:
-        print(f"  {r['model']:<38} {r['correct']:>3}/{r['crops_legible']:<3} "
-              f"{r['precision']:>6.1%} {r['character_error_rate']:>6.1%}")
+        print(
+            f"  {r['model']:<38} {r['correct']:>3}/{r['crops_legible']:<3} "
+            f"{r['precision']:>6.1%} {r['character_error_rate']:>6.1%}"
+        )
     print(f"\n  best by exact matches: {best['model']}")
     print("=" * 70)
 
     stamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H-%M-%SZ")
     out = EVIDENCE_DIR / f"recogniser-comparison-{stamp}.json"
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps({
-        "generated_utc": datetime.now(timezone.utc).isoformat(),
-        "annotation_file": str(ANNOTATION_CSV.name),
-        "distinct_crops": len(rows),
-        "results": results,
-        "best_by_exact_matches": best["model"],
-    }, indent=2), encoding="utf-8")
+    out.write_text(
+        json.dumps(
+            {
+                "generated_utc": datetime.now(timezone.utc).isoformat(),
+                "annotation_file": str(ANNOTATION_CSV.name),
+                "distinct_crops": len(rows),
+                "results": results,
+                "best_by_exact_matches": best["model"],
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
     print(f"\nreport: {out}")
     return 0
 

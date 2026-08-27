@@ -140,9 +140,9 @@ class GeomSource(StrEnum):
 class SourceType(StrEnum):
     """Which CameraSource implementation serves this camera."""
 
-    GATEWAY = "gateway"       # the organiser's hackathon gateway
-    FILE = "file"             # local footage, our own-feed demonstration
-    RTSP_GENERIC = "rtsp"     # a direct RTSP/ONVIF camera or departmental VMS
+    GATEWAY = "gateway"  # the organiser's hackathon gateway
+    FILE = "file"  # local footage, our own-feed demonstration
+    RTSP_GENERIC = "rtsp"  # a direct RTSP/ONVIF camera or departmental VMS
     ONVIF = "onvif"
 
 
@@ -155,8 +155,8 @@ class ArchiveMode(StrEnum):
     table rewrite later.
     """
 
-    DEPARTMENTAL = "departmental"   # video stays with the owning department
-    FEDERATED = "federated"         # pulled into the central archive
+    DEPARTMENTAL = "departmental"  # video stays with the owning department
+    FEDERATED = "federated"  # pulled into the central archive
 
 
 class OwnershipClass(StrEnum):
@@ -169,7 +169,7 @@ class EvidenceType(StrEnum):
 
     ANPR_EXACT = "anpr_exact"
     ANPR_FUZZY = "anpr_fuzzy"
-    APPEARANCE_REID = "appearance_reid"   # T2.3; always a lower grade than a plate read
+    APPEARANCE_REID = "appearance_reid"  # T2.3; always a lower grade than a plate read
 
 
 class AlertState(StrEnum):

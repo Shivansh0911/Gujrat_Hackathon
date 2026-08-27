@@ -61,10 +61,7 @@ def _users(settings: ApiSettings) -> dict[str, tuple[str, str]]:
 _DUMMY_HASH = hash_password(secrets.token_urlsafe(32))
 
 
-
-def _audit_in_new_transaction(
-    *, action: str, subject_id: str, detail: dict[str, Any]
-) -> None:
+def _audit_in_new_transaction(*, action: str, subject_id: str, detail: dict[str, Any]) -> None:
     """Commit one audit entry independently of the request transaction."""
     from services.api.db import get_sessionmaker
 
@@ -99,7 +96,7 @@ def login(
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="no accounts configured; set SETU_ADMIN_PASSWORD and "
-                   "SETU_OPERATOR_PASSWORD in the environment",
+            "SETU_OPERATOR_PASSWORD in the environment",
         )
 
     record = users.get(form.username)
@@ -133,8 +130,12 @@ def login(
 
     token = create_access_token(form.username, role, settings, department_id)
     audit.append(
-        session, action="LOGIN_SUCCEEDED", subject_type="user",
-        subject_id=form.username, actor_id=form.username, actor_role=role,
+        session,
+        action="LOGIN_SUCCEEDED",
+        subject_type="user",
+        subject_id=form.username,
+        actor_id=form.username,
+        actor_role=role,
         detail={"role": role},
     )
     return Token(
