@@ -35,6 +35,7 @@ from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from services.analytics.model_ids import MODEL_VERSION
 from services.api import audit
 from services.api.config import ApiSettings, get_api_settings
 from services.api.db import get_session
@@ -455,12 +456,6 @@ def _coverage_gaps(session: Session, hops: list[JourneyHop]) -> list[CoverageGap
                 )
             )
     return gaps
-
-
-# Bumped whenever the detector, recogniser or grammar changes in a way that could
-# alter a read. Printed on every export so a disputed result can be tied to the exact
-# analytics that produced it.
-MODEL_VERSION = "anpr-1.0.0 (open-image-models yolo-v9-t-384 + fast-plate-ocr cct-s-v1)"
 
 
 @router.get("/journey/export", response_class=Response, tags=["journey"])

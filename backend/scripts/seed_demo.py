@@ -78,12 +78,25 @@ REPLAY_CAMERAS = [
 ]
 
 
+#: The clip the container image ships, and therefore the one a deployed instance
+#: demonstrates. Named explicitly rather than taken as the alphabetically first file:
+#: this directory also holds the full-length source footage, which is excluded from
+#: the image by .dockerignore for size. Picking `sorted(...)[0]` meant a developer's
+#: machine ingested the long clip while the container ingested the short one, so the
+#: local demo and the deployed demo showed *different registrations* -- and the
+#: runbook, the screenshots and the recorded video could each be right about a
+#: different instance.
+DEMO_CLIP_NAME = "demo_clip.mp4"
+
+VIDEO_SUFFIXES = {".mp4", ".mkv", ".avi", ".mov", ".webm"}
+
+
 def _pick_clip() -> Path:
-    clips = sorted(
-        p
-        for p in OWN_FEED_DIR.glob("*")
-        if p.suffix.lower() in {".mp4", ".mkv", ".avi", ".mov", ".webm"}
-    )
+    preferred = OWN_FEED_DIR / DEMO_CLIP_NAME
+    if preferred.exists():
+        return preferred
+    # Fall back to any clip, so dropping in replacement footage still works.
+    clips = sorted(p for p in OWN_FEED_DIR.glob("*") if p.suffix.lower() in VIDEO_SUFFIXES)
     if not clips:
         raise SystemExit(
             f"no video in {OWN_FEED_DIR}. Drop a clip there, or see SOURCE.md for the "

@@ -271,6 +271,61 @@ to the geocode cache or a named district centroid. Done properly it needs its ow
 provenance value, its own confidence radius, and a human confirming each match. It is
 the highest-value use of the OSD discovery and the natural next piece of work.
 
+## Finding 15 - the recogniser had fewer character slots than an Indian plate
+
+**2026-08-27.** The first end-to-end accuracy measurement returned **0.0% precision
+and 0.0% recall**: across every annotated evidence crop, not one registration was read
+correctly. The cause was not tuning.
+
+`fast-plate-ocr` models declare a `max_plate_slots` in their config, which is the
+number of classification heads the network has. The model we had configured,
+`cct-s-v1-global-model`, declares:
+
+```
+max_plate_slots: 9
+```
+
+An Indian registration under the current scheme is **ten** characters -- `XX00XX0000`,
+as in `GJ32AG1111`. A nine-slot model cannot represent one. This is arithmetic, not
+accuracy: every full-length Indian plate was wrong before inference began, and no
+amount of image quality, tuning or post-processing could have recovered it.
+
+The evidence had been sitting in the output the whole time. **Every single read was
+exactly nine characters long.** `KA25AB1542` came back as `KA25AB154`, `GJ14AK5333` as
+`GJ14AK533`, `GJ36AR0180` as `GJ36AR018`. A uniform output length across hundreds of
+reads is not a plausible property of real number plates, and it should have been the
+first thing questioned.
+
+`cct-s-v2-global-model` declares `max_plate_slots: 10` and is now the default, pinned
+in `services/analytics/model_ids.py` with the reasoning attached, and guarded by a
+test that fails if the configured model reverts to a v1 generation.
+
+**Two further defects surfaced once this one was fixed**, both of which had been
+masked by it:
+
+- **Track association never associated anything.** Detections were matched across
+  frames by bounding-box overlap alone at a 0.25 IoU threshold. Analytic sampling runs
+  at 5 fps, so consecutive looks at a vehicle are 200 ms apart, and in 200 ms a plate
+  travels further than its own width -- the boxes overlap by exactly nothing. 22 plate
+  detections produced 14 tracks, 13 of them one frame long. **Multi-frame fusion, one
+  of the pipeline's headline features, had never once run on real footage.**
+- **Fusion voted misaligned characters against each other.** Reads of differing length
+  were always right-aligned, on the reasoning that Indian plates end in a numeric
+  group. That is correct when OCR drops a *leading* character and wrong when it drops
+  a trailing one, and the newer model drops trailing ones. Three near-correct reads of
+  `KA25AB1542` fused to `KA25A1154` -- worse than the best single read, because the
+  disagreement was manufactured by the alignment.
+
+Measured effect of all three fixes, plus a confidence floor below which a read is not
+published: precision and recall **0.0% -> 29.6%**, character error rate **39.8% ->
+26.9%**, reads asserted on crops no human can read **21 -> 0**. Four of the seven
+government-feed crops from camera 7 are now read exactly right.
+
+**The lesson worth carrying.** All three defects were invisible to code review -- each
+looked reasonable, and two were accompanied by a comment explaining why they were
+right. They were found by annotating real output by hand and scoring against it. A
+pipeline that reports its own rates is not the same as a pipeline that is measured.
+
 ## Local evaluation hardware
 
 Python 3.12.5, Docker 29.7.2, Node 20.14, **NVIDIA RTX 4050 Laptop, 6 GB VRAM**.

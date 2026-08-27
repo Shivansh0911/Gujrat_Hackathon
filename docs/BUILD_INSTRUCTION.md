@@ -156,9 +156,9 @@ regenerate.**
 | Motion gate pass rate | 13.7% | — | — |
 | Throughput, published 2560×1440 | 0.81 cameras/worker | — | ~98,500 workers for 80k |
 | Throughput, 704×396 sub-stream | 3.82 cameras/worker | — | ~21,000 workers, but see below |
-| ANPR plate-level precision / recall | **0.0% / 0.0%** (CER 39.8%, 17 distinct images) | implies a working recogniser | **does not hold — amend** |
+| ANPR plate-level precision / recall | **29.6% / 29.6%** (CER 26.9%), up from 0.0% | implies a working recogniser | **amend to the measured figure** |
 | Government feed: cameras producing frames | **25 of 30** | — | tested |
-| Government feed: valid registrations | **2** from 9,158 frames / 30 plate regions | — | resolution-bound |
+| Government feed: valid registrations | **4** exactly correct of 7 crops on camera 7 | — | resolution-bound elsewhere |
 | Declared vs measured fps, live estate | **5 of 8 comparable diverge >5%** | "never trust declared fps" | holds |
 | Declared vs measured fps, live gateway | **12 of 16 diverge** | "never trust declared fps" | holds |
 
@@ -191,6 +191,13 @@ processing, not a weaker one. See `docs/HLD_RECONCILIATION.md`.
   written. CI lint/type paths repaired after the backend/frontend split (they pointed
   at directories that no longer existed), `mypy --strict` brought to zero errors,
   digest pinning fixed and extended to the production compose file, and three unwired
-  services moved behind a `planned` profile. **Next session: the Railway push (needs
-  the team account), the recogniser swap and re-annotation, and OSD-derived camera
-  coordinates (DISCOVERY finding 14).**
+  services moved behind a `planned` profile. - `2026-08-27` — **ANPR accuracy fixed and re-measured: 0.0% -> 29.6% precision and
+  recall, CER 39.8% -> 26.9%, false reads on illegible crops 21 -> 0.** Three defects,
+  all found by measuring rather than reading code: a 9-slot recogniser against
+  10-character Indian plates, IoU-only track association that meant multi-frame fusion
+  had never run, and fusion that right-aligned reads of differing length and voted
+  unrelated characters together. Added a confidence floor below which nothing is
+  published, 13 regression tests, a shared `model_ids` module so the signed evidence
+  manifest cannot name the wrong model, and a deterministic demo clip so local and
+  deployed instances read the same plates. **Next session: the Railway push (needs the
+  team account) and OSD-derived camera coordinates (DISCOVERY finding 14).**

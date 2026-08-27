@@ -270,19 +270,28 @@ class PlateObservation:
 class PlateAccumulator:
     """Fuses observations of a single vehicle track into one decision.
 
-    Positions are indexed from the RIGHT. Indian plates end in the numeric group, and
-    the OCR occasionally drops a leading character (as it did in our first probe,
-    reading a 10-character plate as 9). Right-alignment keeps the number group in
-    register across reads of differing length; left-alignment would smear every
-    position after the dropped character.
+    Reads of one plate differ in length, because OCR drops characters. Which end it
+    drops depends on the model: the 9-slot recogniser we started with could not emit
+    a 10-character plate at all and lost a leading character, while the 10-slot model
+    that replaced it usually gets the length right and occasionally loses a trailing
+    one. Fusing them requires knowing which.
+
+    An earlier version always right-aligned, on the reasoning that Indian plates end
+    in the numeric group. That is right for a dropped *leading* character and wrong
+    for a dropped trailing one, and when it was wrong it did not fail quietly -- it
+    shifted every position by one and voted character against unrelated character.
+    Three reads of `KA25AB1542` (`KA25AD1542`, `KA25AD154`, `KA25A0154`) fused to
+    `KA25A1154`: worse than the best single read, because the disagreement was
+    manufactured by the alignment rather than present in the evidence.
+
+    So alignment is now chosen per observation rather than assumed. A consensus is
+    built from the reads that already agree on the modal length, and every shorter
+    read is placed at whichever offset best matches it. Ties prefer the right-hand
+    placement, keeping the old behaviour as the tie-breaker it should always have
+    been.
     """
 
     def __init__(self) -> None:
-        # position (from right) -> character -> summed confidence
-        self._votes: dict[int, dict[str, float]] = defaultdict(lambda: defaultdict(float))
-        # How many reads voted for each character, so summed confidence can be
-        # turned back into a mean rather than growing with frame count.
-        self._vote_counts: dict[int, dict[str, int]] = defaultdict(lambda: defaultdict(int))
         self._lengths: dict[int, float] = defaultdict(float)
         self.observations: list[PlateObservation] = []
 
@@ -290,40 +299,113 @@ class PlateAccumulator:
         cleaned = _strip(text)
         if not cleaned:
             return
-        self.observations.append(
-            PlateObservation(cleaned, [float(c) for c in char_confidences], pts_ms)
-        )
-        confs = list(char_confidences)
+        confs = [float(c) for c in char_confidences]
+        self.observations.append(PlateObservation(cleaned, confs, pts_ms))
         # Weight the length vote by mean confidence, so a confident 10-character read
         # outweighs several hesitant 9-character ones.
         self._lengths[len(cleaned)] += (sum(confs) / len(confs)) if confs else 0.5
 
-        for offset, ch in enumerate(reversed(cleaned)):
-            conf = float(confs[len(cleaned) - 1 - offset]) if offset < len(confs) else 0.5
-            self._votes[offset][ch] += conf
-            self._vote_counts[offset][ch] += 1
-
     @property
     def frame_count(self) -> int:
         return len(self.observations)
+
+    def _conf_at(self, obs: PlateObservation, index: int) -> float:
+        if index < len(obs.char_confidences):
+            return float(obs.char_confidences[index])
+        return 0.5
+
+    #: How much weaker the evidence for a longer plate may be before it is dropped in
+    #: favour of a shorter one. See `_decide_length`.
+    LENGTH_BIAS = 0.5
+
+    def _decide_length(self) -> int:
+        """How many characters the plate has.
+
+        Not simply the best-supported length. Support is summed across reads, so two
+        hesitant nine-character reads outvote one confident ten-character read, and
+        that is the wrong way round for this failure mode: OCR truncates far more
+        readily than it invents. A nine-character read is exactly what a truncated
+        ten-character plate looks like, whereas a ten-character read cannot be
+        produced from a nine-character plate without the model hallucinating a glyph
+        it had no pixels for.
+
+        Real example, from camera 7 on the government feed: `GJ36AR0180` was read as
+        `GJ36AR018`, `GJ11AS4498` as `GJ71AS449`, `GJ09DC6441` as `GJ09DC644`. Every
+        one lost its last character, and a plain majority vote on length preserved
+        the loss.
+
+        So the longest length still carrying at least `LENGTH_BIAS` of the best
+        length's support wins. The floor is what stops a single spurious long read
+        from dragging the answer out: it has to be respectable evidence, not merely
+        present.
+        """
+        if not self._lengths:
+            return 0
+        best_weight = max(self._lengths.values())
+        floor = best_weight * self.LENGTH_BIAS
+        return max(length for length, w in self._lengths.items() if w >= floor)
+
+    def _reference(self, length: int) -> list[str]:
+        """A provisional consensus to align ragged reads against."""
+        exact = [o for o in self.observations if len(o.text) == length]
+        pool = exact or self.observations
+        votes: list[dict[str, float]] = [defaultdict(float) for _ in range(length)]
+        for obs in pool:
+            # Reads of the modal length align directly; anything else falls back to
+            # the right-hand placement purely to seed the reference.
+            offset = length - len(obs.text) if len(obs.text) < length else 0
+            for i, ch in enumerate(obs.text):
+                pos = i + offset
+                if 0 <= pos < length:
+                    votes[pos][ch] += self._conf_at(obs, i)
+        return [(max(v.items(), key=lambda kv: kv[1])[0] if v else "?") for v in votes]
+
+    def _best_offset(self, obs: PlateObservation, reference: list[str]) -> int:
+        """Where this read sits within a plate of the reference's length."""
+        length = len(reference)
+        span = len(obs.text)
+        if span >= length:
+            return 0
+        best_offset, best_score = length - span, -1.0  # right-aligned by default
+        for offset in range(length - span + 1):
+            score = sum(
+                self._conf_at(obs, i)
+                for i, ch in enumerate(obs.text)
+                if reference[i + offset] == ch
+            )
+            # `>=` so that, among equal scores, the largest offset wins -- the
+            # right-hand placement stays the tie-break.
+            if score >= best_score:
+                best_offset, best_score = offset, score
+        return best_offset
 
     def fused(self) -> NormalisedPlate | None:
         """Decide the plate from accumulated evidence. None if nothing was observed."""
         if not self.observations:
             return None
 
-        length = max(self._lengths.items(), key=lambda kv: kv[1])[0]
+        length = self._decide_length()
+        reference = self._reference(length)
+
+        votes: list[dict[str, float]] = [defaultdict(float) for _ in range(length)]
+        counts: list[dict[str, int]] = [defaultdict(int) for _ in range(length)]
+        for obs in self.observations:
+            offset = self._best_offset(obs, reference)
+            for i, ch in enumerate(obs.text):
+                pos = i + offset
+                if 0 <= pos < length:
+                    votes[pos][ch] += self._conf_at(obs, i)
+                    counts[pos][ch] += 1
 
         chars: list[str] = []
         confidences: list[float] = []
-        for offset in range(length - 1, -1, -1):
-            votes = self._votes.get(offset)
-            if not votes:
+        for pos in range(length):
+            if not votes[pos]:
                 chars.append("?")
                 confidences.append(0.0)
                 continue
-            ch, weight = max(votes.items(), key=lambda kv: kv[1])
-            total = sum(votes.values())
+            ch, weight = max(votes[pos].items(), key=lambda kv: kv[1])
+            total = sum(votes[pos].values())
             chars.append(ch)
             # Two independent things matter and both must be represented:
             #   agreement - what share of the evidence at this position backs the
@@ -333,7 +415,7 @@ class PlateAccumulator:
             # Reporting agreement alone made every single-frame read 1.00 confident,
             # which is exactly backwards: one hesitant glance is our weakest evidence.
             agreement = weight / total if total else 0.0
-            n_votes = self._vote_counts[offset].get(ch, 0)
+            n_votes = counts[pos].get(ch, 0)
             strength = (weight / n_votes) if n_votes else 0.0
             confidences.append(agreement * strength)
 

@@ -24,6 +24,7 @@ from typing import TYPE_CHECKING, Any, Iterator, Protocol, cast
 import numpy as np
 from numpy.typing import NDArray
 
+from services.analytics.model_ids import DETECTOR_MODEL, RECOGNISER_MODEL
 from services.analytics.plate_grammar import NormalisedPlate, PlateAccumulator
 from services.common.cv_env import cv2
 from services.common.stream_client import Frame
@@ -115,19 +116,84 @@ def _iou(a: tuple[int, int, int, int], b: tuple[int, int, int, int]) -> float:
     return inter / float(area_a + area_b - inter)
 
 
+def _centre(b: tuple[int, int, int, int]) -> tuple[float, float]:
+    return ((b[0] + b[2]) / 2.0, (b[1] + b[3]) / 2.0)
+
+
+def _diag(b: tuple[int, int, int, int]) -> float:
+    w, h = b[2] - b[0], b[3] - b[1]
+    return float((w * w + h * h) ** 0.5) or 1.0
+
+
 class PlateTracker:
-    """Associates plate detections across frames by IoU, so reads can be fused.
+    """Associates plate detections across frames, so reads can be fused.
 
     Association is what makes multi-frame fusion possible at all: without it, ten
     reads of one vehicle are ten unrelated detections rather than one observation
     with ten pieces of evidence.
+
+    **Why this is not IoU alone.** It was, with a 0.25 threshold, and on real footage
+    it associated almost nothing: 22 plate detections produced 14 tracks, 13 of them
+    a single frame long. Sampling runs at 5 analytic fps, so consecutive looks at one
+    vehicle are 200 ms apart, and in 200 ms a plate travels further than its own
+    width -- especially in the own-feed clip, which is shot from a moving vehicle.
+    Two boxes of the same plate then overlap by nothing at all and IoU is exactly
+    zero. Multi-frame fusion was therefore dead code in practice, and every plate was
+    decided by a single noisy read.
+
+    So a second, motion-tolerant gate runs when IoU fails: match if the box centre
+    moved less than `max_travel` box-diagonals, the box is a similar size, and the
+    gap is short. Each condition is there to stop a different false merge -- distance
+    bounds how far a vehicle can plausibly have gone, scale rejects a different plate
+    at a different depth, and the time bound stops a track adopting an unrelated
+    vehicle that happens to arrive later in the same part of the frame.
+
+    Assignment is greedy over the best-scoring pairs rather than first-come per box,
+    so two nearby plates cannot have their tracks swapped by iteration order.
     """
 
-    def __init__(self, iou_threshold: float = 0.25, max_misses: int = 8) -> None:
+    def __init__(
+        self,
+        iou_threshold: float = 0.25,
+        max_misses: int = 8,
+        max_travel_diagonals: float = 2.5,
+        max_scale_ratio: float = 2.5,
+        max_gap_ms: float = 600.0,
+    ) -> None:
         self._iou_threshold = iou_threshold
         self._max_misses = max_misses
+        self._max_travel = max_travel_diagonals
+        self._max_scale_ratio = max_scale_ratio
+        self._max_gap_ms = max_gap_ms
         self._tracks: dict[int, PlateTrack] = {}
         self._next_id = 1
+
+    def _affinity(self, track: PlateTrack, box: tuple[int, int, int, int], pts_ms: float) -> float:
+        """How strongly `box` looks like the next sighting of `track`. 0 = no match."""
+        iou = _iou(track.bbox, box)
+        if iou >= self._iou_threshold:
+            # Overlap is the strongest evidence; keep it ranked above any motion match.
+            return 1.0 + iou
+
+        gap = pts_ms - track.last_pts_ms
+        if gap < 0 or gap > self._max_gap_ms:
+            return 0.0
+
+        tw, th = track.bbox[2] - track.bbox[0], track.bbox[3] - track.bbox[1]
+        bw, bh = box[2] - box[0], box[3] - box[1]
+        if tw <= 0 or th <= 0 or bw <= 0 or bh <= 0:
+            return 0.0
+        scale = max(bw / tw, tw / bw, bh / th, th / bh)
+        if scale > self._max_scale_ratio:
+            return 0.0
+
+        (tx, ty), (bx, by) = _centre(track.bbox), _centre(box)
+        travel = float(((tx - bx) ** 2 + (ty - by) ** 2) ** 0.5) / _diag(track.bbox)
+        if travel > self._max_travel:
+            return 0.0
+
+        # Nearer is better, and never outranks a genuine IoU match.
+        return 1.0 - (travel / self._max_travel)
 
     def reset(self) -> str:
         """Drop all tracks. Called on a scene discontinuity.
@@ -145,20 +211,33 @@ class PlateTracker:
         """Match boxes to tracks. Returns (track, box) pairs for this frame."""
         matched: list[tuple[PlateTrack, tuple[int, int, int, int]]] = []
         unmatched_tracks = set(self._tracks)
+        unmatched_boxes = set(range(len(boxes)))
 
-        for box in boxes:
-            best_id, best_iou = None, 0.0
-            for tid in unmatched_tracks:
-                score = _iou(self._tracks[tid].bbox, box)
-                if score > best_iou:
-                    best_id, best_iou = tid, score
+        # Score every surviving pair, then take them best-first. Greedy over a
+        # global ranking, not per box in arrival order, so the strongest evidence
+        # wins a contested track instead of whichever box was considered first.
+        candidates = [
+            (self._affinity(self._tracks[tid], box, pts_ms), tid, bi)
+            for bi, box in enumerate(boxes)
+            for tid in self._tracks
+        ]
+        candidates = [c for c in candidates if c[0] > 0.0]
+        candidates.sort(key=lambda c: (-c[0], c[1], c[2]))
 
-            if best_id is not None and best_iou >= self._iou_threshold:
-                track = self._tracks[best_id]
+        assigned: dict[int, int] = {}  # box index -> track id
+        for _score, cand_tid, cand_bi in candidates:
+            if cand_tid in unmatched_tracks and cand_bi in unmatched_boxes:
+                unmatched_tracks.discard(cand_tid)
+                unmatched_boxes.discard(cand_bi)
+                assigned[cand_bi] = cand_tid
+
+        for bi, box in enumerate(boxes):
+            matched_tid = assigned.get(bi)
+            if matched_tid is not None:
+                track = self._tracks[matched_tid]
                 track.bbox = box
                 track.last_pts_ms = pts_ms
                 track.misses = 0
-                unmatched_tracks.discard(best_id)
             else:
                 track = PlateTrack(
                     track_id=self._next_id,
@@ -202,7 +281,7 @@ class PlateRecogniser(Protocol):
 class OpenImagePlateDetector:
     """open-image-models YOLOv9 ONNX plate detector (MIT)."""
 
-    def __init__(self, model: str = "yolo-v9-t-384-license-plate-end2end") -> None:
+    def __init__(self, model: str = DETECTOR_MODEL) -> None:
         from open_image_models import LicensePlateDetector
 
         # The package types this parameter as a Literal of its bundled model names.
@@ -222,7 +301,21 @@ class OpenImagePlateDetector:
 class FastPlateRecogniser:
     """fast-plate-ocr CCT ONNX recogniser (MIT). Returns per-character confidences."""
 
-    def __init__(self, model: str = "cct-s-v1-global-model") -> None:
+    #: Indian registrations are up to TEN characters (XX00XX0000). A model's
+    #: `max_plate_slots` is the number of classification heads it has, so a 9-slot
+    #: model cannot emit a 10-character plate at all -- it is not a matter of
+    #: accuracy, it is arithmetically impossible. `cct-s-v1-global-model` has 9
+    #: slots and was the original default; every full-length Indian plate it ever
+    #: read was wrong before inference began. `cct-s-v2-global-model` has 10.
+    DEFAULT_MODEL = RECOGNISER_MODEL
+
+    @classmethod
+    def default_model(cls) -> str:
+        """So the prefetch script cannot drift from what inference actually loads."""
+        return cls.DEFAULT_MODEL
+
+    def __init__(self, model: str | None = None) -> None:
+        model = model or self.DEFAULT_MODEL
         from fast_plate_ocr import LicensePlateRecognizer
 
         self._impl = LicensePlateRecognizer(cast(Any, model))  # Literal, as above
@@ -297,6 +390,9 @@ class AnprPipeline:
         analytic_fps: float = 5.0,
         min_detector_confidence: float = 0.35,
         min_crop_height: int = 16,
+        crop_margin_x: float = 0.12,
+        crop_margin_y: float = 0.20,
+        min_publish_confidence: float = 0.5,
     ) -> None:
         self._detector = detector
         self._recogniser = recogniser
@@ -306,6 +402,31 @@ class AnprPipeline:
         # frame cadence is not uniform, so an interval is the only stable meaning.
         self._min_interval_ms = 1000.0 / analytic_fps if analytic_fps > 0 else 0.0
         self._min_detector_confidence = min_detector_confidence
+        # Crop padding around the detector box, as a fraction of box size. Tunable
+        # because it is not a free parameter: too tight clips the outer glyphs and
+        # the recogniser silently returns a shorter plate, too loose feeds it
+        # background that the fixed 128x64 input then squeezes the plate out of.
+        # Swept against annotated ground truth on the own-feed clip: 0.06 yielded 6
+        # grammar-valid reads, 0.12 yielded 8 and the only full-length read of the
+        # 10-character plate, 0.20 fell back to 4. Measured, not guessed.
+        self._crop_margin_x = crop_margin_x
+        self._crop_margin_y = crop_margin_y
+        # Below this fused confidence a read is not emitted at all.
+        #
+        # This is a deliberate bias towards silence. Reporting a wrong registration to
+        # an investigator is worse than reporting nothing: nothing prompts them to look
+        # again, a wrong plate sends them somewhere else entirely, and a wrong plate
+        # carrying a high confidence is worse still because it will be believed.
+        #
+        # The value comes from the annotated crops rather than taste. Of the crops a
+        # reviewer found illegible, every single pipeline read scored 0.46 or below,
+        # while both reads that were exactly right scored 0.79 and 0.94. A cut at 0.5
+        # removed all eleven false reads on illegible crops and kept both correct ones.
+        #
+        # Stated honestly: that is a small sample, and 0.5 is chosen as the round
+        # number inside a wide gap rather than as an optimum. It is a parameter, and
+        # it should be re-derived whenever the recogniser or the footage changes.
+        self._min_publish_confidence = min_publish_confidence
         self._min_crop_height = min_crop_height
 
     def run(
@@ -405,7 +526,7 @@ class AnprPipeline:
         h, w = image.shape[:2]
         # A small margin: plate detectors crop tight, and the recogniser does better
         # with a little surrounding context than with clipped glyph edges.
-        mx, my = int((x2 - x1) * 0.06), int((y2 - y1) * 0.18)
+        mx, my = int((x2 - x1) * self._crop_margin_x), int((y2 - y1) * self._crop_margin_y)
         x1, y1 = max(0, x1 - mx), max(0, y1 - my)
         x2, y2 = min(w, x2 + mx), min(h, y2 + my)
         if x2 - x1 < 8 or y2 - y1 < self._min_crop_height:
@@ -417,6 +538,10 @@ class AnprPipeline:
     def _finalise(self, track: PlateTrack, source: CameraSource) -> PlateDetectionRecord | None:
         fused = track.accumulator.fused()
         if fused is None or not fused.normalised:
+            return None
+        if fused.confidence < self._min_publish_confidence:
+            # Not evidence of a vehicle, and saying so is the whole point. The crop is
+            # not written either: an evidence image implies there is something to see.
             return None
 
         crop_path = None

@@ -13,8 +13,21 @@ runtime, inside the demo ingest, as an SSL traceback several layers from its cau
 
 from __future__ import annotations
 
+import sys
 import time
 from pathlib import Path
+
+# `services` is not importable from this script's directory. Without this the
+# recogniser prefetch failed with ModuleNotFoundError at image-build time, the
+# build printed a warning and carried on, and the container then downloaded the
+# model on its first inference -- or, on a host with no outbound network, failed.
+BACKEND_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(BACKEND_ROOT))
+
+from services.analytics.model_ids import (  # noqa: E402
+    DETECTOR_MODEL,
+    RECOGNISER_MODEL,
+)
 
 ATTEMPTS = 3
 BACKOFF_S = 5
@@ -39,12 +52,14 @@ def main() -> int:
     def detector() -> None:
         from open_image_models import LicensePlateDetector
 
-        LicensePlateDetector(detection_model="yolo-v9-t-384-license-plate-end2end")
+        LicensePlateDetector(detection_model=DETECTOR_MODEL)
 
     def recogniser() -> None:
+        # Names come from services.analytics.model_ids, which is also what
+        # inference loads, so the two cannot drift apart.
         from fast_plate_ocr import LicensePlateRecognizer
 
-        LicensePlateRecognizer("cct-s-v1-global-model")
+        LicensePlateRecognizer(RECOGNISER_MODEL)
 
     print("prefetching ANPR models...")
     ok = [fetch("detector", detector), fetch("recogniser", recogniser)]

@@ -88,7 +88,25 @@ USER setu
 # transient SSL error the build still printed "models cached" and the image shipped
 # with half a cache. The runtime download then failed inside the demo ingest, which
 # surfaced as "demo ingest failed" with an SSL traceback several layers away.
-RUN python scripts/prefetch_models.py || true
+# The script's exit code is now respected. `|| true` used to discard it, so when the
+# recogniser prefetch broke outright -- ModuleNotFoundError, not a network blip -- the
+# build printed its warning, returned 1, and the image shipped anyway with only the
+# detector cached. Nothing downstream noticed until the container was inspected by
+# hand. A build step whose result is thrown away is not a build step.
+#
+# Offline or flaky-network builds can still proceed explicitly:
+#   docker build --build-arg REQUIRE_MODEL_CACHE=0 ...
+# which accepts an image that downloads its models on first inference.
+ARG REQUIRE_MODEL_CACHE=1
+RUN if python scripts/prefetch_models.py; then \
+      echo "model cache complete"; \
+    elif [ "$REQUIRE_MODEL_CACHE" = "0" ]; then \
+      echo "WARNING: shipping without a complete model cache (REQUIRE_MODEL_CACHE=0)"; \
+    else \
+      echo "ERROR: model prefetch failed and REQUIRE_MODEL_CACHE=1."; \
+      echo "       Rebuild with --build-arg REQUIRE_MODEL_CACHE=0 to accept a runtime download."; \
+      exit 1; \
+    fi
 
 EXPOSE 8000
 

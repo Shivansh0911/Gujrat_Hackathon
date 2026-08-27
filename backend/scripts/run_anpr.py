@@ -42,6 +42,13 @@ def main() -> int:
     ap.add_argument("--max-frames", type=int, default=None)
     ap.add_argument("--analytic-fps", type=float, default=5.0)
     ap.add_argument("--motion-threshold", type=float, default=2.5)
+    ap.add_argument(
+        "--recogniser-model",
+        default=None,
+        help="override the OCR model (default: FastPlateRecogniser.DEFAULT_MODEL)",
+    )
+    ap.add_argument("--crop-margin-x", type=float, default=0.12)
+    ap.add_argument("--crop-margin-y", type=float, default=0.20)
     ap.add_argument("--crop-dir", type=Path, default=REPO_ROOT / "data" / "evidence" / "crops")
     ap.add_argument("--emit-evidence", action="store_true")
     ap.add_argument(
@@ -64,7 +71,7 @@ def main() -> int:
     print("loading models...")
     t0 = time.monotonic()
     detector = OpenImagePlateDetector()
-    recogniser = FastPlateRecogniser()
+    recogniser = FastPlateRecogniser(args.recogniser_model)
     print(f"  models ready in {time.monotonic() - t0:.1f}s")
 
     pipeline = AnprPipeline(
@@ -73,6 +80,8 @@ def main() -> int:
         crop_dir=args.crop_dir,
         analytic_fps=args.analytic_fps,
         motion_threshold=args.motion_threshold,
+        crop_margin_x=args.crop_margin_x,
+        crop_margin_y=args.crop_margin_y,
     )
 
     writer = None

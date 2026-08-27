@@ -220,6 +220,16 @@ def main() -> int:
             "Frame counts and PTS-derived rates for these are unaffected; only their "
             "elapsed time is meaningless, and it is excluded from every figure above."
         )
+    models = sorted({r["settings"].get("recogniser_model", "?") for r in runs})
+    if len(models) > 1:
+        A(
+            f"- **Passes span more than one recogniser** ({', '.join(models)}). Estate "
+            "coverage and frame-rate figures are unaffected -- they do not depend on "
+            "the recogniser -- but plate counts should be read per pass rather than "
+            "summed as though one model produced them all."
+        )
+    else:
+        A(f"- Recogniser: `{models[0]}`.")
     A(
         "- Cameras returning HTTP 500 on their playlist are a gateway-side fault, "
         "reported in `docs/SUPPORT_QUERY.md`. Cameras that time out may be either."

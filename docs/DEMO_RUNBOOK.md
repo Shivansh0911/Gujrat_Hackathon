@@ -84,20 +84,12 @@ tells the truth about how well we know each position.
 
 This is the screen the live test case is judged on. Spend the time here.
 
-> **Read the plate off your own instance before recording.** The demo ingest runs
-> against whatever clip is bundled, so the exact registration differs between
-> deployments — it was `KA25AB144` on the development stack and `KA25A3141` on the
-> container stack. Open the Alert Desk first and take the plate from a card, or run:
->
-> ```bash
-> python backend/scripts/verify_deployment.py http://localhost:8080
-> ```
->
-> which prints the plate it successfully traced in check 3. **A demonstration that
-> opens with "no route found" because the plate was copied from a document is the
-> worst possible first thirty seconds.**
+> **The plate is `KA25AB1542`, and it is the vehicle's real registration.** Local and
+> deployed instances now ingest the same clip and produce the same reads, so this no
+> longer varies between machines. If you replace the footage, re-read it off the Alert
+> Desk or take it from check 3 of `verify_deployment.py`.
 
-**Type plate:** the one you just read
+**Type plate:** `KA25AB1542`
 **Purpose:** `FIR 123/2026 — vehicle trace requested by Investigating Officer`
 Leave the default time window. Press **Trace vehicle**.
 
@@ -143,29 +135,23 @@ result distinguishes *plate never seen anywhere* from *seen, but not in this win
 
 **8 alerts**, all grouped as movement alerts.
 
-- **Click the `fuzzy_1` card** — that is the one to demonstrate; on the development
-  stack it was `KA25AI11G`, but as with the journey plate, **read it off your own
-  instance first.** The detection read `KA25AI116`, the watchlist holds `KA25AI11G`,
-  and `G`/`6` are a known OCR confusion pair. **An exact-match system finds nothing
-  here.** The card shows the match type and the reduced score.
+- **Click a `fuzzy_1` card** — that is the one to demonstrate. The watchlist holds a
+  near-miss of a plate present in the footage, differing by one confusion-pair
+  character (`G`/`6`, `I`/`1`, `B`/`8`). **An exact-match system finds nothing here.**
+  The card shows the match type and the reduced score.
 
-> **If a judge presses on this one, concede it cleanly.** Ground-truth annotation
-> shows that detection is itself wrong — the vehicle is `KA25AB1116`, so the
-> recogniser misread `B` as `I` as well. What the card demonstrates is real and worth
-> demonstrating: confusion-aware matching recovers a vehicle that exact matching drops
-> entirely. But it recovered it to a registration that is still wrong, and that is
-> precisely why the platform shows the crop, the corrections and the score instead of
-> presenting a plate as fact. **The reviewer is given what they need to disagree with
-> the machine.** Do not let this be discovered rather than offered.
-- Note the three timestamps on each card: `observed_at_utc`, stream `PTS`, and the
-  read confidence. PTS is what makes a detection reproducible from the original
-  stream rather than merely displayed.
-- **Acknowledge** it, then **Resolve → False positive**. Explain that the disposition
-  feeds the per-camera false-positive rate on the Health screen — the platform
-  measuring its own precision rather than asserting it.
-- **Discrimination matters:** the watchlist holds 9 entries. Five are valid
-  registrations from Maharashtra, Delhi, Rajasthan, Tamil Nadu and Uttar Pradesh that
-  are **correctly ignored**. A demo where everything matches is not believable.
+> **On accuracy, get in first.** Plate-level accuracy is 29.6% precision and recall,
+> 26.9% character error rate, measured against a by-eye annotation of every evidence
+> crop. It was 0% until three defects were found by measuring: a recogniser with nine
+> character slots when Indian plates have ten, track association that never associated
+> anything so multi-frame fusion never ran, and fusion that right-aligned reads of
+> different lengths and voted unrelated characters against each other.
+>
+> **Say that, rather than waiting to be asked.** It is the strongest thing in the
+> submission: the platform measures its own output, and the measurement found real
+> bugs that reading the code did not. Then point at the confidence column — a read
+> below 0.5 is not published at all, because a wrong registration carrying a high
+> confidence is the one an investigator would act on.
 
 ### 2.4 Coverage — gap analysis, 45 seconds
 
@@ -276,19 +262,23 @@ Saying these first is what makes everything else in the submission credible. A j
 that discovers a limitation itself discounts the whole; a jury told the limitation up
 front tends to trust the rest.
 
-1. **ANPR plate-level accuracy is 0.0%, character error rate 39.8%.** Measured against
-   a by-eye annotation of all 80 evidence crops, committed as
-   `data/seed/anpr_ground_truth.csv`. No registration has been read correctly on this
-   footage. Two measured causes: the estate publishes below the resolution at which
-   plates survive (the same pipeline reads 8 plates at 2560x1440 and none at 704x396),
-   and model fit — a scored comparison puts `cct-s-v2` ahead of the configured
-   `cct-s-v1`. The recogniser sits behind an interface (ADR 0003); replacing it is
-   bounded work, not an architectural change.
+1. **ANPR plate-level accuracy is 29.6% precision and recall**, 26.9% character error
+   rate, measured against a by-eye annotation of every evidence crop
+   (`data/seed/anpr_ground_truth.csv`). Four of the seven government-feed crops from
+   camera 7 are read exactly right.
 
-   **If asked "so does it work?"** — the platform works: federation, evidence chain,
-   audit ledger, journey reconstruction and alerting all run end to end on live
-   government feeds. The recogniser is the component that needs work, and we can tell
-   you exactly how much because we measured it.
+   It was **0%** when first measured. Three defects were found by measuring rather
+   than by reading code: a nine-slot recogniser when Indian plates have ten
+   characters, track association that never associated anything so multi-frame fusion
+   was dead code, and fusion that voted misaligned characters against each other. All
+   three are fixed and covered by regression tests.
+
+   **If asked "is that good enough?"** — no, and we say so. Resolution bounds it: the
+   same pipeline reads 8 plates at 2560x1440 and none at 704x396, and only one
+   government camera frames plates at a readable size. The recogniser sits behind an
+   interface (ADR 0003) and is replaceable; the platform around it — federation,
+   evidence chain, audit ledger, journey reconstruction — is what runs end to end on
+   live government feeds.
 
 2. **The own-feed clip is third-party** — a CC BY 3.0 Wikimedia clip of the
    Hubli-Dharwad BRTS route, attributed in `data/own_feed/SOURCE.md`. Being Karnataka
@@ -302,8 +292,11 @@ front tends to trust the rest.
    is *which camera saw it*, and the `REPLAY` prefix is visible on screen.
 
 4. **The gateway is unreliable and was unreachable for most of the build.** It
-   recovered on 2026-08-27: 25 of 30 cameras deliver frames, cameras 17 and 18 return
-   HTTP 500, three time out. `docs/SUPPORT_QUERY.md` is the fault report we prepared.
+   recovered on 2026-08-27, partially: cameras 17 and 18 return HTTP 500 repeatably
+   and several time out, and which cameras work changes hour to hour.
+   `docs/SUPPORT_QUERY.md` is the fault report we prepared. **Re-run
+   `make gateway-ingest` on the morning of the recording** and use the figures it
+   produces rather than any number written down here.
 
 5. **There is no hosted URL unless one has been deployed since.** The container stack
    is verified against nine checks; the deployment needs the team's platform account.

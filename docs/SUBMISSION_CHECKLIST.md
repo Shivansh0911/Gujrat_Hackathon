@@ -32,7 +32,7 @@ Script for both, screen by screen with timings and what to say:
 |---|---|---|---|
 | 7 | Detected vehicles and plates with timestamps | `reports/detections-*.csv` and `.pdf`, `make detection-report` | ✅ 56 detections, 4 cameras, 32 grammar-valid, 8 distinct plates |
 | 8 | Government-feed output report | `reports/evidence/gateway-output-report-2026-08-27.md` | ✅ **25 of 30 cameras, 9,158 frames, 30 plate regions, 2 valid registrations.** `make gateway-ingest` then `make gateway-report` |
-| 9 | ANPR precision and recall | `data/seed/anpr_ground_truth.csv`, `reports/evidence/anpr-accuracy-*` | ⚠️ **measured: 0.0% precision, 0.0% recall, 39.8% CER** over 80 annotated crops (17 distinct images). Annotations were made by reading each crop; **have a second person spot-check them before submission** — the number is severe enough to be worth confirming |
+| 9 | ANPR precision and recall | `data/seed/anpr_ground_truth.csv`, `reports/evidence/anpr-accuracy-*` | ✅ **measured: 29.6% precision, 29.6% recall, 26.9% CER** (was 0.0% before three defects were found and fixed). Annotations were made by reading each crop; **have a second person spot-check them** |
 
 ## Platform
 
@@ -77,9 +77,10 @@ Stating them before a judge finds them is what makes the rest credible.
 1. The own-feed clip is third-party (CC BY 3.0, Karnataka) — plates read `KA…` not `GJ…`
 2. The four `REPLAY-` cameras are a replay harness: real inference and real evidence
    photos, only the attributing camera is simulated
-3. **ANPR plate-level accuracy is 0.0%** (39.8% character error rate). State this
-   before a judge tests it. The causes are measured — publish resolution and model
-   fit — and a better-scoring recogniser has been identified but not yet swapped in
+3. **ANPR plate-level accuracy is 29.6%** (26.9% character error rate), up from 0.0%
+   once three measured defects were fixed. State the number and the story before a
+   judge tests it — finding them by measurement is the strongest evidence of rigour
+   in the submission. Resolution still bounds what is achievable
 4. The gateway media plane was down for most of the build; it recovered on
    2026-08-27 with 25 of 30 cameras producing frames, and the estate publishes below
    the resolution at which plates are legible — 3 legible plates in 9,158 frames

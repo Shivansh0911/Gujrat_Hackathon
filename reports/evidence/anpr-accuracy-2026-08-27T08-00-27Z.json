@@ -1,0 +1,186 @@
+{
+  "kind": "anpr-accuracy",
+  "generated_at": "2026-08-27T08-00-27Z",
+  "provenance": {
+    "git_sha": "1cbfcb7eb005ac3732389efa02d1190a2f729b04",
+    "git_tree_dirty": true,
+    "git_branch": "main",
+    "python": "3.12.5",
+    "platform": "Windows-11-10.0.26200-SP0"
+  },
+  "annotation_file": "data\\seed\\anpr_ground_truth.csv",
+  "crops_total": 25,
+  "crops_annotated": 25,
+  "crops_readable_by_human": 24,
+  "crops_unreadable_by_human": 1,
+  "reads_correct": 5,
+  "reads_wrong": 19,
+  "reads_asserted_on_unreadable": 1,
+  "precision": 0.2,
+  "recall": 0.2083,
+  "f1": 0.2041,
+  "character_error_rate": 0.2845,
+  "correction_efficacy": {
+    "corrected_reads": 1,
+    "corrected_correct": 0,
+    "corrected_accuracy": 0.0,
+    "uncorrected_reads": 23,
+    "uncorrected_correct": 5,
+    "uncorrected_accuracy": 0.2174
+  },
+  "errors": [
+    {
+      "crop_file": "7_8040_GJ36AR018.jpg",
+      "pipeline_read": "GJ36AR018",
+      "true_plate": "GJ36AR0180",
+      "edit_distance": 1,
+      "corrections_applied": 0,
+      "confidence": 0.7874
+    },
+    {
+      "crop_file": "7_9360_GJ71AS449.jpg",
+      "pipeline_read": "GJ71AS449",
+      "true_plate": "GJ11AS4498",
+      "edit_distance": 2,
+      "corrections_applied": 1,
+      "confidence": 0.9611
+    },
+    {
+      "crop_file": "7_27800_GJ09DC644.jpg",
+      "pipeline_read": "GJ09DC644",
+      "true_plate": "GJ09DC6441",
+      "edit_distance": 1,
+      "corrections_applied": 0,
+      "confidence": 0.7444
+    },
+    {
+      "crop_file": "REPLAY-01_18817_4425A1111.jpg",
+      "pipeline_read": "4425A1111",
+      "true_plate": "KA25AB1116",
+      "edit_distance": 4,
+      "corrections_applied": 0,
+      "confidence": 0.5662
+    },
+    {
+      "crop_file": "REPLAY-01_20018_K4ZA11111.jpg",
+      "pipeline_read": "K4ZA11111",
+      "true_plate": "KA25AB1116",
+      "edit_distance": 5,
+      "corrections_applied": 0,
+      "confidence": 0.6054
+    },
+    {
+      "crop_file": "REPLAY-01_20218_KLZ541111.jpg",
+      "pipeline_read": "KLZ541111",
+      "true_plate": "KA25AB1116",
+      "edit_distance": 5,
+      "corrections_applied": 0,
+      "confidence": 0.7242
+    },
+    {
+      "crop_file": "REPLAY-01_26824_KA25A6156.jpg",
+      "pipeline_read": "KA25A6156",
+      "true_plate": "KA25AB1561",
+      "edit_distance": 2,
+      "corrections_applied": 0,
+      "confidence": 0.6084
+    },
+    {
+      "crop_file": "REPLAY-02_18817_4425A1111.jpg",
+      "pipeline_read": "4425A1111",
+      "true_plate": "KA25AB1116",
+      "edit_distance": 4,
+      "corrections_applied": 0,
+      "confidence": 0.5662
+    },
+    {
+      "crop_file": "REPLAY-02_20018_K4ZA11111.jpg",
+      "pipeline_read": "K4ZA11111",
+      "true_plate": "KA25AB1116",
+      "edit_distance": 5,
+      "corrections_applied": 0,
+      "confidence": 0.6054
+    },
+    {
+      "crop_file": "REPLAY-02_20218_KLZ541111.jpg",
+      "pipeline_read": "KLZ541111",
+      "true_plate": "KA25AB1116",
+      "edit_distance": 5,
+      "corrections_applied": 0,
+      "confidence": 0.7242
+    },
+    {
+      "crop_file": "REPLAY-02_26824_KA25A6156.jpg",
+      "pipeline_read": "KA25A6156",
+      "true_plate": "KA25AB1561",
+      "edit_distance": 2,
+      "corrections_applied": 0,
+      "confidence": 0.6084
+    },
+    {
+      "crop_file": "REPLAY-03_18817_4425A1111.jpg",
+      "pipeline_read": "4425A1111",
+      "true_plate": "KA25AB1116",
+      "edit_distance": 4,
+      "corrections_applied": 0,
+      "confidence": 0.5662
+    },
+    {
+      "crop_file": "REPLAY-03_20018_K4ZA11111.jpg",
+      "pipeline_read": "K4ZA11111",
+      "true_plate": "KA25AB1116",
+      "edit_distance": 5,
+      "corrections_applied": 0,
+      "confidence": 0.6054
+    },
+    {
+      "crop_file": "REPLAY-03_20218_KLZ541111.jpg",
+      "pipeline_read": "KLZ541111",
+      "true_plate": "KA25AB1116",
+      "edit_distance": 5,
+      "corrections_applied": 0,
+      "confidence": 0.7242
+    },
+    {
+      "crop_file": "REPLAY-03_26824_KA25A6156.jpg",
+      "pipeline_read": "KA25A6156",
+      "true_plate": "KA25AB1561",
+      "edit_distance": 2,
+      "corrections_applied": 0,
+      "confidence": 0.6084
+    },
+    {
+      "crop_file": "REPLAY-04_18817_4425A1111.jpg",
+      "pipeline_read": "4425A1111",
+      "true_plate": "KA25AB1116",
+      "edit_distance": 4,
+      "corrections_applied": 0,
+      "confidence": 0.5662
+    },
+    {
+      "crop_file": "REPLAY-04_20018_K4ZA11111.jpg",
+      "pipeline_read": "K4ZA11111",
+      "true_plate": "KA25AB1116",
+      "edit_distance": 5,
+      "corrections_applied": 0,
+      "confidence": 0.6054
+    },
+    {
+      "crop_file": "REPLAY-04_20218_KLZ541111.jpg",
+      "pipeline_read": "KLZ541111",
+      "true_plate": "KA25AB1116",
+      "edit_distance": 5,
+      "corrections_applied": 0,
+      "confidence": 0.7242
+    },
+    {
+      "crop_file": "REPLAY-04_26824_KA25A6156.jpg",
+      "pipeline_read": "KA25A6156",
+      "true_plate": "KA25AB1561",
+      "edit_distance": 2,
+      "corrections_applied": 0,
+      "confidence": 0.6084
+    }
+  ],
+  "method": "Precision counts every asserted registration, including those asserted on crops a human found unreadable. Recall is over crops a human could read: failing to read what no human can read is not a miss. Character error rate is total Levenshtein distance over total ground-truth characters."
+}
