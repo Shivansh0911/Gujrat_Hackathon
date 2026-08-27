@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 from services.api import audit
 from services.api.config import get_api_settings
 from services.api.db import get_session
-from services.api.security import CurrentActor, camera_scope, decode_token
+from services.api.security import Actor, CurrentActor, camera_scope, decode_token
 from services.registry.enums import AlertDisposition, AlertState, Role
 from services.registry.models import Alert, Camera, WatchlistEntry
 
@@ -209,7 +209,7 @@ def list_alerts(
     return [_project(session, a) for a in alerts]
 
 
-def _get_alert_in_scope(session: Session, actor, alert_id: uuid.UUID) -> Alert:
+def _get_alert_in_scope(session: Session, actor: Actor, alert_id: uuid.UUID) -> Alert:
     alert = session.get(Alert, alert_id)
     if alert is None:
         raise HTTPException(status_code=404, detail="alert not found")

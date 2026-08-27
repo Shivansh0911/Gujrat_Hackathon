@@ -180,6 +180,97 @@ connection with no outbound filtering. This is how the gateway is published, not
 firewall — recorded as ADR 0002, and the question of whether a direct origin exists is
 put to the organisers in `docs/SUPPORT_QUERY.md` (Issue 1).
 
+## Finding 11 - the gateway recovered partially, and camera health is per-camera
+
+**2026-08-27.** After roughly two days of 502 on every media playlist, the gateway
+returned. It did not return uniformly. Two full ingest passes across the catalogue
+(`reports/evidence/gateway-ingest-*.json`) establish:
+
+```
+30 catalogued -> 25 produced frames, 5 produced none
+  cameras 17, 18   HTTP 500 on the playlist, repeatably, across both passes
+  cameras 22, 23, 30   connection timeouts
+```
+
+The failure is per-camera and stable, not a gateway-wide outage. `/api/ingest` served
+the catalogue throughout. This is the concrete case for the health model in the
+platform: a camera's `live` flag is a claim (Finding 9), and the only trustworthy
+signal is whether frames arrived just now.
+
+**A caveat on that run, recorded because it changes how one figure reads.** The first
+pass was interrupted by the host suspending. Five cameras then failed on local DNS
+rather than on anything the gateway did, and one result carries an elapsed time of
+19,059 seconds. Re-running only the affected cameras and merging is what produced the
+numbers above; `scripts/gateway_report.py` flags any result whose elapsed time exceeds
+its budget by more than 2x and excludes it from timing figures. Frame counts and
+PTS-derived rates are unaffected -- they never depended on wall clock.
+
+## Finding 12 - the estate publishes at a resolution ANPR cannot read
+
+**2026-08-27.** 9,158 frames decoded across 25 live cameras produced **30 plate
+regions and 2 grammar-valid registrations**. Of the evidence crops written, exactly
+three contain a plate legible to a human reviewer -- all three of the same vehicle, on
+camera 7.
+
+This is the same effect measured on the own-feed clip, where the identical pipeline
+reads 8 plates at 2560x1440, 2 at 1280x720 and none at 704x396. It is not a defect in
+the recogniser so much as a property of the feed: at the resolution and framing these
+cameras publish, the plate occupies too few pixels to survive.
+
+The consequence for the architecture is in `docs/HLD_RECONCILIATION.md`: the
+sub-stream throughput figure describes an operating point at which nothing is read, so
+the defensible scaling number is the full-resolution one. It argues for processing at
+the edge, where full resolution is still available, rather than shipping downscaled
+video to a centre.
+
+## Finding 13 - the plate detector fires on burnt-in text, and the grammar catches it
+
+**2026-08-27.** Reviewing every gateway crop by eye showed the detector firing on
+things that are not plates but look like them to a box detector -- rectangular regions
+of high-contrast characters:
+
+| Camera | What the crop actually contains | OCR output |
+|---|---|---|
+| 7 | OSD banner: `HERO SHOWROOM FIX-1 / Bhavani Char Rasta to Hero` | `LL450A` |
+| 15 | OSD banner: `Suvidhapark P3 RLVD` | `E523BD` |
+| 16 | OSD date overlay | `P2506SL` |
+| 21 | A lorry's painted name board: `GORSIYA` | `E00033DA` |
+| 25 | OSD banner: `GRAM PANCHAYAT 1` | `HHMNNH11` |
+
+**Every one of these is rejected by the Indian plate grammar and never becomes a
+registration.** That is the layered design doing its job: the detector is permissive,
+the grammar is not, and a false positive has to survive both. Worth stating plainly to
+a jury, because it is the difference between a system that reports a camera's own
+caption as a vehicle and one that does not.
+
+The cost is wasted OCR invocations, not wrong evidence. A region mask per camera would
+recover it, and is recorded as outstanding rather than done.
+
+## Finding 14 - the OSD text names the camera's location
+
+**2026-08-27.** A consequence of Finding 13 worth separating from it. Finding 5 records
+that the catalogue carries no coordinates anywhere, which is why 10 cameras sit at
+district centroids with an honest confidence radius drawn around them rather than at a
+false precise pin.
+
+But the video itself carries location names, burnt in by the camera:
+
+- Camera 7: `Bhavani Char Rasta to Hero` - a named junction in Ahmedabad
+- Camera 15: `Suvidhapark P3 RLVD` - a named location with a red-light-violation
+  detection unit
+- Camera 25: `GRAM PANCHAYAT 1`
+
+This is a real, evidence-backed route to placing cameras that the catalogue cannot
+place: read the OSD, geocode the name through the existing cache, and record the
+provenance as *derived from on-screen text* so it is distinguishable from a surveyed
+coordinate and from a district centroid.
+
+**Not implemented.** It is recorded here rather than acted on because doing it in a
+hurry is how a coordinate gets invented, and the rule is that every coordinate traces
+to the geocode cache or a named district centroid. Done properly it needs its own
+provenance value, its own confidence radius, and a human confirming each match. It is
+the highest-value use of the OSD discovery and the natural next piece of work.
+
 ## Local evaluation hardware
 
 Python 3.12.5, Docker 29.7.2, Node 20.14, **NVIDIA RTX 4050 Laptop, 6 GB VRAM**.

@@ -156,7 +156,10 @@ regenerate.**
 | Motion gate pass rate | 13.7% | — | — |
 | Throughput, published 2560×1440 | 0.81 cameras/worker | — | ~98,500 workers for 80k |
 | Throughput, 704×396 sub-stream | 3.82 cameras/worker | — | ~21,000 workers, but see below |
-| ANPR precision / recall | **not yet measured** | — | harness built |
+| ANPR plate-level precision / recall | **0.0% / 0.0%** (CER 39.8%, 17 distinct images) | implies a working recogniser | **does not hold — amend** |
+| Government feed: cameras producing frames | **25 of 30** | — | tested |
+| Government feed: valid registrations | **2** from 9,158 frames / 30 plate regions | — | resolution-bound |
+| Declared vs measured fps, live estate | **5 of 8 comparable diverge >5%** | "never trust declared fps" | holds |
 | Declared vs measured fps, live gateway | **12 of 16 diverge** | "never trust declared fps" | holds |
 
 Throughput is CPU-only with no GPU. **The sub-stream figure is not usable as stated:**
@@ -179,5 +182,15 @@ processing, not a weaker one. See `docs/HLD_RECONCILIATION.md`.
   report, README rewritten. 135 tests. **Next session: Part C — containerise and deploy.**
 - `2026-08-27` — Part C sections 1-4: both trees containerised, prod stack verified
   9/9 from clean, eight container-only defects fixed, DEPLOYMENT/HLD_RECONCILIATION/
-  SUBMISSION_CHECKLIST written, gateway recovered (17 of 30 cameras). **Next session:
-  the Railway push (needs the team account) and gateway-feed ingest at scale.**
+  SUBMISSION_CHECKLIST written, gateway recovered.
+- `2026-08-27` — **Government-feed test case run across the estate** (25 of 30 cameras,
+  9,158 frames, 2 valid registrations) and published as an output report.
+  **ANPR accuracy measured for the first time: 0.0% plate-level precision, 39.8% CER**
+  over 80 annotated crops — the annotation sheet is committed. Candidate recognisers
+  scored against it; `cct-s-v2` beats the configured `cct-s-v1`. ADRs 0003 and 0004
+  written. CI lint/type paths repaired after the backend/frontend split (they pointed
+  at directories that no longer existed), `mypy --strict` brought to zero errors,
+  digest pinning fixed and extended to the production compose file, and three unwired
+  services moved behind a `planned` profile. **Next session: the Railway push (needs
+  the team account), the recogniser swap and re-annotation, and OSD-derived camera
+  coordinates (DISCOVERY finding 14).**

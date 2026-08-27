@@ -1,15 +1,16 @@
-# Project SETU — local development and demonstration stack.
+# Project SETU â€” local development and demonstration stack.
 #
-# §0 forbids `latest`: a jury re-running this six weeks after submission must get the
+# Â§0 forbids `latest`: a jury re-running this six weeks after submission must get the
 # bytes we tested, not whatever a floating tag points at by then. Every image is
 # therefore pinned to an exact version tag, and to an immutable digest wherever one
 # has been resolved.
 #
-# DIGEST STATUS: postgres is digest-pinned. redis, minio and keycloak carry exact
-# version tags only -- registry TLS handshakes were timing out when this file was
-# written and fabricating a digest would be worse than omitting one. Run
-# `make pin-digests` on a working connection to resolve and rewrite them in place;
-# CI fails the build if any image here lacks a digest (see .github/workflows/ci.yml).
+# DIGEST STATUS: every image here and in docker-compose.prod.yml is pinned to an
+# immutable digest. `make pin-digests` resolves any newly added tag and rewrites in
+# place; CI fails the build if an image lacks one (see .github/workflows/ci.yml).
+# Digests come from `docker buildx imagetools`, so they are the OCI image index the
+# tag resolves to -- `docker manifest inspect` can report a different, also-valid
+# digest for the same tag, and mixing the two produces confusing diffs.
 #
 # Kafka is deliberately absent. See docs/adr/0001-event-bus-abstraction.md -- domain
 # events flow through an interface whose shape is Kafka's, with an in-process backend
@@ -48,8 +49,22 @@ services:
     security_opt:
       - no-new-privileges:true
 
+  # ---------------------------------------------------------------------------
+  # PLANNED INFRASTRUCTURE â€” started only with `--profile planned`.
+  #
+  # Nothing in the codebase connects to any of the three services below. They are
+  # here because the architecture calls for them, not because they are wired in.
+  # They sit behind a profile so that `docker compose up` starts exactly what the
+  # platform actually uses: a compose file that stands up Redis, an object store and
+  # an identity provider implies a caching layer, S3 evidence storage and federated
+  # auth, and a reader would be right to assume all three exist. They do not yet.
+  # ---------------------------------------------------------------------------
+
+  # Planned: cache and rate-limit backend. Not connected â€” the API holds no Redis
+  # client and `redis` is not in requirements.txt.
   redis:
-    image: redis:7.4.1-alpine  # digest pending: make pin-digests
+    profiles: ["planned"]
+    image: redis:7.4.1-alpine@sha256:c1e88455c85225310bbea54816e9c3f4b5295815e6dbf80c34d40afc6df28275
     container_name: setu-redis
     command: >
       redis-server
@@ -71,10 +86,13 @@ services:
     security_opt:
       - no-new-privileges:true
 
-  # Evidence store. S3-compatible so the production path is a bucket policy change,
-  # not a code change.
+  # Planned: evidence object store, S3-compatible so the production path would be a
+  # bucket policy change rather than a code change. Not connected â€” evidence crops
+  # are written to the filesystem under `data/evidence/crops` and served from there,
+  # and there is no S3 client anywhere in the tree.
   minio:
-    image: minio/minio:RELEASE.2024-10-13T13-34-11Z  # digest pending: make pin-digests
+    profiles: ["planned"]
+    image: minio/minio:RELEASE.2024-10-13T13-34-11Z@sha256:9535594ad4122b7a78c6632788a989b96d9199b483d3bd71a5ceae73a922cdfa
     container_name: setu-minio
     command: server /data --console-address ":9001"
     environment:
@@ -94,10 +112,13 @@ services:
     security_opt:
       - no-new-privileges:true
 
-  # Identity provider. RBAC and department scoping are enforced server-side against
-  # tokens this issues; the console never makes an authorisation decision.
+  # Planned: identity provider (ADR pending). Not connected â€” `services/api/auth.py`
+  # mints and verifies its own HS256 JWTs and does not talk to Keycloak. RBAC and
+  # department scoping *are* enforced server-side and the console never makes an
+  # authorisation decision, but the token issuer is the API itself, not this.
   keycloak:
-    image: quay.io/keycloak/keycloak:26.0.5  # digest pending: make pin-digests
+    profiles: ["planned"]
+    image: quay.io/keycloak/keycloak:26.0.5@sha256:089b5898cb0ba151224c83aef3806538582880029eb5ea71c2afd00b627d4907
     container_name: setu-keycloak
     command: ["start-dev", "--import-realm", "--health-enabled=true"]
     environment:

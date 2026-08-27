@@ -65,27 +65,82 @@ Finding the lowest resolution that preserves plate legibility is the single most
 valuable optimisation outstanding. See `reports/evidence/benchmarks-*.md` and
 [`docs/HLD_RECONCILIATION.md`](docs/HLD_RECONCILIATION.md).
 
-### ANPR
+### The government feed — the scored test case
 
-Measured on real Indian road footage (901 frames, 2560×1440): 22 plate boxes detected,
-8 grammar-valid distinct plates, confidences 0.61–0.80. Models are
-`open-image-models` (YOLOv9-t ONNX) and `fast-plate-ocr` (CCT ONNX), **both MIT**.
-Ultralytics was deliberately avoided as AGPL.
+The estate was swept twice with the same pipeline, running against `GatewaySource`
+instead of a file. `reports/evidence/gateway-output-report-2026-08-27.md`.
 
-> **⚠️ ANPR precision and recall are not yet measured.** Every figure above is a
-> pipeline *rate* — frames gated, boxes found, strings that parse — and none of those
-> knows what the plate actually was. `backend/scripts/ground_truth.py` generates an
-> annotation sheet for all 56 evidence crops; run `make ground-truth`, annotate, then
-> `make accuracy`. Stating an accuracy number without that would be inventing it.
->
-> There is also direct evidence of error: three crops of visibly the same vehicle
-> produced three different registrations, because scene cuts reset tracks and
-> multi-frame fusion never grouped them.
+| | Result |
+|---|---:|
+| Cameras catalogued | 30 |
+| Cameras that produced frames | **25** |
+| Cameras that produced none | 5 — two return HTTP 500, three time out |
+| Frames decoded | 9,158 |
+| Plate regions detected | 30 |
+| Grammar-valid registrations | **2** |
 
-**Resolution matters more than the throughput table suggests.** The same clip yields
-8 valid plates at 2560×1440, 2 at 1280×720 and **0 at 704×396** — so the 3.82
-cameras/worker figure is a rate at which this recogniser reads almost nothing. See
-[`docs/HLD_RECONCILIATION.md`](docs/HLD_RECONCILIATION.md).
+**Nine thousand frames across twenty-five live cameras contained three plates a human
+can read.** That is the single most important finding about this estate, and it is a
+property of the feed rather than of the pipeline: at the resolution and framing these
+cameras publish, a number plate does not occupy enough pixels to survive. The evidence
+crops are committed; the illegible ones are illegible to a reviewer too.
+
+Declared frame rate remains unreliable, as §2.2 warns: **5 of the 8 cameras that both
+declare a rate and delivered frames diverge by more than 5%** — camera 15 declares
+12.5 fps and delivers 5.38. Another 17 delivered frames while declaring nothing at all.
+
+### ANPR accuracy — measured, and poor
+
+Every evidence crop was annotated by eye and scored with
+`backend/scripts/ground_truth.py`. The annotation sheet is committed as
+`data/seed/anpr_ground_truth.csv` so the numbers are checkable by someone who does not
+trust us.
+
+| Measure | Result |
+|---|---:|
+| Crops annotated | 80 (17 distinct images) |
+| Legible to a reviewer | 59 rows |
+| **Plate-level precision** | **0.0%** |
+| **Plate-level recall** | **0.0%** |
+| Character error rate | **39.8%** |
+
+**No registration was read correctly.** The character error rate is the shape of the
+failure: about six characters in ten are right and the whole plate is wrong. One
+vehicle, `KA25AB1542`, was read as `KA25AB144`, `KA25SB512`, `KA25SB542` and `0ADA811`
+across four frames. The one grammar-valid plate from the entire government sweep,
+`GJ14AK533` at **confidence 0.94**, is a dropped digit from `GJ14AK5333`.
+
+That last one is the failure mode worth naming: **a high confidence attached to a
+wrong registration**, which an investigator would act on. It is why every read in this
+platform ships with its evidence crop, its provenance, and the exact characters
+grammar correction changed — a reviewer is given what they need to disagree with the
+machine.
+
+Two measured causes, not speculation:
+
+- **Resolution.** The same pipeline reads 8 valid plates at 2560×1440, 2 at 1280×720
+  and **0** at 704×396. The government estate publishes below the useful threshold.
+- **Model fit.** Scoring the candidate recognisers against the same annotations
+  (`backend/scripts/compare_recognisers.py`) puts `cct-s-v2-global-model` ahead of the
+  `cct-s-v1-global-model` currently configured — 31.2% character error rate against
+  39.4%. Swapping it is the first outstanding task, and it is a one-line change behind
+  the interface in [ADR 0003](docs/adr/0003-anpr-model-selection.md).
+
+> **What this does and does not say.** It measures this recogniser on this footage: a
+> third-party Karnataka clip shot from a moving bus, and a government estate where
+> three crops in a 9,158-frame sweep contain a legible plate. The sample is 17 distinct
+> images. It is not a claim about ANPR generally. The federation, the evidence chain,
+> the audit ledger and the journey reconstruction are all demonstrated end to end on
+> live government feeds; the recogniser is the replaceable component behind an
+> interface, and fixing it is bounded, measurable work rather than an architectural
+> change. We are publishing the number because the harness exists to produce it, and a
+> platform that hides its own accuracy is not one a police force should deploy.
+
+**Defence in depth does work here.** Reviewing every gateway crop by eye showed the
+detector firing on burnt-in camera text — `Suvidhapark P3 RLVD`, `GRAM PANCHAYAT 1`, a
+lorry's painted name board reading `GORSIYA`. **Every one was rejected by the Indian
+plate grammar and never became a registration.** The detector is permissive and the
+grammar is not, so a false positive has to survive both.
 
 ---
 
@@ -229,9 +284,18 @@ submission.
    demonstrated by running the full pipeline separately against four registry
    positions. Every detection is genuine inference with a real crop; only *which
    camera saw it* is simulated, and the `REPLAY` prefix is visible in the UI.
-3. **ANPR accuracy is unmeasured.** Reads are visibly imperfect — three crops of the
-   same vehicle produced three different registrations, because scene cuts reset
-   tracks so multi-frame fusion never grouped them. The annotation harness exists;
-   the numbers do not yet.
-4. **The gateway media plane has returned 502 throughout development.**
-   `/api/ingest` still responds. `docs/SUPPORT_QUERY.md` is the prepared fault report.
+3. **ANPR accuracy is measured and it is 0% at plate level** (39.8% character error
+   rate, 17 distinct annotated images). No registration has been read correctly on
+   this footage. The causes are measured — publish resolution and model fit — and the
+   remedy is identified and scored, but it is not yet applied. See
+   *ANPR accuracy — measured, and poor* above.
+4. **The government estate publishes below the resolution ANPR needs.** 9,158 frames
+   across 25 live cameras yielded three human-legible plates. This bounds what any
+   recogniser could have achieved here, and it is the empirical case for processing at
+   the edge where full resolution still exists.
+5. **The gateway media plane returned 502 for most of the build.** It recovered on
+   2026-08-27 partially: 25 of 30 cameras produce frames, cameras 17 and 18 return
+   HTTP 500 and three time out. `docs/SUPPORT_QUERY.md` is the prepared fault report.
+6. **No hosted URL yet.** The container stack is verified 9/9 from a clean state; the
+   deployment needs the team's platform account. See
+   [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) §4.

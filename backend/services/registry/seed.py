@@ -21,6 +21,7 @@ BACKEND_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(BACKEND_ROOT))
 
 from sqlalchemy import func, select  # noqa: E402
+from sqlalchemy.orm import Session  # noqa: E402
 
 from services.api.db import get_sessionmaker  # noqa: E402
 from services.api.tenancy import set_admin_context  # noqa: E402
@@ -108,7 +109,7 @@ def _validate_rows(rows: list[dict[str, str]]) -> None:
         raise SeedValidationError(f"{SEED_CSV} is malformed; refusing to seed:{detail}")
 
 
-def seed_departments(session) -> dict[str, Department]:
+def seed_departments(session: Session) -> dict[str, Department]:
     out: dict[str, Department] = {}
     for code, name in DEPARTMENTS:
         dept = session.execute(
@@ -123,7 +124,7 @@ def seed_departments(session) -> dict[str, Department]:
     return out
 
 
-def load_camera_geo(session, departments: dict[str, Department]) -> dict[str, int]:
+def load_camera_geo(session: Session, departments: dict[str, Department]) -> dict[str, int]:
     """Create or update cameras from the coordinate seed file."""
     if not SEED_CSV.exists():
         log.warning("no seed file at %s", SEED_CSV)

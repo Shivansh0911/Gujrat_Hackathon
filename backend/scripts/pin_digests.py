@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Resolve floating container tags in docker-compose.yml to immutable digests.
+"""Resolve floating container tags in the compose files to immutable digests.
 
 A tag is mutable. `redis:7.4.1-alpine` today and the same tag in three months can be
 different bytes, so a jury re-running our stack after the submission window would not
@@ -23,8 +23,20 @@ import subprocess
 import sys
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
-COMPOSE = REPO_ROOT / "docker-compose.yml"
+BACKEND_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(BACKEND_ROOT))
+
+from services.common.paths import PROJECT_ROOT  # noqa: E402
+
+# Both stacks, not just the development one. The production compose file is the one a
+# deployment actually runs, so a floating tag there is the more consequential of the
+# two. An earlier version of this script resolved its root to `backend/` after the
+# backend/frontend split, so the CI job failed on a missing file rather than on an
+# unpinned image -- and a check that cannot find what it checks is not a check.
+COMPOSE_FILES = [
+    PROJECT_ROOT / "docker-compose.yml",
+    PROJECT_ROOT / "docker-compose.prod.yml",
+]
 
 # Matches `image: <ref>` capturing the reference, with or without a digest.
 IMAGE_RE = re.compile(r"^(?P<indent>\s*)image:\s*(?P<ref>\S+)(?P<rest>.*)$", re.MULTILINE)
@@ -43,23 +55,55 @@ def parse_images(text: str) -> list[tuple[str, str | None]]:
     return out
 
 
+def _via_buildx(ref: str) -> str | None:
+    """Resolve through `buildx imagetools`, which needs no experimental flag."""
+    proc = subprocess.run(
+        ["docker", "buildx", "imagetools", "inspect", ref,
+         "--format", "{{.Manifest.Digest}}"],
+        capture_output=True, text=True, check=False, timeout=120,
+    )
+    if proc.returncode != 0:
+        return None
+    digest = proc.stdout.strip().splitlines()[0].strip() if proc.stdout.strip() else ""
+    return digest if digest.startswith("sha256:") else None
+
+
+def _via_manifest(ref: str) -> str | None:
+    """Resolve through `docker manifest inspect`, which may need experimental mode."""
+    proc = subprocess.run(
+        ["docker", "manifest", "inspect", "--verbose", ref],
+        capture_output=True, text=True, check=False, timeout=120,
+    )
+    if proc.returncode != 0:
+        return None
+    try:
+        data = json.loads(proc.stdout)
+    except json.JSONDecodeError:
+        return None
+    entries = data if isinstance(data, list) else [data]
+    digest = entries[0].get("Descriptor", {}).get("digest")
+    return str(digest) if digest else None
+
+
 def resolve_digest(ref: str, attempts: int = 3) -> str | None:
-    """Ask the registry for the manifest digest of `ref`."""
+    """Ask the registry for the manifest digest of `ref`.
+
+    `buildx imagetools` is tried first: it is the supported path on current Docker,
+    it needs no experimental flag, and it returns the digest of the OCI image index
+    the tag actually resolves to. `docker manifest inspect` is kept as a fallback for
+    older CLIs, but note that on a registry serving both an OCI index and a legacy
+    Docker manifest list for one tag the two commands return *different* digests.
+    Both are valid pins; they are not interchangeable, so we prefer one consistently
+    rather than taking whichever answered first.
+    """
     for _ in range(attempts):
-        proc = subprocess.run(
-            ["docker", "manifest", "inspect", "--verbose", ref],
-            capture_output=True, text=True, check=False, timeout=120,
-        )
-        if proc.returncode != 0:
-            continue
-        try:
-            data = json.loads(proc.stdout)
-        except json.JSONDecodeError:
-            continue
-        entries = data if isinstance(data, list) else [data]
-        digest = entries[0].get("Descriptor", {}).get("digest")
-        if digest:
-            return str(digest)
+        for resolver in (_via_buildx, _via_manifest):
+            try:
+                digest = resolver(ref)
+            except subprocess.TimeoutExpired:
+                continue
+            if digest:
+                return digest
     return None
 
 
@@ -70,60 +114,79 @@ def main() -> int:
     mode.add_argument("--write", action="store_true", help="resolve and rewrite in place")
     args = ap.parse_args()
 
-    if not COMPOSE.exists():
-        print(f"FAIL: {COMPOSE} not found")
+    present = [c for c in COMPOSE_FILES if c.exists()]
+    if not present:
+        print("FAIL: no compose file found - has the layout changed?")
         return 1
 
-    text = COMPOSE.read_text(encoding="utf-8")
-    images = parse_images(text)
-    if not images:
-        print("FAIL: no image references found — has the compose file moved?")
-        return 1
+    total = 0
+    total_unpinned = 0
+    failed: list[str] = []
+    rewrote: list[str] = []
 
-    unpinned = [ref for ref, digest in images if digest is None]
+    for compose in present:
+        text = compose.read_text(encoding="utf-8")
+        images = parse_images(text)
+        if not images:
+            print(f"FAIL: no image references in {compose.name}")
+            return 1
+
+        print("")
+        print(compose.name)
+        total += len(images)
+
+        if args.check:
+            for ref, digest in images:
+                label = "PINNED  " if digest else "UNPINNED"
+                print(f"  {label} {ref}")
+            total_unpinned += sum(1 for _, d in images if d is None)
+            continue
+
+        updated = text
+        for ref, digest in images:
+            if digest is not None:
+                continue
+            print(f"  resolving {ref} ...", flush=True)
+            new_digest = resolve_digest(ref)
+            if new_digest is None:
+                failed.append(ref)
+                print(f"    could not resolve {ref}")
+                continue
+            # Replace the bare reference, leaving any trailing comment in place.
+            updated = re.sub(
+                r"(image:\s*)" + re.escape(ref) + r"(?!@)",
+                lambda m, r=ref, d=new_digest: m.group(1) + r + "@" + d,
+                updated,
+            )
+            print(f"    {ref} -> {new_digest}")
+        if updated != text:
+            compose.write_text(updated, encoding="utf-8")
+            rewrote.append(compose.name)
 
     if args.check:
-        for ref, digest in images:
-            print(f"  {'PINNED  ' if digest else 'UNPINNED'} {ref}")
-        if unpinned:
+        if total_unpinned:
+            print("")
             print(
-                f"\nFAIL: {len(unpinned)} image(s) are not digest-pinned: "
-                f"{', '.join(unpinned)}\n"
-                "Run `make pin-digests` on a connection with registry access."
+                f"FAIL: {total_unpinned} of {total} image(s) across "
+                f"{len(present)} compose file(s) are not digest-pinned."
             )
+            print("Run `make pin-digests` on a connection with registry access.")
             return 1
-        print(f"\nPASS: all {len(images)} images are digest-pinned.")
+        print("")
+        print(
+            f"PASS: all {total} images across {len(present)} "
+            "compose file(s) are digest-pinned."
+        )
         return 0
 
-    # --write
-    updated = text
-    resolved, failed = 0, []
-    for ref, digest in images:
-        if digest is not None:
-            continue
-        print(f"resolving {ref} ...", flush=True)
-        new_digest = resolve_digest(ref)
-        if new_digest is None:
-            failed.append(ref)
-            print(f"  could not resolve {ref}")
-            continue
-        # Replace the bare reference, leaving any trailing comment in place.
-        updated = re.sub(
-            rf"(image:\s*){re.escape(ref)}(?!@)",
-            rf"\g<1>{ref}@{new_digest}",
-            updated,
-        )
-        resolved += 1
-        print(f"  {ref} -> {new_digest}")
-
-    if resolved:
-        COMPOSE.write_text(updated, encoding="utf-8")
-        print(f"\nrewrote {COMPOSE.name}: {resolved} image(s) pinned")
+    print("")
+    if rewrote:
+        print(f"rewrote: {', '.join(rewrote)}")
+    elif not failed:
+        print("nothing to do: every image already carries a digest")
     if failed:
-        print(
-            f"\n{len(failed)} image(s) unresolved: {', '.join(failed)}\n"
-            "Left unpinned deliberately — a fabricated digest is worse than a tag."
-        )
+        print(f"{len(failed)} image(s) unresolved: {', '.join(failed)}")
+        print("Left unpinned deliberately - a fabricated digest is worse than a tag.")
         return 1
     return 0
 

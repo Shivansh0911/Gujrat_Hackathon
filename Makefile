@@ -22,7 +22,8 @@ PYTHONPATH_BE := PYTHONPATH=backend
 
 .DEFAULT_GOAL := help
 .PHONY: help venv up down logs migrate seed test lint typecheck preflight probe \
-        evidence pin-digests fps-guard audit sbom clean
+        evidence pin-digests fps-guard audit sbom clean \
+        gateway-ingest gateway-report compare-recognisers
 
 help:  ## List available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
@@ -131,6 +132,15 @@ demo-reset:  ## Clear detections and alerts, then re-ingest
 	$(BE) ../$(PY) scripts/seed_watchlist.py --reset
 
 # ---------------------------------------------------------------- evidence
+
+gateway-ingest:  ## Run ANPR across every catalogued government camera (live feed)
+	$(BE) ../$(PY) scripts/ingest_gateway.py --seconds 40 --persist
+
+gateway-report:  ## Merge gateway ingest passes into the government-feed output report
+	$(BE) ../$(PY) scripts/gateway_report.py
+
+compare-recognisers:  ## Score candidate OCR models against the annotated crops
+	$(BE) ../$(PY) scripts/compare_recognisers.py
 
 ground-truth:  ## Write the ANPR annotation sheet for a human to fill in
 	$(BE) ../$(PY) scripts/ground_truth.py annotate

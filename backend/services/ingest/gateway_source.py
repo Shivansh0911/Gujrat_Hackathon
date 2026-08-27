@@ -141,6 +141,18 @@ class GatewaySource:
             last_error=self._last_error,
         )
 
+    def stop(self) -> None:
+        """Ask the reader to finish, without touching the capture handle.
+
+        Deliberately separate from `close()`. `close()` releases the underlying
+        `VideoCapture`, which is only safe on the thread that reads it -- doing it
+        from elsewhere previously raised `Unknown C++ exception from OpenCV code`
+        out of `read()` and killed the process. `stop()` sets an Event and nothing
+        more, so a supervisor, a timeout or a signal handler can end an ingest from
+        any thread. The reading loop then unwinds and `close()` runs where it must.
+        """
+        self._session.stop()
+
     def close(self) -> None:
         self._session.stop()
         self._session.close()

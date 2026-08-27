@@ -23,7 +23,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
-from typing import Any
+from typing import Any, Callable
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -262,7 +262,7 @@ def scan_detections(
     *,
     since: datetime | None = None,
     limit: int = 5000,
-    on_alert=None,
+    on_alert: Callable[[Alert, str], None] | None = None,
 ) -> ScanStats:
     """Match unprocessed detections against the watchlist and raise alerts.
 

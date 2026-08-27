@@ -26,7 +26,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-from sqlalchemy import select
+from sqlalchemy import Select, select
 from sqlalchemy.orm import Session
 
 from services.api.config import ApiSettings, get_api_settings
@@ -163,7 +163,7 @@ AdminActor = Annotated[Actor, Depends(require_admin)]
 # ------------------------------------------------------------- scoped accessors
 
 
-def camera_scope(actor: Actor):
+def camera_scope(actor: Actor) -> Select[tuple[Camera]]:
     """A SELECT over cameras the actor is permitted to see.
 
     Every camera read in the API starts here. An operator scoped to a department

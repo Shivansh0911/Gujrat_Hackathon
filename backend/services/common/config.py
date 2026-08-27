@@ -5,7 +5,7 @@ from __future__ import annotations
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field, field_validator
+from pydantic import Field, ValidationInfo, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from services.common.paths import ENV_FILE
@@ -47,7 +47,7 @@ class Settings(BaseSettings):
 
     @field_validator("backoff_max_s")
     @classmethod
-    def _backoff_ordered(cls, v: float, info) -> float:
+    def _backoff_ordered(cls, v: float, info: ValidationInfo) -> float:
         lo = info.data.get("backoff_min_s")
         if lo is not None and v < lo:
             raise ValueError("SETU_BACKOFF_MAX_S must be >= SETU_BACKOFF_MIN_S")
@@ -72,4 +72,5 @@ class Settings(BaseSettings):
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
-    return Settings()  # type: ignore[call-arg]  -- values come from env/.env
+    # Every field is populated from the environment or .env, which mypy cannot see.
+    return Settings()  # type: ignore[call-arg]

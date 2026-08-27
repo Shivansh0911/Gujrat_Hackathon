@@ -12,7 +12,7 @@ at upload time.
 | # | Deliverable | Artefact | State |
 |---|---|---|---|
 | 1 | Solution Presentation | `SETU_Solution_Presentation.pdf` | ✅ complete — **do not regenerate** |
-| 2 | High-Level Design | `SETU_High_Level_Design.pdf` | ⚠️ complete, but **two claims need amending** — see `HLD_RECONCILIATION.md` §Claims that need amending |
+| 2 | High-Level Design | `SETU_High_Level_Design.pdf` | ⚠️ complete, but **two claims need amending** — paste-ready replacement prose is in `HLD_RECONCILIATION.md` §Amendment text |
 | 3 | Workflow / integration diagram | `SETU_Workflow_Integration_Diagram.png` | ✅ |
 | 4 | Repository README | `README.md` | ✅ model choice, screenshots, quickstart, measured results |
 
@@ -21,7 +21,7 @@ at upload time.
 | # | Deliverable | Artefact | State |
 |---|---|---|---|
 | 5 | Own-feed screen recording | — | ⏳ **Harshit** |
-| 6 | Government-feed screen recording | — | ⏳ **Harshit** — gateway recovered 2026-08-27, 17 of 30 cameras produce frames |
+| 6 | Government-feed screen recording | — | ⏳ **Harshit** — 25 of 30 cameras produce frames; use camera 7, the only one with a legible plate |
 
 Script for both, screen by screen with timings and what to say:
 `docs/DEMO_RUNBOOK.md`.
@@ -31,8 +31,8 @@ Script for both, screen by screen with timings and what to say:
 | # | Deliverable | Artefact | State |
 |---|---|---|---|
 | 7 | Detected vehicles and plates with timestamps | `reports/detections-*.csv` and `.pdf`, `make detection-report` | ✅ 56 detections, 4 cameras, 32 grammar-valid, 8 distinct plates |
-| 8 | Government-feed output report | — | ⏳ run the report against gateway ingest now that the feed is back |
-| 9 | ANPR precision and recall | `make ground-truth` → annotate → `make accuracy` | ⏳ **Harshit — 56 crops awaiting annotation.** The single highest-value outstanding item |
+| 8 | Government-feed output report | `reports/evidence/gateway-output-report-2026-08-27.md` | ✅ **25 of 30 cameras, 9,158 frames, 30 plate regions, 2 valid registrations.** `make gateway-ingest` then `make gateway-report` |
+| 9 | ANPR precision and recall | `data/seed/anpr_ground_truth.csv`, `reports/evidence/anpr-accuracy-*` | ⚠️ **measured: 0.0% precision, 0.0% recall, 39.8% CER** over 80 annotated crops (17 distinct images). Annotations were made by reading each crop; **have a second person spot-check them before submission** — the number is severe enough to be worth confirming |
 
 ## Platform
 
@@ -53,15 +53,15 @@ Script for both, screen by screen with timings and what to say:
 | 17 | Performance benchmarks | `reports/evidence/benchmarks-*` | ✅ |
 | 18 | Gateway outage support query | `docs/SUPPORT_QUERY.md` | ⏳ **Harshit — send it.** It is the evidence that we reported the fault |
 | 19 | Discovery record | `docs/DISCOVERY.md` | ✅ nine dated findings with measurements |
-| 20 | ADRs | `docs/adr/` | ✅ |
+| 20 | ADRs | `docs/adr/` | ✅ four — event bus, HLS transport, ANPR model licensing, deployment platform |
 | 21 | HLD reconciliation | `docs/HLD_RECONCILIATION.md` | ✅ |
 
 ---
 
 ## Before upload
 
-- [ ] Amend the two HLD claims (`HLD_RECONCILIATION.md`)
-- [ ] Annotate the 56 crops and run `make accuracy`
+- [ ] Amend the two HLD claims — copy the prose from `HLD_RECONCILIATION.md` §Amendment text
+- [x] ~~Annotate the crops and run `make accuracy`~~ — done; **spot-check the annotations**
 - [ ] Replace the third-party own-feed clip with our own stationary footage, then
       `make demo-reset` and recapture screenshots
 - [ ] Record both demonstration videos
@@ -77,6 +77,9 @@ Stating them before a judge finds them is what makes the rest credible.
 1. The own-feed clip is third-party (CC BY 3.0, Karnataka) — plates read `KA…` not `GJ…`
 2. The four `REPLAY-` cameras are a replay harness: real inference and real evidence
    photos, only the attributing camera is simulated
-3. ANPR accuracy is unmeasured and reads are visibly imperfect
+3. **ANPR plate-level accuracy is 0.0%** (39.8% character error rate). State this
+   before a judge tests it. The causes are measured — publish resolution and model
+   fit — and a better-scoring recogniser has been identified but not yet swapped in
 4. The gateway media plane was down for most of the build; it recovered on
-   2026-08-27 with 17 of 30 cameras producing frames
+   2026-08-27 with 25 of 30 cameras producing frames, and the estate publishes below
+   the resolution at which plates are legible — 3 legible plates in 9,158 frames

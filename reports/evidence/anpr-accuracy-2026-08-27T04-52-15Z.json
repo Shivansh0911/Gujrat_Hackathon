@@ -1,0 +1,506 @@
+{
+  "kind": "anpr-accuracy",
+  "generated_at": "2026-08-27T04-52-15Z",
+  "provenance": {
+    "git_sha": "415ec379d964750387d8eaadf1fe61b1d554e856",
+    "git_tree_dirty": true,
+    "git_branch": "main",
+    "python": "3.12.5",
+    "platform": "Windows-11-10.0.26200-SP0"
+  },
+  "annotation_file": "data\\seed\\anpr_ground_truth.csv",
+  "crops_total": 80,
+  "crops_annotated": 80,
+  "crops_readable_by_human": 59,
+  "crops_unreadable_by_human": 21,
+  "reads_correct": 0,
+  "reads_wrong": 59,
+  "reads_asserted_on_unreadable": 21,
+  "precision": 0.0,
+  "recall": 0.0,
+  "f1": 0.0,
+  "character_error_rate": 0.3983,
+  "correction_efficacy": {
+    "corrected_reads": 28,
+    "corrected_correct": 0,
+    "corrected_accuracy": 0.0,
+    "uncorrected_reads": 31,
+    "uncorrected_correct": 0,
+    "uncorrected_accuracy": 0.0
+  },
+  "errors": [
+    {
+      "crop_file": "7_15280_6JTAK6533.jpg",
+      "pipeline_read": "6JTAK6533",
+      "true_plate": "GJ14AK5333",
+      "edit_distance": 5,
+      "corrections_applied": 0,
+      "confidence": 0.8107
+    },
+    {
+      "crop_file": "7_15520_6JAAXK333.jpg",
+      "pipeline_read": "6JAAXK333",
+      "true_plate": "GJ14AK5333",
+      "edit_distance": 5,
+      "corrections_applied": 0,
+      "confidence": 0.7453
+    },
+    {
+      "crop_file": "7_15760_GJ14AK533.jpg",
+      "pipeline_read": "GJ14AK533",
+      "true_plate": "GJ14AK5333",
+      "edit_distance": 1,
+      "corrections_applied": 0,
+      "confidence": 0.9415
+    },
+    {
+      "crop_file": "REPLAY-01_14813_0ADA811.jpg",
+      "pipeline_read": "0ADA811",
+      "true_plate": "KA25AB1542",
+      "edit_distance": 7,
+      "corrections_applied": 0,
+      "confidence": 0.6078
+    },
+    {
+      "crop_file": "REPLAY-01_15414_KA23AA441.jpg",
+      "pipeline_read": "KA23AA441",
+      "true_plate": "KA25AB1542",
+      "edit_distance": 5,
+      "corrections_applied": 1,
+      "confidence": 0.5883
+    },
+    {
+      "crop_file": "REPLAY-01_15614_KA25AB144.jpg",
+      "pipeline_read": "KA25AB144",
+      "true_plate": "KA25AB1542",
+      "edit_distance": 2,
+      "corrections_applied": 0,
+      "confidence": 0.9016
+    },
+    {
+      "crop_file": "REPLAY-01_15814_KA25SB512.jpg",
+      "pipeline_read": "KA25SB512",
+      "true_plate": "KA25AB1542",
+      "edit_distance": 3,
+      "corrections_applied": 2,
+      "confidence": 0.7036
+    },
+    {
+      "crop_file": "REPLAY-01_16014_KA25SB542.jpg",
+      "pipeline_read": "KA25SB542",
+      "true_plate": "KA25AB1542",
+      "edit_distance": 2,
+      "corrections_applied": 1,
+      "confidence": 0.7854
+    },
+    {
+      "crop_file": "REPLAY-01_18817_4121A1111.jpg",
+      "pipeline_read": "4121A1111",
+      "true_plate": "KA25AB1116",
+      "edit_distance": 5,
+      "corrections_applied": 0,
+      "confidence": 0.6093
+    },
+    {
+      "crop_file": "REPLAY-01_19017_442511166.jpg",
+      "pipeline_read": "442511166",
+      "true_plate": "KA25AB1116",
+      "edit_distance": 5,
+      "corrections_applied": 0,
+      "confidence": 0.5968
+    },
+    {
+      "crop_file": "REPLAY-01_19217_44236B116.jpg",
+      "pipeline_read": "44236B116",
+      "true_plate": "KA25AB1116",
+      "edit_distance": 5,
+      "corrections_applied": 0,
+      "confidence": 0.6452
+    },
+    {
+      "crop_file": "REPLAY-01_19417_442E61116.jpg",
+      "pipeline_read": "442E61116",
+      "true_plate": "KA25AB1116",
+      "edit_distance": 5,
+      "corrections_applied": 0,
+      "confidence": 0.7137
+    },
+    {
+      "crop_file": "REPLAY-01_19618_442E61116.jpg",
+      "pipeline_read": "442E61116",
+      "true_plate": "KA25AB1116",
+      "edit_distance": 5,
+      "corrections_applied": 0,
+      "confidence": 0.6308
+    },
+    {
+      "crop_file": "REPLAY-01_19818_KA25AI116.jpg",
+      "pipeline_read": "KA25AI116",
+      "true_plate": "KA25AB1116",
+      "edit_distance": 2,
+      "corrections_applied": 2,
+      "confidence": 0.7814
+    },
+    {
+      "crop_file": "REPLAY-01_20018_KA25SA116.jpg",
+      "pipeline_read": "KA25SA116",
+      "true_plate": "KA25AB1116",
+      "edit_distance": 3,
+      "corrections_applied": 2,
+      "confidence": 0.8012
+    },
+    {
+      "crop_file": "REPLAY-01_20218_KL26GI116.jpg",
+      "pipeline_read": "KL26GI116",
+      "true_plate": "KA25AB1116",
+      "edit_distance": 5,
+      "corrections_applied": 2,
+      "confidence": 0.741
+    },
+    {
+      "crop_file": "REPLAY-01_26824_KA25AB551.jpg",
+      "pipeline_read": "KA25AB551",
+      "true_plate": "KA25AB1561",
+      "edit_distance": 2,
+      "corrections_applied": 1,
+      "confidence": 0.6113
+    },
+    {
+      "crop_file": "REPLAY-02_14813_0ADA811.jpg",
+      "pipeline_read": "0ADA811",
+      "true_plate": "KA25AB1542",
+      "edit_distance": 7,
+      "corrections_applied": 0,
+      "confidence": 0.6078
+    },
+    {
+      "crop_file": "REPLAY-02_15414_KA23AA441.jpg",
+      "pipeline_read": "KA23AA441",
+      "true_plate": "KA25AB1542",
+      "edit_distance": 5,
+      "corrections_applied": 1,
+      "confidence": 0.5883
+    },
+    {
+      "crop_file": "REPLAY-02_15614_KA25AB144.jpg",
+      "pipeline_read": "KA25AB144",
+      "true_plate": "KA25AB1542",
+      "edit_distance": 2,
+      "corrections_applied": 0,
+      "confidence": 0.9016
+    },
+    {
+      "crop_file": "REPLAY-02_15814_KA25SB512.jpg",
+      "pipeline_read": "KA25SB512",
+      "true_plate": "KA25AB1542",
+      "edit_distance": 3,
+      "corrections_applied": 2,
+      "confidence": 0.7036
+    },
+    {
+      "crop_file": "REPLAY-02_16014_KA25SB542.jpg",
+      "pipeline_read": "KA25SB542",
+      "true_plate": "KA25AB1542",
+      "edit_distance": 2,
+      "corrections_applied": 1,
+      "confidence": 0.7854
+    },
+    {
+      "crop_file": "REPLAY-02_18817_4121A1111.jpg",
+      "pipeline_read": "4121A1111",
+      "true_plate": "KA25AB1116",
+      "edit_distance": 5,
+      "corrections_applied": 0,
+      "confidence": 0.6093
+    },
+    {
+      "crop_file": "REPLAY-02_19017_442511166.jpg",
+      "pipeline_read": "442511166",
+      "true_plate": "KA25AB1116",
+      "edit_distance": 5,
+      "corrections_applied": 0,
+      "confidence": 0.5968
+    },
+    {
+      "crop_file": "REPLAY-02_19217_44236B116.jpg",
+      "pipeline_read": "44236B116",
+      "true_plate": "KA25AB1116",
+      "edit_distance": 5,
+      "corrections_applied": 0,
+      "confidence": 0.6452
+    },
+    {
+      "crop_file": "REPLAY-02_19417_442E61116.jpg",
+      "pipeline_read": "442E61116",
+      "true_plate": "KA25AB1116",
+      "edit_distance": 5,
+      "corrections_applied": 0,
+      "confidence": 0.7137
+    },
+    {
+      "crop_file": "REPLAY-02_19618_442E61116.jpg",
+      "pipeline_read": "442E61116",
+      "true_plate": "KA25AB1116",
+      "edit_distance": 5,
+      "corrections_applied": 0,
+      "confidence": 0.6308
+    },
+    {
+      "crop_file": "REPLAY-02_19818_KA25AI116.jpg",
+      "pipeline_read": "KA25AI116",
+      "true_plate": "KA25AB1116",
+      "edit_distance": 2,
+      "corrections_applied": 2,
+      "confidence": 0.7814
+    },
+    {
+      "crop_file": "REPLAY-02_20018_KA25SA116.jpg",
+      "pipeline_read": "KA25SA116",
+      "true_plate": "KA25AB1116",
+      "edit_distance": 3,
+      "corrections_applied": 2,
+      "confidence": 0.8012
+    },
+    {
+      "crop_file": "REPLAY-02_20218_KL26GI116.jpg",
+      "pipeline_read": "KL26GI116",
+      "true_plate": "KA25AB1116",
+      "edit_distance": 5,
+      "corrections_applied": 2,
+      "confidence": 0.741
+    },
+    {
+      "crop_file": "REPLAY-02_26824_KA25AB551.jpg",
+      "pipeline_read": "KA25AB551",
+      "true_plate": "KA25AB1561",
+      "edit_distance": 2,
+      "corrections_applied": 1,
+      "confidence": 0.6113
+    },
+    {
+      "crop_file": "REPLAY-03_14813_0ADA811.jpg",
+      "pipeline_read": "0ADA811",
+      "true_plate": "KA25AB1542",
+      "edit_distance": 7,
+      "corrections_applied": 0,
+      "confidence": 0.6078
+    },
+    {
+      "crop_file": "REPLAY-03_15414_KA23AA441.jpg",
+      "pipeline_read": "KA23AA441",
+      "true_plate": "KA25AB1542",
+      "edit_distance": 5,
+      "corrections_applied": 1,
+      "confidence": 0.5883
+    },
+    {
+      "crop_file": "REPLAY-03_15614_KA25AB144.jpg",
+      "pipeline_read": "KA25AB144",
+      "true_plate": "KA25AB1542",
+      "edit_distance": 2,
+      "corrections_applied": 0,
+      "confidence": 0.9016
+    },
+    {
+      "crop_file": "REPLAY-03_15814_KA25SB512.jpg",
+      "pipeline_read": "KA25SB512",
+      "true_plate": "KA25AB1542",
+      "edit_distance": 3,
+      "corrections_applied": 2,
+      "confidence": 0.7036
+    },
+    {
+      "crop_file": "REPLAY-03_16014_KA25SB542.jpg",
+      "pipeline_read": "KA25SB542",
+      "true_plate": "KA25AB1542",
+      "edit_distance": 2,
+      "corrections_applied": 1,
+      "confidence": 0.7854
+    },
+    {
+      "crop_file": "REPLAY-03_18817_4121A1111.jpg",
+      "pipeline_read": "4121A1111",
+      "true_plate": "KA25AB1116",
+      "edit_distance": 5,
+      "corrections_applied": 0,
+      "confidence": 0.6093
+    },
+    {
+      "crop_file": "REPLAY-03_19017_442511166.jpg",
+      "pipeline_read": "442511166",
+      "true_plate": "KA25AB1116",
+      "edit_distance": 5,
+      "corrections_applied": 0,
+      "confidence": 0.5968
+    },
+    {
+      "crop_file": "REPLAY-03_19217_44236B116.jpg",
+      "pipeline_read": "44236B116",
+      "true_plate": "KA25AB1116",
+      "edit_distance": 5,
+      "corrections_applied": 0,
+      "confidence": 0.6452
+    },
+    {
+      "crop_file": "REPLAY-03_19417_442E61116.jpg",
+      "pipeline_read": "442E61116",
+      "true_plate": "KA25AB1116",
+      "edit_distance": 5,
+      "corrections_applied": 0,
+      "confidence": 0.7137
+    },
+    {
+      "crop_file": "REPLAY-03_19618_442E61116.jpg",
+      "pipeline_read": "442E61116",
+      "true_plate": "KA25AB1116",
+      "edit_distance": 5,
+      "corrections_applied": 0,
+      "confidence": 0.6308
+    },
+    {
+      "crop_file": "REPLAY-03_19818_KA25AI116.jpg",
+      "pipeline_read": "KA25AI116",
+      "true_plate": "KA25AB1116",
+      "edit_distance": 2,
+      "corrections_applied": 2,
+      "confidence": 0.7814
+    },
+    {
+      "crop_file": "REPLAY-03_20018_KA25SA116.jpg",
+      "pipeline_read": "KA25SA116",
+      "true_plate": "KA25AB1116",
+      "edit_distance": 3,
+      "corrections_applied": 2,
+      "confidence": 0.8012
+    },
+    {
+      "crop_file": "REPLAY-03_20218_KL26GI116.jpg",
+      "pipeline_read": "KL26GI116",
+      "true_plate": "KA25AB1116",
+      "edit_distance": 5,
+      "corrections_applied": 2,
+      "confidence": 0.741
+    },
+    {
+      "crop_file": "REPLAY-03_26824_KA25AB551.jpg",
+      "pipeline_read": "KA25AB551",
+      "true_plate": "KA25AB1561",
+      "edit_distance": 2,
+      "corrections_applied": 1,
+      "confidence": 0.6113
+    },
+    {
+      "crop_file": "REPLAY-04_14813_0ADA811.jpg",
+      "pipeline_read": "0ADA811",
+      "true_plate": "KA25AB1542",
+      "edit_distance": 7,
+      "corrections_applied": 0,
+      "confidence": 0.6078
+    },
+    {
+      "crop_file": "REPLAY-04_15414_KA23AA441.jpg",
+      "pipeline_read": "KA23AA441",
+      "true_plate": "KA25AB1542",
+      "edit_distance": 5,
+      "corrections_applied": 1,
+      "confidence": 0.5883
+    },
+    {
+      "crop_file": "REPLAY-04_15614_KA25AB144.jpg",
+      "pipeline_read": "KA25AB144",
+      "true_plate": "KA25AB1542",
+      "edit_distance": 2,
+      "corrections_applied": 0,
+      "confidence": 0.9016
+    },
+    {
+      "crop_file": "REPLAY-04_15814_KA25SB512.jpg",
+      "pipeline_read": "KA25SB512",
+      "true_plate": "KA25AB1542",
+      "edit_distance": 3,
+      "corrections_applied": 2,
+      "confidence": 0.7036
+    },
+    {
+      "crop_file": "REPLAY-04_16014_KA25SB542.jpg",
+      "pipeline_read": "KA25SB542",
+      "true_plate": "KA25AB1542",
+      "edit_distance": 2,
+      "corrections_applied": 1,
+      "confidence": 0.7854
+    },
+    {
+      "crop_file": "REPLAY-04_18817_4121A1111.jpg",
+      "pipeline_read": "4121A1111",
+      "true_plate": "KA25AB1116",
+      "edit_distance": 5,
+      "corrections_applied": 0,
+      "confidence": 0.6093
+    },
+    {
+      "crop_file": "REPLAY-04_19017_442511166.jpg",
+      "pipeline_read": "442511166",
+      "true_plate": "KA25AB1116",
+      "edit_distance": 5,
+      "corrections_applied": 0,
+      "confidence": 0.5968
+    },
+    {
+      "crop_file": "REPLAY-04_19217_44236B116.jpg",
+      "pipeline_read": "44236B116",
+      "true_plate": "KA25AB1116",
+      "edit_distance": 5,
+      "corrections_applied": 0,
+      "confidence": 0.6452
+    },
+    {
+      "crop_file": "REPLAY-04_19417_442E61116.jpg",
+      "pipeline_read": "442E61116",
+      "true_plate": "KA25AB1116",
+      "edit_distance": 5,
+      "corrections_applied": 0,
+      "confidence": 0.7137
+    },
+    {
+      "crop_file": "REPLAY-04_19618_442E61116.jpg",
+      "pipeline_read": "442E61116",
+      "true_plate": "KA25AB1116",
+      "edit_distance": 5,
+      "corrections_applied": 0,
+      "confidence": 0.6308
+    },
+    {
+      "crop_file": "REPLAY-04_19818_KA25AI116.jpg",
+      "pipeline_read": "KA25AI116",
+      "true_plate": "KA25AB1116",
+      "edit_distance": 2,
+      "corrections_applied": 2,
+      "confidence": 0.7814
+    },
+    {
+      "crop_file": "REPLAY-04_20018_KA25SA116.jpg",
+      "pipeline_read": "KA25SA116",
+      "true_plate": "KA25AB1116",
+      "edit_distance": 3,
+      "corrections_applied": 2,
+      "confidence": 0.8012
+    },
+    {
+      "crop_file": "REPLAY-04_20218_KL26GI116.jpg",
+      "pipeline_read": "KL26GI116",
+      "true_plate": "KA25AB1116",
+      "edit_distance": 5,
+      "corrections_applied": 2,
+      "confidence": 0.741
+    },
+    {
+      "crop_file": "REPLAY-04_26824_KA25AB551.jpg",
+      "pipeline_read": "KA25AB551",
+      "true_plate": "KA25AB1561",
+      "edit_distance": 2,
+      "corrections_applied": 1,
+      "confidence": 0.6113
+    }
+  ],
+  "method": "Precision counts every asserted registration, including those asserted on crops a human found unreadable. Recall is over crops a human could read: failing to read what no human can read is not a miss. Character error rate is total Levenshtein distance over total ground-truth characters."
+}

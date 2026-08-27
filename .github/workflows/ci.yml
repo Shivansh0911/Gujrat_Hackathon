@@ -37,12 +37,19 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r backend/requirements-dev.txt
 
+      # Both steps run from `backend/`, which is where the Python tree lives and what
+      # the Makefile targets do. Before the backend/frontend split these paths were
+      # top-level; afterwards `ruff format --check services ...` and `mypy --strict
+      # services` were pointing at directories that no longer existed at the root, so
+      # the job failed on a missing path rather than on anything about the code.
       - name: Lint
+        working-directory: backend
         run: |
-          ruff check backend/services backend/scripts backend/tests
+          ruff check services scripts tests
           ruff format --check services scripts tests
 
       - name: Type check (strict)
+        working-directory: backend
         run: mypy --strict services
 
       - name: Declared-FPS guard

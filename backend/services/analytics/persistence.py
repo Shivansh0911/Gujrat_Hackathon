@@ -18,9 +18,10 @@ from __future__ import annotations
 import logging
 import uuid
 from dataclasses import dataclass
-from typing import Iterable, Iterator
+from typing import Any, Iterable, Iterator, cast
 
 from sqlalchemy import select, text
+from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session
 
 from services.analytics.anpr import PlateDetectionRecord
@@ -146,7 +147,9 @@ class DetectionWriter:
             payload["vehicle_bbox"] = (
                 json.dumps(payload["vehicle_bbox"]) if payload["vehicle_bbox"] else None
             )
-            result = self._session.execute(stmt, payload)
+            # `Session.execute` is typed as returning `Result`, which has no
+            # rowcount; the concrete object for a DML statement is a CursorResult.
+            result = cast(CursorResult[Any], self._session.execute(stmt, payload))
             if result.rowcount:
                 self.stats.inserted += 1
             else:
@@ -157,7 +160,7 @@ class DetectionWriter:
     def __enter__(self) -> "DetectionWriter":
         return self
 
-    def __exit__(self, exc_type, *_exc: object) -> None:
+    def __exit__(self, exc_type: object, *_exc: object) -> None:
         if exc_type is None:
             self.flush()
 

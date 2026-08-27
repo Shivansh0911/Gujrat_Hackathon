@@ -165,7 +165,7 @@ def validate_uri(uri: str) -> ValidatedTarget:
     if literal is not None:
         if _is_forbidden_ip(literal):
             raise PrivateAddressBlocked("target address is in a restricted range")
-        resolved = (str(literal),)
+        resolved: tuple[str, ...] = (str(literal),)
     else:
         addresses = _resolve(host)
         for addr in addresses:

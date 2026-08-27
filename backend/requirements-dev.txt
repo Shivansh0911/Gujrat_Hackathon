@@ -7,3 +7,9 @@ mypy==1.11.2        # MIT
 pytest-cov==5.0.0   # MIT
 pip-audit==2.7.3    # Apache-2.0
 cyclonedx-bom==4.6.1  # Apache-2.0
+
+# Type stubs. Without these, `mypy --strict` reports every call into these
+# libraries as untyped and the strictness is theatre rather than a check.
+types-requests==2.32.0.20240914   # Apache-2.0
+types-python-jose==3.3.4.20240106  # Apache-2.0
+types-passlib==1.7.7.20240819    # Apache-2.0

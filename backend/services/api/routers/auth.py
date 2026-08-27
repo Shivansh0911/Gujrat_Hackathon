@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import secrets
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
@@ -62,7 +62,9 @@ _DUMMY_HASH = hash_password(secrets.token_urlsafe(32))
 
 
 
-def _audit_in_new_transaction(*, action: str, subject_id: str, detail: dict) -> None:
+def _audit_in_new_transaction(
+    *, action: str, subject_id: str, detail: dict[str, Any]
+) -> None:
     """Commit one audit entry independently of the request transaction."""
     from services.api.db import get_sessionmaker
 

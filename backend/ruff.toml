@@ -1,0 +1,16 @@
+# Lint and format configuration.
+#
+# `line-length` is 100 rather than the default 88 because this codebase carries an
+# unusually high comment-to-code ratio by design -- the reasoning behind a decision is
+# kept next to the decision -- and reflowing everything to 88 would break explanatory
+# comments and tables that read better intact. 100 is the width the code was already
+# written to; this setting records that rather than imposing a new one.
+#
+# The rule selection is deliberately Ruff's default set. Widening it (bugbear, simplify,
+# pyupgrade, import sorting) surfaces 76 findings across the tree -- worth doing, but
+# not as an undifferentiated sweep immediately before a submission, where a mechanical
+# reformat would sit in the same diff as substantive changes and hide them. Recorded
+# here as the next lint step rather than left as an unexplained default.
+
+line-length = 100
+target-version = "py312"

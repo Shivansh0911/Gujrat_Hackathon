@@ -1,4 +1,4 @@
-# Project SETU — production stack.
+# Project SETU â€” production stack.
 #
 # Differs from docker-compose.yml (development) in four ways that matter:
 #
@@ -10,7 +10,7 @@
 #      someone forgot to override.
 #   3. **Evidence crops on a named volume**, so they survive a redeploy. The image
 #      ships the demo crops; new detections written at runtime persist here.
-#   4. **Restart policies and health-gated startup** — the backend waits for a
+#   4. **Restart policies and health-gated startup** â€” the backend waits for a
 #      healthy database, and the frontend waits for a healthy backend.
 #
 # Usage:
@@ -23,7 +23,7 @@ services:
   postgres:
     # PostGIS, TimescaleDB and pgvector in one image. Digest-pinned: the extension
     # set is load-bearing and a floating tag could change it under us.
-    image: timescale/timescaledb-ha:pg16
+    image: timescale/timescaledb-ha:pg16.4-ts2.17.2-oss@sha256:5df86141242ec2724bbabf5ee82b2480170a9d821bbbb7a77f8572aed84e9180
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB}

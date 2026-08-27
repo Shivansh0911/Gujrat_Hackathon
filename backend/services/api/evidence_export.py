@@ -323,7 +323,7 @@ def render_pdf(
     return buffer.getvalue()
 
 
-def _hop_block(hop: dict[str, Any], body, small, mono) -> Table:
+def _hop_block(hop: dict[str, Any], body: Any, small: Any, mono: Any) -> Table:
     """One hop: crop on the left, provenance on the right."""
     crop_path = _crop_path(hop.get("crop_url"))
     if crop_path is not None:

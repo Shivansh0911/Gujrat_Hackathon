@@ -100,7 +100,7 @@ class SceneCutDetector:
         """Return True when this frame begins a new scene."""
         small, hist = self._prepare(frame)
 
-        if self._prev_small is None:
+        if self._prev_small is None or self._prev_hist is None:
             self._prev_small, self._prev_hist = small, hist
             return False
 

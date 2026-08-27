@@ -19,13 +19,16 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Iterator, Protocol
+from typing import TYPE_CHECKING, Any, Iterator, Protocol, cast
 
 import numpy as np
 
 from services.analytics.plate_grammar import NormalisedPlate, PlateAccumulator
 from services.common.cv_env import cv2
 from services.common.stream_client import Frame
+
+if TYPE_CHECKING:  # import cycle at runtime: ingest builds on analytics
+    from services.ingest.source import CameraSource
 
 log = logging.getLogger(__name__)
 
@@ -200,7 +203,10 @@ class OpenImagePlateDetector:
     def __init__(self, model: str = "yolo-v9-t-384-license-plate-end2end") -> None:
         from open_image_models import LicensePlateDetector
 
-        self._impl = LicensePlateDetector(detection_model=model)
+        # The package types this parameter as a Literal of its bundled model names.
+        # We keep `str` in our own signature so a caller can select a model from
+        # configuration, and validate by letting the constructor raise.
+        self._impl = LicensePlateDetector(detection_model=cast(Any, model))
         self.model_name = model
 
     def detect(self, image: np.ndarray) -> list[tuple[tuple[int, int, int, int], float]]:
@@ -217,11 +223,11 @@ class FastPlateRecogniser:
     def __init__(self, model: str = "cct-s-v1-global-model") -> None:
         from fast_plate_ocr import LicensePlateRecognizer
 
-        self._impl = LicensePlateRecognizer(model)
+        self._impl = LicensePlateRecognizer(cast(Any, model))  # Literal, as above
         self.model_name = model
 
     def read(self, crop: np.ndarray) -> tuple[str, list[float]]:
-        preds = self._impl.run(crop, return_confidence=True)
+        preds = cast(Any, self._impl.run(crop, return_confidence=True))
         if not preds:
             return "", []
         pred = preds[0]
@@ -300,7 +306,9 @@ class AnprPipeline:
         self._min_detector_confidence = min_detector_confidence
         self._min_crop_height = min_crop_height
 
-    def run(self, source, max_frames: int | None = None) -> Iterator[PlateDetectionRecord]:
+    def run(
+        self, source: CameraSource, max_frames: int | None = None
+    ) -> Iterator[PlateDetectionRecord]:
         """Process frames from a CameraSource, yielding fused plate records."""
         gate = MotionGate(threshold=self._motion_threshold)
         tracker = PlateTracker()
@@ -403,7 +411,9 @@ class AnprPipeline:
             return None
         return image[y1:y2, x1:x2]
 
-    def _finalise(self, track: PlateTrack, source) -> PlateDetectionRecord | None:
+    def _finalise(
+        self, track: PlateTrack, source: CameraSource
+    ) -> PlateDetectionRecord | None:
         fused = track.accumulator.fused()
         if fused is None or not fused.normalised:
             return None

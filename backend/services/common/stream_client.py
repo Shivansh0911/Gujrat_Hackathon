@@ -103,9 +103,14 @@ class StreamSession:
     ) -> None:
         # A bare string is accepted for RTSP and tests; HLS callers must pass a
         # callable so each reconnect gets a fresh, unexpired variant URL.
-        self._url_provider: Callable[[], str] = (
-            url_provider if callable(url_provider) else (lambda u=url_provider: u)
-        )
+        if callable(url_provider):
+            self._url_provider: Callable[[], str] = url_provider
+        else:
+            # Bind the string to a local so the closure cannot observe a later
+            # rebinding of the parameter. A default-argument lambda did the same job
+            # but is untypeable: mypy sees the default as widening the signature.
+            fixed_url = url_provider
+            self._url_provider = lambda: fixed_url
         self._join_timeout_s = join_timeout_s
         self._backoff_min_s = backoff_min_s
         self._backoff_max_s = backoff_max_s

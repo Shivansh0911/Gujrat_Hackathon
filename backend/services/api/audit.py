@@ -130,7 +130,7 @@ def append(
     return entry
 
 
-class ChainBreak(dict):
+class ChainBreak(dict[str, object]):
     """One detected inconsistency. A dict so it serialises straight to JSON."""
 
 

@@ -1,0 +1,96 @@
+{
+  "generated_utc": "2026-08-27T04:54:16.406309+00:00",
+  "annotation_file": "anpr_ground_truth.csv",
+  "distinct_crops": 38,
+  "results": [
+    {
+      "model": "cct-s-v2-global-model",
+      "crops_legible": 17,
+      "crops_illegible": 21,
+      "correct": 1,
+      "wrong": 16,
+      "asserted_on_illegible": 7,
+      "precision": 0.0417,
+      "recall": 0.0588,
+      "character_error_rate": 0.3118,
+      "seconds": 5.3,
+      "examples": [
+        {
+          "crop": "7_15280_6JTAK6533.jpg",
+          "read": "GJ74AK653",
+          "truth": "GJ14AK5333"
+        },
+        {
+          "crop": "7_15520_6JAAXK333.jpg",
+          "read": "GJ14AK6333",
+          "truth": "GJ14AK5333"
+        },
+        {
+          "crop": "REPLAY-01_14813_0ADA811.jpg",
+          "read": "ADA1144",
+          "truth": "KA25AB1542"
+        },
+        {
+          "crop": "REPLAY-01_15414_KA23AA441.jpg",
+          "read": "KA15AL44",
+          "truth": "KA25AB1542"
+        },
+        {
+          "crop": "REPLAY-01_15614_KA25AB144.jpg",
+          "read": "KA25AE154",
+          "truth": "KA25AB1542"
+        },
+        {
+          "crop": "REPLAY-01_15814_KA25SB512.jpg",
+          "read": "KA25AB154",
+          "truth": "KA25AB1542"
+        }
+      ]
+    },
+    {
+      "model": "cct-s-v1-global-model",
+      "crops_legible": 17,
+      "crops_illegible": 21,
+      "correct": 0,
+      "wrong": 17,
+      "asserted_on_illegible": 21,
+      "precision": 0.0,
+      "recall": 0.0,
+      "character_error_rate": 0.3941,
+      "seconds": 1.8,
+      "examples": [
+        {
+          "crop": "7_15280_6JTAK6533.jpg",
+          "read": "6JTAK6533",
+          "truth": "GJ14AK5333"
+        },
+        {
+          "crop": "7_15520_6JAAXK333.jpg",
+          "read": "GJ14XK333",
+          "truth": "GJ14AK5333"
+        },
+        {
+          "crop": "7_15760_GJ14AK533.jpg",
+          "read": "GJ14AK533",
+          "truth": "GJ14AK5333"
+        },
+        {
+          "crop": "REPLAY-01_14813_0ADA811.jpg",
+          "read": "0ADA8143",
+          "truth": "KA25AB1542"
+        },
+        {
+          "crop": "REPLAY-01_15414_KA23AA441.jpg",
+          "read": "KA23AA441",
+          "truth": "KA25AB1542"
+        },
+        {
+          "crop": "REPLAY-01_15614_KA25AB144.jpg",
+          "read": "KA25AB154",
+          "truth": "KA25AB1542"
+        }
+      ]
+    }
+  ],
+  "best_by_exact_matches": "cct-s-v2-global-model"
+}
