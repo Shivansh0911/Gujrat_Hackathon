@@ -258,13 +258,20 @@ def main() -> int:
                 (v for k, v in r.headers.items() if k.lower().startswith("x-setu-sig")), None
             )
             is_pdf = r.headers.get("Content-Type", "").startswith("application/pdf")
-            ok = r.ok and is_pdf and bool(sig)
+            # A signed export without its evidence photographs is still a valid,
+            # signed PDF -- and useless. It happened: adding a signature to crop URLs
+            # broke the exporter's path resolution, the images silently vanished, and
+            # the manifest stopped committing to them. The only visible symptom was
+            # the file dropping from ~30 KB to 6.6 KB, so size is the guard.
+            has_images = len(r.content) > 15_000
+            ok = r.ok and is_pdf and bool(sig) and has_images
             c.record(
                 4,
                 "signed PDF exports",
                 PASS if ok else FAIL,
                 f"HTTP {r.status_code}, {len(r.content)} bytes, "
-                f"signature header {'present' if sig else 'MISSING'}",
+                f"signature header {'present' if sig else 'MISSING'}"
+                + ("" if has_images else ", TOO SMALL to contain evidence images"),
             )
     except Exception as exc:
         c.record(4, "signed PDF exports", FAIL, f"{type(exc).__name__}: {exc}")

@@ -38,7 +38,23 @@ export default function HlsPlayer({
       setDetail(why);
     };
 
-    if (Hls.isSupported()) {
+    // Not every camera is an HLS stream. The replay cameras are backed by a bundled
+    // MP4 served directly by the API, and hls.js cannot play one -- handing it a
+    // progressive file produces a manifest-parse error that reads as "the camera is
+    // down". The element plays MP4 natively, with range requests for seeking.
+    const isHls = /\.m3u8(\?|$)/i.test(url);
+
+    if (!isHls) {
+      video.src = url;
+      video.addEventListener("loadedmetadata", () => {
+        if (cancelled) return;
+        setState("playing");
+        video.play().catch(() => {
+          /* autoplay refusal is not a stream failure */
+        });
+      });
+      video.addEventListener("error", () => fail("clip could not be opened"));
+    } else if (Hls.isSupported()) {
       hls = new Hls({ manifestLoadingMaxRetry: 1, levelLoadingMaxRetry: 1, fragLoadingMaxRetry: 1 });
       hls.loadSource(url);
       hls.attachMedia(video);

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { api, getToken, type Alert } from "../lib/api";
+import { api, getToken, type Alert, websocketUrl } from "../lib/api";
 import { Badge, Empty, ErrorBox, Spinner } from "../components/ui";
 
 export default function AlertsPage() {
@@ -22,8 +22,13 @@ export default function AlertsPage() {
   useEffect(() => {
     const token = getToken();
     if (!token) return;
-    const proto = location.protocol === "https:" ? "wss" : "ws";
-    const ws = new WebSocket(`${proto}://${location.host}/ws/alerts?token=${encodeURIComponent(token)}`);
+    // websocketUrl() follows VITE_API_ORIGIN when the console is served from a
+    // different host to the API, which is the case on Netlify: its redirects proxy
+    // HTTP but not wss://, so a same-origin socket URL would fail there with no
+    // visible error beyond a status dot that never turns green.
+    const ws = new WebSocket(
+      `${websocketUrl("/ws/alerts")}?token=${encodeURIComponent(token)}`,
+    );
     wsRef.current = ws;
 
     ws.onopen = () => setLive("live");

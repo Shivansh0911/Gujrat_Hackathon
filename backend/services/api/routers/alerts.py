@@ -6,7 +6,6 @@ import asyncio
 import json
 import logging
 import uuid
-from pathlib import Path
 from datetime import datetime, timezone
 from typing import Annotated, Any
 
@@ -17,6 +16,7 @@ from sqlalchemy.orm import Session
 
 from services.api import audit
 from services.api.config import get_api_settings
+from services.api.media_signing import signed_media_url
 from services.api.db import get_session
 from services.api.security import Actor, CurrentActor, camera_scope, decode_token
 from services.registry.enums import AlertDisposition, AlertState, Role
@@ -137,7 +137,9 @@ def _project(session: Session, alert: Alert) -> AlertOut:
     crop = first.get("crop_path")
     # Served by basename through the media route: the absolute path never reaches the
     # browser, which must not learn the server's filesystem layout.
-    crop_url = f"/media/crops/{Path(crop).name}" if crop else None
+    crop_url = (
+        signed_media_url("/media/crops", crop, get_api_settings().jwt_secret) if crop else None
+    )
 
     return AlertOut(
         id=alert.id,

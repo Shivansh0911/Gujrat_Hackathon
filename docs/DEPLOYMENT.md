@@ -1,5 +1,11 @@
 # Deployment
 
+> **Deploying for the first time?** Follow
+> [`DEPLOY_STEP_BY_STEP.md`](DEPLOY_STEP_BY_STEP.md) instead — it is the click-by-click
+> procedure for Railway, and for Railway + Netlify. This document is the reference:
+> what each variable does, what breaks without it, and why the startup order is what
+> it is.
+
 The stack runs as three containers: Postgres, the backend API, and nginx serving the
 console and proxying `/api`. It has been verified end to end from a clean state —
 ten checks, listed in §5.

@@ -6,7 +6,7 @@ import logging
 import secrets
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from services.api import audit
 from services.api.config import ApiSettings, get_api_settings
 from services.api.db import get_session
+from services.api.rate_limit import login_limiter
 from services.api.schemas import Token
 from services.api.security import CurrentActor, create_access_token, hash_password, verify_password
 from services.registry.enums import Role
@@ -87,10 +88,30 @@ def _audit_in_new_transaction(*, action: str, subject_id: str, detail: dict[str,
 
 @router.post("/login", response_model=Token)
 def login(
+    request: Request,
     form: Annotated[OAuth2PasswordRequestForm, Depends()],
     session: SessionDep,
     settings: Annotated[ApiSettings, Depends(get_api_settings)],
 ) -> Token:
+    # Rate limited before any password work happens. Verification is bcrypt, which is
+    # deliberately expensive, so an unauthenticated caller could otherwise make this
+    # server burn CPU on demand -- cheap to send, expensive to answer. Checking after
+    # hashing would defeat the purpose entirely.
+    #
+    # The client address comes from the proxy's X-Forwarded-For where present, since
+    # nginx sits in front and every request would otherwise share one key.
+    forwarded = request.headers.get("x-forwarded-for", "")
+    client_ip = forwarded.split(",")[0].strip() or (
+        request.client.host if request.client else "unknown"
+    )
+    allowed, retry_after = login_limiter.check(client_ip)
+    if not allowed:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="too many login attempts; try again shortly",
+            headers={"Retry-After": str(int(retry_after) + 1)},
+        )
+
     users = _users(settings)
     if not users:
         raise HTTPException(

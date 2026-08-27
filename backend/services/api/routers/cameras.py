@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from services.api import audit
 from services.api.config import ApiSettings, get_api_settings
+from services.api.media_signing import signed_media_url
 from services.api.db import get_session
 from services.api.schemas import (
     CameraOut,
@@ -323,8 +324,25 @@ def get_stream_url(
         url = feed_settings.hls_url(camera.camera_ref)
         transport = "hls"
     elif camera.source_type == SourceType.FILE.value:
-        # Own-feed cameras are served by our own static evidence route, not upstream.
-        url = f"/media/own-feed/{camera.camera_ref}/index.m3u8"
+        # Own-feed (replay) cameras are backed by a bundled clip, not a gateway
+        # stream. This used to return `/media/own-feed/<ref>/index.m3u8`, which
+        # nothing served -- previewing a replay camera showed a player error. The
+        # clip is an MP4, so serve it as one, signed like any other evidence media.
+        from services.common.paths import OWN_FEED_DIR
+
+        clip = next(
+            (p for p in sorted(OWN_FEED_DIR.glob("*")) if p.name == "demo_clip.mp4"),
+            None,
+        ) or next(
+            (p for p in sorted(OWN_FEED_DIR.glob("*")) if p.suffix.lower() == ".mp4"),
+            None,
+        )
+        if clip is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="no own-feed clip is bundled with this deployment",
+            )
+        url = signed_media_url("/media/own-feed", clip.name, settings.jwt_secret)
         transport = "file"
     else:
         raise HTTPException(

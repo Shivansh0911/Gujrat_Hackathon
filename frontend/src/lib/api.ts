@@ -25,11 +25,35 @@ export type DistrictCoverage = components["schemas"]["DistrictCoverage"];
 export type CameraGap = components["schemas"]["CameraGap"];
 export type JourneyGap = components["schemas"]["JourneyGap"];
 
-// Same-origin by default: nginx proxies /api to the backend in production and the
-// Vite dev server proxies it in development, so the browser never makes a
-// cross-origin credentialed request. Overridable at build time for a split-origin
-// deployment, where the backend must also allow that origin in CORS.
-const BASE = import.meta.env.VITE_API_BASE_URL ?? "/api";
+/**
+ * Where the API lives.
+ *
+ * **Same-origin (default).** nginx proxies `/api` to the backend in production and
+ * the Vite dev server proxies it in development, so the browser never makes a
+ * cross-origin credentialed request and the WebSocket rides the same host.
+ *
+ * **Split-origin.** Set `VITE_API_ORIGIN` to the backend's own origin, e.g.
+ * `https://setu-api.up.railway.app`. Needed when the console is hosted somewhere
+ * that cannot proxy a WebSocket -- Netlify's redirects proxy HTTP but not `wss://`,
+ * so a console served there with a same-origin socket URL loses the live alert feed
+ * silently: the list still polls, and the only symptom is the status dot never
+ * turning green. The backend must then name this console in SETU_CORS_ORIGINS.
+ *
+ * Behind nginx the backend's routes sit at the root (`/auth/login`), because the
+ * proxy strips the `/api` prefix. Addressed directly, they are at the root too, so
+ * the split-origin base carries no prefix.
+ */
+const API_ORIGIN = (import.meta.env.VITE_API_ORIGIN ?? "").replace(/\/+$/, "");
+const BASE = API_ORIGIN || import.meta.env.VITE_API_BASE_URL || "/api";
+
+/** Absolute `ws(s)://` URL for a backend WebSocket path such as `/ws/alerts`. */
+export function websocketUrl(path: string): string {
+  if (API_ORIGIN) {
+    return API_ORIGIN.replace(/^http/, "ws") + path;
+  }
+  const proto = location.protocol === "https:" ? "wss" : "ws";
+  return `${proto}://${location.host}${path}`;
+}
 
 /**
  * The access token lives in a module variable, never in localStorage.

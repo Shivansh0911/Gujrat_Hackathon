@@ -35,6 +35,7 @@ import logging
 import os
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.parse import urlsplit
 from typing import Any
 
 from cryptography.hazmat.primitives import serialization
@@ -170,7 +171,14 @@ def build_manifest(journey: dict[str, Any], audit_seq: int | None, model_version
 def _crop_path(crop_url: str | None) -> Path | None:
     if not crop_url:
         return None
-    candidate = (CROPS_DIR / Path(crop_url).name).resolve()
+    # Strip the query string before taking the basename. Crop URLs carry a signature
+    # (`?exp=...&sig=...`) so the browser can load them from an <img>, and
+    # `Path(url).name` keeps that whole tail -- which resolves to no file at all.
+    # The failure is silent and expensive: the PDF renders without its evidence
+    # photographs, and `_crop_digest` returns None, so the signed manifest quietly
+    # stops committing to the images it is supposed to attest.
+    name = Path(urlsplit(crop_url).path).name
+    candidate = (CROPS_DIR / name).resolve()
     # Resolve inside the crop directory: the URL is attacker-influenced in principle,
     # and a traversal here would embed an arbitrary file into a signed document.
     if CROPS_DIR.resolve() not in candidate.parents or not candidate.is_file():

@@ -251,8 +251,11 @@ docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
 Three containers — Postgres, the API, and nginx serving the console. Verified from a
 clean state against ten checks including evidence photos rendering, the WebSocket
 connecting, row-level security actually binding in the deployed database, and the
-watchlist being populated with a bounded expiry on every entry. Steps,
-every environment variable and what breaks without it, and the Railway procedure:
+watchlist being populated with a bounded expiry on every entry.
+
+Click-by-click deployment, for Railway alone and for Railway + Netlify:
+[`docs/DEPLOY_STEP_BY_STEP.md`](docs/DEPLOY_STEP_BY_STEP.md). Every environment
+variable, what breaks without it, and why the startup order is what it is:
 [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
 
 ---

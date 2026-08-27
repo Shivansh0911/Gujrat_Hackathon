@@ -29,8 +29,8 @@ from services.analytics.model_ids import (  # noqa: E402
     RECOGNISER_MODEL,
 )
 
-ATTEMPTS = 3
-BACKOFF_S = 5
+ATTEMPTS = 6
+BACKOFF_S = 4.0
 
 
 def fetch(label: str, load) -> bool:
@@ -44,7 +44,12 @@ def fetch(label: str, load) -> bool:
                 f"  {label}: attempt {attempt}/{ATTEMPTS} failed — " f"{type(exc).__name__}: {exc}"
             )
             if attempt < ATTEMPTS:
-                time.sleep(BACKOFF_S)
+                # Exponential backoff. The model host is a third party and its blips
+                # last tens of seconds, not one; a fixed short sleep across three
+                # tries rides out none of them. On a platform build a transient
+                # failure here fails the whole deploy, so patience is cheaper than a
+                # red deployment.
+                time.sleep(BACKOFF_S * (2 ** (attempt - 1)))
     return False
 
 

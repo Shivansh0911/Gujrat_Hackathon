@@ -27,7 +27,6 @@ import logging
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
@@ -36,6 +35,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from services.analytics.model_ids import MODEL_VERSION
+from services.api.media_signing import signed_media_url
 from services.api import audit
 from services.api.config import ApiSettings, get_api_settings
 from services.api.db import get_session
@@ -136,7 +136,15 @@ class _Sighting:
 
 
 def _crop_url(path: str | None) -> str | None:
-    return f"/media/crops/{Path(path).name}" if path else None
+    """A signed, expiring link to one evidence crop.
+
+    Signed because the media endpoint is reachable without a session -- a browser
+    cannot put an Authorization header on an <img> -- and these are photographs of
+    vehicles and plates rather than public assets. See api/media_signing.py.
+    """
+    if not path:
+        return None
+    return signed_media_url("/media/crops", path, get_api_settings().jwt_secret)
 
 
 @router.get("/journey", response_model=JourneyResult)
