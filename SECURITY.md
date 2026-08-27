@@ -69,3 +69,41 @@ platform checks authorisation and mints a short-lived signed playback token.
 The evaluation gateway is infrastructure we do not own. We open only the cameras we are
 actively processing, cap concurrent captures, pace reconnects with jittered exponential
 backoff, and never publish to the gateway or call its control API.
+
+## Dependency advisories
+
+`pip-audit --strict` runs on every push against `backend/requirements.txt`. It fails
+the build on any advisory in any pinned package, with **one** suppression, by ID.
+
+### The one suppression
+
+| Advisory | Package | Why it is suppressed |
+|---|---|---|
+| `PYSEC-2026-1325` / `CVE-2024-23342` | `ecdsa` 0.19.2 | A Minerva timing attack on the P-256 curve. **There is no fixed version:** upstream considers side-channel attacks out of scope and has stated there is no planned fix. |
+
+**Why it does not apply to us.** `ecdsa` is present only as a transitive dependency of
+`python-jose`. The advisory affects ECDSA signing, key generation and ECDH; signature
+verification is explicitly unaffected. This platform issues **HS256** tokens
+(symmetric HMAC) and signs evidence with **Ed25519** through `cryptography`. Nothing in
+the tree calls an ECDSA signing, keygen or ECDH path, so the vulnerable code is not
+reachable.
+
+**Why it is suppressed by ID.** Dropping `--strict`, or excluding the package, would
+silence every future advisory in it as well. Naming the single ID keeps the build
+failing on anything new.
+
+**The proper fix, not yet done.** Replace `python-jose` with `PyJWT`, which does not
+depend on `ecdsa` at all. That removes the dependency rather than excusing it, and
+`python-jose` is the less actively maintained of the two. It was not done in submission
+week because it changes token issuance and verification, and the risk of touching
+authentication outweighed removing an advisory we cannot reach. It is the first
+security task afterwards.
+
+### Keeping the pins current
+
+The audit found **63 advisories across 7 packages** when it was first run against the
+deployed pins on 2026-08-27 — `pypdf`, `starlette`, `cryptography`, `python-jose`,
+`python-multipart`, `requests` and `ecdsa`. All but the unfixable one were resolved by
+upgrading, and the full test suite and the nine deployment checks were re-run against
+the upgraded stack before the pins were committed. Pinning is not the same as being
+current; the audit is what makes the difference visible.

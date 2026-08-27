@@ -88,7 +88,23 @@ jobs:
           pip install pip-audit==2.7.3 cyclonedx-bom==4.6.1
 
       - name: Dependency vulnerability audit
-        run: pip-audit -r backend/requirements.txt --strict
+        # One advisory is suppressed, deliberately and specifically.
+        #
+        # PYSEC-2026-1325 / CVE-2024-23342 is a Minerva timing attack on P-256 in
+        # `ecdsa`. Upstream considers side-channel attacks out of scope and states
+        # there is no planned fix, so there is no version to upgrade to.
+        #
+        # We do not reach the affected code. `ecdsa` arrives only as a transitive
+        # dependency of python-jose; our tokens are HS256 (symmetric HMAC) and our
+        # evidence signing is Ed25519 through `cryptography`. Nothing in this tree
+        # calls ECDSA signing, key generation or ECDH, and signature *verification*
+        # is unaffected in any case.
+        #
+        # Suppressed by ID rather than by dropping --strict, so any *other* advisory
+        # in any package still fails the build. Revisit by replacing python-jose with
+        # PyJWT, which removes the dependency instead of excusing it -- see
+        # SECURITY.md.
+        run: pip-audit -r backend/requirements.txt --strict --ignore-vuln PYSEC-2026-1325
 
       - name: Secret scan (full history)
         uses: gitleaks/gitleaks-action@v2

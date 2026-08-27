@@ -4,7 +4,7 @@
 
 opencv-python-headless==4.10.0.84   # Apache-2.0. Headless: no GUI deps in containers.
 numpy==1.26.4                       # BSD-3-Clause
-requests==2.32.3                    # Apache-2.0
+requests==2.34.2                    # Apache-2.0
 pydantic==2.9.2                     # MIT
 pydantic-settings==2.5.2            # MIT
 
@@ -17,17 +17,17 @@ psycopg[binary]==3.2.3      # LGPL-3.0 for libpq bindings; psycopg3 core is LGPL
 geoalchemy2==0.15.2         # MIT
 
 # --- API (T0.4) ---
-fastapi==0.115.2            # MIT
+fastapi==0.141.1            # MIT
 uvicorn[standard]==0.31.1   # BSD-3-Clause
 pydantic-extra-types==2.9.0 # MIT
-python-jose[cryptography]==3.3.0  # MIT
+python-jose[cryptography]==3.5.0  # MIT
 passlib[bcrypt]==1.7.4      # BSD-2-Clause
 bcrypt==4.2.0               # Apache-2.0
-python-multipart==0.0.12    # Apache-2.0
+python-multipart==0.0.32    # Apache-2.0
 websockets==13.1            # BSD-3-Clause
 
 reportlab==4.2.5             # BSD-3-Clause
-cryptography==43.0.1         # Apache-2.0 / BSD dual
+cryptography==50.0.1         # Apache-2.0 / BSD dual
 
 # --- ANPR inference (T0.5) ---
 # Both MIT. Ultralytics is deliberately NOT used: it is AGPL and would contaminate
@@ -39,4 +39,4 @@ onnxruntime==1.19.2         # MIT — CPU inference backend
 
 # --- Media and reporting ---
 imageio-ffmpeg==0.5.1       # BSD-2-Clause — bundled ffmpeg binary for clip preparation
-pypdf==5.0.1                # BSD-3-Clause — reads generated PDFs back in tests
+pypdf==6.16.2                # BSD-3-Clause — reads generated PDFs back in tests
