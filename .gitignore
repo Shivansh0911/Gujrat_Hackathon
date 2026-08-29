@@ -23,7 +23,6 @@ dist/
 .vite/
 
 # Runtime artefacts
-data/evidence/
 data/snapshots/
 *.log
 
@@ -47,8 +46,15 @@ data/own_feed/*
 # Test fixtures are generated, not authored.
 tests/fixtures/*.mp4
 
-# Evidence crops are runtime output, not source.
-data/evidence/
+# Evidence: the signing key never leaves this machine, but the demo crops must be
+# committed. They are the images the Journey and Alert screens render, and the
+# Dockerfile copies `data/` into the image -- so a build from a local checkout picked
+# them up off the filesystem and a build from GitHub did not. That difference is
+# invisible locally and produces a deployed console with 4 hops and 0 images.
+data/evidence/*
+!data/evidence/crops/
+data/evidence/crops/.gitkeep
+data/evidence/signing_key*
 
 # Frontend build output and deps
 frontend/node_modules/

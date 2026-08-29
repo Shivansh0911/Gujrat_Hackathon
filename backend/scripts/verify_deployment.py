@@ -73,9 +73,30 @@ class Checks:
         return [r for r in self.rows if r[2] != PASS]
 
 
+#: Where the API actually lives, resolved once in main().
+#:
+#: Two deployment shapes are supported and they address the API differently:
+#:
+#: * **Same origin** (the compose stack, or any nginx in front of both). The console
+#:   and the API share a host and nginx strips a `/api` prefix, so the API is at
+#:   `https://console/api/...`.
+#: * **Split origin** (Netlify console, Render or Railway API). The API is the root of
+#:   its own domain -- `https://api.example.com/auth/login`, with no `/api` segment --
+#:   and the browser reaches it cross-origin under CORS.
+#:
+#: Getting this wrong makes every check fail with a 404 that looks like a broken
+#: deployment rather than a mis-invoked script, so it is resolved explicitly rather
+#: than guessed at per call site.
+API_ROOT = ""
+
+
+def api_url(path: str) -> str:
+    return f"{API_ROOT}{path}"
+
+
 def login(base: str, username: str, password: str) -> str | None:
     r = requests.post(
-        f"{base}/api/auth/login",
+        api_url("/auth/login"),
         data={"username": username, "password": password},
         timeout=TIMEOUT,
     )
@@ -86,7 +107,7 @@ def login(base: str, username: str, password: str) -> str | None:
 
 def get(base: str, path: str, token: str, **kw: Any) -> requests.Response:
     return requests.get(
-        f"{base}/api{path}",
+        api_url(path),
         headers={"Authorization": f"Bearer {token}"},
         timeout=TIMEOUT,
         **kw,
@@ -147,6 +168,15 @@ def check_rls() -> tuple[str, str]:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("base_url", help="console origin, e.g. https://setu.example.org")
+    ap.add_argument(
+        "--api-origin",
+        default=None,
+        help=(
+            "API origin for a split-origin deployment, e.g. https://setu-api.onrender.com "
+            "-- the API is then addressed at its own root with no /api prefix. Omit for a "
+            "same-origin deployment, where the API is assumed to be at <base_url>/api."
+        ),
+    )
     ap.add_argument("--admin-user", default="admin")
     ap.add_argument("--operator-user", default="operator")
     ap.add_argument("--admin-password", default=os.environ.get("SETU_ADMIN_PASSWORD", ""))
@@ -156,6 +186,9 @@ def main() -> int:
     args = ap.parse_args()
 
     base = args.base_url.rstrip("/")
+
+    global API_ROOT
+    API_ROOT = args.api_origin.rstrip("/") if args.api_origin else f"{base}/api"
     if not args.admin_password or not args.operator_password:
         print(
             "FAIL: set SETU_ADMIN_PASSWORD and SETU_OPERATOR_PASSWORD, or pass them.\n"
@@ -163,7 +196,9 @@ def main() -> int:
         )
         return 2
 
-    print(f"\nverifying {base}\n")
+    shape = "split origin" if args.api_origin else "same origin"
+    print(f"\nverifying {base}")
+    print(f"API at {API_ROOT} ({shape})\n")
     c = Checks()
 
     # 1 -- authentication, both roles
@@ -232,7 +267,9 @@ def main() -> int:
             crops = [h.get("crop_url") for h in hops if h.get("crop_url")]
             fetched = 0
             for u in crops:
-                url = u if str(u).startswith("http") else f"{base}{u}"
+                # Crop URLs come back relative and are signed; they are served by
+                # the API, not by whatever is hosting the console bundle.
+                url = u if str(u).startswith("http") else f"{API_ROOT}{u}"
                 try:
                     if requests.get(url, timeout=TIMEOUT).ok:
                         fetched += 1
@@ -278,11 +315,15 @@ def main() -> int:
 
     # 5 -- alerts, and the WebSocket upgrade
     try:
-        scheme = "wss" if urlparse(base).scheme == "https" else "ws"
-        # The console connects to /ws/alerts, outside the /api prefix, and passes the
-        # token as a query parameter because a browser cannot set headers on a
-        # WebSocket handshake.
-        ws_url = f"{scheme}://{urlparse(base).netloc}/ws/alerts?token={token}"
+        # The socket goes to the API, which on a split-origin deployment is not the
+        # host serving the console. This is the check most likely to be silently wrong
+        # in that shape: Netlify proxies HTTP happily and WebSockets not at all, so a
+        # socket aimed at the console origin fails while every other check passes.
+        api_parts = urlparse(API_ROOT)
+        scheme = "wss" if api_parts.scheme == "https" else "ws"
+        # /ws/alerts sits outside the /api prefix, and the token goes in the query
+        # string because a browser cannot set headers on a WebSocket handshake.
+        ws_url = f"{scheme}://{api_parts.netloc}/ws/alerts?token={token}"
         ws_detail = "websocket not tested (pip install websockets to enable)"
         ws_ok = None
         try:
@@ -375,6 +416,7 @@ def main() -> int:
         json.dumps(
             {
                 "base_url": base,
+                "api_root": API_ROOT,
                 "verified_utc": now.isoformat(),
                 "passed": passed,
                 "total": len(c.rows),
