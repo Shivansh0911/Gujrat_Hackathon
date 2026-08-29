@@ -64,9 +64,17 @@ target_metadata = Base.metadata
 # manage and must never try to drop. Without these filters, `--autogenerate` proposes
 # dropping spatial_ref_sys and the extensions' internal tables on every run.
 _IGNORED_TABLES = {"spatial_ref_sys", "geometry_columns", "geography_columns"}
-_IGNORED_SCHEMAS = {"tiger", "tiger_data", "topology", "_timescaledb_internal",
-                    "_timescaledb_catalog", "_timescaledb_config", "_timescaledb_cache",
-                    "timescaledb_information", "timescaledb_experimental"}
+_IGNORED_SCHEMAS = {
+    "tiger",
+    "tiger_data",
+    "topology",
+    "_timescaledb_internal",
+    "_timescaledb_catalog",
+    "_timescaledb_config",
+    "_timescaledb_cache",
+    "timescaledb_information",
+    "timescaledb_experimental",
+}
 
 
 def include_object(obj, name, type_, reflected, compare_to):  # type: ignore[no-untyped-def]

@@ -58,10 +58,19 @@ def upgrade() -> None:
             server_default=sa.text("'[]'::jsonb"),
         ),
     )
-    op.add_column("alert", sa.Column("is_movement", sa.Boolean(), nullable=False,
-                                     server_default=sa.text("false")))
-    op.add_column("alert", sa.Column("corroboration", sa.dialects.postgresql.JSONB(),
-                                     nullable=False, server_default=sa.text("'{}'::jsonb")))
+    op.add_column(
+        "alert",
+        sa.Column("is_movement", sa.Boolean(), nullable=False, server_default=sa.text("false")),
+    )
+    op.add_column(
+        "alert",
+        sa.Column(
+            "corroboration",
+            sa.dialects.postgresql.JSONB(),
+            nullable=False,
+            server_default=sa.text("'{}'::jsonb"),
+        ),
+    )
 
     op.create_index("ix_watchlist_active", "watchlist_entry", ["active", "valid_to"])
 

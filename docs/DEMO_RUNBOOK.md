@@ -60,6 +60,23 @@ There is also an `operator` account with the read-only role.
 
 ---
 
+### Automating a first draft
+
+`make record-demo` drives this section beat by beat with Playwright and writes an
+unnarrated WebM to `docs/demo-recordings/`. `make record-demo-gateway` does the same
+against government-feed data after `make gateway-ingest`.
+
+**This is a first draft, not the deliverable.** It exists so the framing, ordering and
+timing are already right before anyone records for real. It has no narration, and the
+"say this" lines below are what carry the argument — silent footage of a map
+demonstrates nothing. Watch the output, then either narrate over it or re-record with
+narration. The submission checklist item for the two demonstration videos is **not**
+satisfied by running it.
+
+The script fails loudly if a screen it needs is empty — an alert desk with no alerts,
+a journey with no hops — because those are exactly the states that look like broken
+software on camera.
+
 ## 2. What to demonstrate, screen by screen
 
 ### 2.1 GIS Map — 40 seconds

@@ -76,8 +76,7 @@ def downgrade() -> None:
 
     # Restore exactly what 0002 created, under exactly the names it used.
     op.execute(
-        "ALTER TABLE detection ADD CONSTRAINT detection_pkey "
-        "PRIMARY KEY (id, observed_at_utc)"
+        "ALTER TABLE detection ADD CONSTRAINT detection_pkey " "PRIMARY KEY (id, observed_at_utc)"
     )
     op.execute(
         "ALTER TABLE detection ADD CONSTRAINT detection_camera_id_fkey "
@@ -88,9 +87,6 @@ def downgrade() -> None:
         "CHECK (confidence >= 0 AND confidence <= 1)"
     )
     op.execute(
-        "CREATE INDEX ix_detection_plate_time ON detection "
-        "(plate_normalised, observed_at_utc)"
+        "CREATE INDEX ix_detection_plate_time ON detection " "(plate_normalised, observed_at_utc)"
     )
-    op.execute(
-        "CREATE INDEX ix_detection_camera_time ON detection (camera_id, observed_at_utc)"
-    )
+    op.execute("CREATE INDEX ix_detection_camera_time ON detection (camera_id, observed_at_utc)")

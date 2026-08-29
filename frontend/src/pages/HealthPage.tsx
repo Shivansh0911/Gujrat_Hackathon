@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { api, type CameraHealth } from "../lib/api";
+import { api, type CameraHealth, type VehicleCounts } from "../lib/api";
 import { Badge, ErrorBox, Spinner, StatusDot } from "../components/ui";
 
 type SortKey = "status" | "camera_ref" | "drift" | "measured";
@@ -22,6 +22,13 @@ export default function HealthPage() {
   });
 
   const { data: alerts } = useQuery({ queryKey: ["alerts", ""], queryFn: () => api.alerts() });
+
+  const [countHours, setCountHours] = useState(24);
+  const vehicleCounts = useQuery({
+    queryKey: ["vehicle-counts", countHours],
+    queryFn: () => api.vehicleCounts(countHours, countHours > 48 ? "day" : "hour"),
+    refetchInterval: 60_000,
+  });
 
   // False-positive rate per camera, from operator dispositions. This is the platform
   // measuring its own precision rather than asserting it.
@@ -84,6 +91,15 @@ export default function HealthPage() {
       </div>
 
       <div className="flex-1 overflow-auto">
+        <div className="p-3 pb-0">
+          <VehicleCountCard
+            data={vehicleCounts.data}
+            hours={countHours}
+            onHours={setCountHours}
+            loading={vehicleCounts.isLoading}
+          />
+        </div>
+
         <table className="w-full text-xs">
           <thead className="sticky top-0 bg-ink-800 border-b border-edge">
             <tr className="text-left text-muted">
@@ -219,4 +235,129 @@ function buildFaultReport(c: CameraHealth): string {
     "  endpoint is available for RTSP/WHEP (ports 8554/8889 are not reachable through",
     "  the Cloudflare-fronted host).",
   ].filter(Boolean).join("\n");
+}
+
+function VehicleCountCard({
+  data,
+  hours,
+  onHours,
+  loading,
+}: {
+  data: VehicleCounts | undefined;
+  hours: number;
+  onHours: (h: number) => void;
+  loading: boolean;
+}) {
+  const peak = data?.windows.reduce(
+    (m, w) => (w.reads > m ? w.reads : m),
+    0,
+  );
+
+  return (
+    <div className="panel p-4 mb-4">
+      <div className="flex items-start justify-between gap-4 flex-wrap mb-3">
+        <div>
+          <h2 className="font-medium">Vehicles identified</h2>
+          <p className="text-xs text-muted max-w-xl mt-0.5">
+            Derived from the same detections the alert desk uses — no second pass over
+            the video, and no extra load on any camera.
+          </p>
+        </div>
+        <div className="flex gap-1">
+          {[1, 24, 168].map((h) => (
+            <button
+              key={h}
+              className={`btn text-xs ${hours === h ? "btn-primary" : ""}`}
+              onClick={() => onHours(h)}
+            >
+              {h === 1 ? "1 hour" : h === 24 ? "24 hours" : "7 days"}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {loading && <Spinner label="Counting" />}
+
+      {data && (
+        <>
+          <div className="flex items-baseline gap-6 flex-wrap">
+            <Stat label="Distinct registrations" value={data.total_distinct_plates} />
+            <Stat label="Plate reads" value={data.total_reads} />
+            <Stat label="Cameras reporting" value={data.by_camera.length} />
+          </div>
+
+          {peak !== undefined && peak > 0 && (
+            <div className="mt-4">
+              <div className="label">
+                Reads per {data.bucket}, oldest first
+              </div>
+              <div className="flex items-end gap-[3px] h-16">
+                {data.windows.map((w) => (
+                  <div
+                    key={w.bucket_start_utc}
+                    className="flex-1 min-w-[3px] bg-accent/70 rounded-sm"
+                    style={{ height: `${Math.max(4, (w.reads / peak) * 100)}%` }}
+                    title={`${new Date(w.bucket_start_utc).toLocaleString()} — ${w.reads} reads, ${w.distinct_plates} distinct`}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {data.by_camera.length > 0 && (
+            <div className="mt-4 overflow-x-auto rounded border border-edge">
+              <table className="w-full text-sm">
+                <thead className="bg-ink-700 text-muted text-[11px] uppercase tracking-wide">
+                  <tr>
+                    <th className="text-left px-3 py-2">Camera</th>
+                    <th className="text-right px-3 py-2">Distinct</th>
+                    <th className="text-right px-3 py-2">Reads</th>
+                    <th className="text-left px-3 py-2">Last seen</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.by_camera.slice(0, 8).map((c) => (
+                    <tr key={c.camera_id} className="border-t border-edge">
+                      <td className="px-3 py-2">
+                        <span className="mono">{c.camera_ref}</span>{" "}
+                        <span className="text-muted text-xs">{c.camera_name}</span>
+                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums">
+                        {c.distinct_plates}
+                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums text-muted">
+                        {c.reads}
+                      </td>
+                      <td className="px-3 py-2 text-xs text-muted">
+                        {c.last_seen_utc
+                          ? new Date(c.last_seen_utc).toLocaleString()
+                          : "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {data.by_camera.length === 0 && (
+            <p className="text-xs text-muted mt-3">
+              No vehicle was identified in this period.
+            </p>
+          )}
+
+          <p className="text-[10px] text-muted mt-3 max-w-3xl">{data.caveat}</p>
+        </>
+      )}
+    </div>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: number }) {
+  return (
+    <div>
+      <div className="text-2xl font-semibold tabular-nums">{value}</div>
+      <div className="text-[10px] uppercase tracking-wider text-muted">{label}</div>
+    </div>
+  );
 }

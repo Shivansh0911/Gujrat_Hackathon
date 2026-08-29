@@ -22,7 +22,7 @@ PYTHONPATH_BE := PYTHONPATH=backend
 
 .DEFAULT_GOAL := help
 .PHONY: help venv up down logs migrate seed test lint typecheck preflight probe \
-        evidence pin-digests fps-guard audit sbom clean \
+        evidence pin-digests fps-guard audit sbom clean record-demo record-demo-gateway \
         gateway-ingest gateway-report compare-recognisers
 
 help:  ## List available targets
@@ -94,6 +94,12 @@ frontend-dev:  ## Run the console dev server (proxies /api to the API)
 
 gen-api:  ## Regenerate the console's TypeScript types from the live OpenAPI schema
 	cd frontend && npm run gen:api
+
+record-demo:  ## First-draft demo video (own-feed). Human review + narration still required.
+	cd frontend && node scripts/record_demo.mjs
+
+record-demo-gateway:  ## First-draft demo video against government-feed data.
+	cd frontend && SETU_DEMO_VARIANT=gateway node scripts/record_demo.mjs
 
 screenshots:  ## Capture every console screen against real data into docs/screenshots
 	cd frontend && node scripts/capture_screenshots.mjs

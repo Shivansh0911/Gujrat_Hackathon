@@ -146,6 +146,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/cameras/bulk-import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bulk Import Cameras
+         * @description Onboard many cameras from a CSV, row by row.
+         *
+         *     Model 1 requires bulk onboarding as a platform capability, not only as a script an
+         *     engineer runs on the server. This is that capability, and it deliberately shares
+         *     its validation with the seed script (`services.registry.camera_import`) so the two
+         *     cannot drift into disagreeing about what a valid camera row is.
+         *
+         *     **Partial success is the normal outcome.** A departmental spreadsheet usually has a
+         *     couple of bad rows, and the useful answer is "28 landed, 2 did not, here is why"
+         *     rather than a single rejection an operator cannot act on. Good rows are applied;
+         *     bad rows are reported with their line number and reason.
+         *
+         *     **A rejected row is never partially applied.** Validation for a row completes
+         *     before anything is written for it, so a row cannot leave a camera half-updated.
+         *
+         *     Admin-only, and audited before the transaction commits -- the same treatment as
+         *     every other mutating endpoint here. Onboarding a camera is an assertion about
+         *     where surveillance exists, and it should be attributable.
+         */
+        post: operations["bulk_import_cameras_cameras_bulk_import_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/cameras/{camera_id}/stream-url": {
         parameters: {
             query?: never;
@@ -348,6 +385,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/analytics/vehicle-counts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Vehicle Counts
+         * @description Vehicle counts per time bucket and per camera, over the last `hours`.
+         *
+         *     This is an independent classifier over the shared detection stream: it opens no
+         *     camera and runs no inference of its own. The costly work happened once, in the
+         *     ANPR pipeline, and this is what that metadata buys afterwards.
+         */
+        get: operations["vehicle_counts_analytics_vehicle_counts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -445,13 +506,24 @@ export interface components {
             /** Verified At */
             verified_at: string;
         };
+        /** Body_bulk_import_cameras_cameras_bulk_import_post */
+        Body_bulk_import_cameras_cameras_bulk_import_post: {
+            /**
+             * File
+             * @description CSV with the camera_geo.csv columns
+             */
+            file: string;
+        };
         /** Body_login_auth_login_post */
         Body_login_auth_login_post: {
             /** Grant Type */
             grant_type?: string | null;
             /** Username */
             username: string;
-            /** Password */
+            /**
+             * Password
+             * Format: password
+             */
             password: string;
             /**
              * Scope
@@ -460,8 +532,52 @@ export interface components {
             scope: string;
             /** Client Id */
             client_id?: string | null;
-            /** Client Secret */
+            /**
+             * Client Secret
+             * Format: password
+             */
             client_secret?: string | null;
+        };
+        /**
+         * BulkImportRejection
+         * @description One row that did not land, and why. Line numbers count the header as line 1.
+         */
+        BulkImportRejection: {
+            /** Line */
+            line: number;
+            /** Camera Ref */
+            camera_ref?: string | null;
+            /** Reasons */
+            reasons: string[];
+        };
+        /**
+         * BulkImportResult
+         * @description Outcome of a bulk camera onboarding.
+         *
+         *     Partial success is the normal case and is reported as such: an operator importing
+         *     a departmental spreadsheet wants the good rows in and a list of the ones to fix,
+         *     not an all-or-nothing rejection with no indication of which line is wrong.
+         */
+        BulkImportResult: {
+            /** Rows Read */
+            rows_read: number;
+            /** Accepted */
+            accepted: number;
+            /** Rejected */
+            rejected: number;
+            /** Created */
+            created: number;
+            /** Updated */
+            updated: number;
+            /** Unset Coordinates */
+            unset_coordinates: number;
+            /**
+             * Rejections
+             * @default []
+             */
+            rejections: components["schemas"]["BulkImportRejection"][];
+            /** Note */
+            note?: string | null;
         };
         /** CameraGap */
         CameraGap: {
@@ -876,6 +992,73 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+            /** Input */
+            input?: unknown;
+            /** Context */
+            ctx?: Record<string, never>;
+        };
+        /** VehicleCountByCamera */
+        VehicleCountByCamera: {
+            /** Camera Id */
+            camera_id: string;
+            /** Camera Ref */
+            camera_ref: string;
+            /** Camera Name */
+            camera_name: string;
+            /** Reads */
+            reads: number;
+            /** Distinct Plates */
+            distinct_plates: number;
+            /** First Seen Utc */
+            first_seen_utc: string | null;
+            /** Last Seen Utc */
+            last_seen_utc: string | null;
+        };
+        /**
+         * VehicleCountResult
+         * @description Counts of *identified* vehicles, with the caveat carried in the payload.
+         *
+         *     `caveat` is part of the response rather than only the documentation because this
+         *     number will be read off a screen and quoted. A count of plate reads is a floor on
+         *     traffic, not a measure of it, and anything consuming this should have to see that.
+         */
+        VehicleCountResult: {
+            /**
+             * Since Utc
+             * Format: date-time
+             */
+            since_utc: string;
+            /**
+             * Until Utc
+             * Format: date-time
+             */
+            until_utc: string;
+            /** Bucket */
+            bucket: string;
+            /** Total Reads */
+            total_reads: number;
+            /** Total Distinct Plates */
+            total_distinct_plates: number;
+            /** Windows */
+            windows: components["schemas"]["VehicleCountWindow"][];
+            /** By Camera */
+            by_camera: components["schemas"]["VehicleCountByCamera"][];
+            /** Caveat */
+            caveat: string;
+        };
+        /** VehicleCountWindow */
+        VehicleCountWindow: {
+            /**
+             * Bucket Start Utc
+             * Format: date-time
+             */
+            bucket_start_utc: string;
+            /** Reads */
+            reads: number;
+            /** Distinct Plates */
+            distinct_plates: number;
+            /** Cameras Reporting */
+            cameras_reporting: number;
         };
         /** WatchlistCreate */
         WatchlistCreate: {
@@ -1163,6 +1346,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SyncResult"];
+                };
+            };
+        };
+    };
+    bulk_import_cameras_cameras_bulk_import_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_bulk_import_cameras_cameras_bulk_import_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulkImportResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -1460,6 +1676,39 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    vehicle_counts_analytics_vehicle_counts_get: {
+        parameters: {
+            query?: {
+                hours?: number;
+                bucket?: string;
+                camera_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VehicleCountResult"];
+                };
             };
             /** @description Validation Error */
             422: {

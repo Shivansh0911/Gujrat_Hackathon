@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import csv
+import io
 import uuid
 from datetime import datetime, timezone
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
@@ -15,6 +17,8 @@ from services.api.config import ApiSettings, get_api_settings
 from services.api.media_signing import signed_media_url
 from services.api.db import get_session
 from services.api.schemas import (
+    BulkImportRejection,
+    BulkImportResult,
     CameraOut,
     GeomPatch,
     StreamUrlOut,
@@ -23,9 +27,15 @@ from services.api.schemas import (
 from services.api.security import AdminActor, CurrentActor, camera_scope, get_camera_or_404
 from services.common.catalogue import fetch_catalogue
 from services.common.config import get_settings as get_feed_settings
+from services.registry.camera_import import validate_row
 from services.registry.enums import CameraStatus, GeomSource, SourceType, assert_transition
 from services.registry.enums import IllegalTransition
 from services.registry.models import Camera, Department
+
+#: Bulk import is an operator pasting a departmental spreadsheet, not a data feed.
+#: The cap keeps a mistaken upload from becoming a memory event; the real seed file
+#: for this estate is a few kilobytes.
+MAX_IMPORT_BYTES = 2 * 1024 * 1024
 
 router = APIRouter(prefix="/cameras", tags=["cameras"])
 
@@ -301,6 +311,169 @@ def sync_catalogue(session: SessionDep, actor: AdminActor) -> SyncResult:
         removed=removed,
         properties_changed=changed,
         unchanged=unchanged,
+    )
+
+
+@router.post("/bulk-import", response_model=BulkImportResult)
+async def bulk_import_cameras(
+    session: SessionDep,
+    actor: AdminActor,
+    file: Annotated[UploadFile, File(description="CSV with the camera_geo.csv columns")],
+) -> BulkImportResult:
+    """Onboard many cameras from a CSV, row by row.
+
+    Model 1 requires bulk onboarding as a platform capability, not only as a script an
+    engineer runs on the server. This is that capability, and it deliberately shares
+    its validation with the seed script (`services.registry.camera_import`) so the two
+    cannot drift into disagreeing about what a valid camera row is.
+
+    **Partial success is the normal outcome.** A departmental spreadsheet usually has a
+    couple of bad rows, and the useful answer is "28 landed, 2 did not, here is why"
+    rather than a single rejection an operator cannot act on. Good rows are applied;
+    bad rows are reported with their line number and reason.
+
+    **A rejected row is never partially applied.** Validation for a row completes
+    before anything is written for it, so a row cannot leave a camera half-updated.
+
+    Admin-only, and audited before the transaction commits -- the same treatment as
+    every other mutating endpoint here. Onboarding a camera is an assertion about
+    where surveillance exists, and it should be attributable.
+    """
+    raw = await file.read()
+    if len(raw) > MAX_IMPORT_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"file exceeds {MAX_IMPORT_BYTES // 1024} KiB",
+        )
+    try:
+        text_body = raw.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="file is not UTF-8 text",
+        ) from None
+
+    reader = csv.DictReader(io.StringIO(text_body))
+    if reader.fieldnames is None or "camera_ref" not in reader.fieldnames:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="CSV has no camera_ref column; expected the camera_geo.csv header",
+        )
+    rows = list(reader)
+
+    departments = {d.code: d for d in session.execute(select(Department)).scalars()}
+    if not departments:
+        return BulkImportResult(
+            rows_read=len(rows),
+            accepted=0,
+            rejected=len(rows),
+            created=0,
+            updated=0,
+            unset_coordinates=0,
+            note="no departments in the registry; run the department seed first",
+        )
+    default_department = departments.get("HOME") or next(iter(departments.values()))
+
+    rejections: list[BulkImportRejection] = []
+    accepted_rows: list[dict[str, str]] = []
+
+    for line_no, row in enumerate(rows, start=2):  # the header is line 1
+        problems = validate_row(row, line_no)
+        if problems:
+            rejections.append(
+                BulkImportRejection(
+                    line=line_no,
+                    camera_ref=(row.get("camera_ref") or "").strip() or None,
+                    reasons=problems,
+                )
+            )
+            continue
+        accepted_rows.append(row)
+
+    created = updated = unset = 0
+    for row in accepted_rows:
+        ref = row["camera_ref"].strip()
+        camera = session.execute(
+            select(Camera).where(Camera.camera_ref == ref)
+        ).scalar_one_or_none()
+
+        if camera is None:
+            camera = Camera(
+                camera_ref=ref,
+                name=(row.get("name") or f"Camera {ref}").strip(),
+                department_id=default_department.id,
+                source_type=SourceType.GATEWAY.value,
+                # DRAFT, not ACTIVE: onboarded, nothing verified yet. A camera becomes
+                # ACTIVE once it has actually been probed.
+                status=CameraStatus.DRAFT.value,
+                geom_source=GeomSource.UNSET.value,
+            )
+            session.add(camera)
+            created += 1
+        else:
+            updated += 1
+
+        location = (row.get("location_text") or "").strip()
+        if location:
+            camera.location_text = location
+
+        # A manually surveyed coordinate outranks an imported one. Someone stood at
+        # that camera; a spreadsheet did not.
+        if camera.geom_source == GeomSource.MANUAL_SURVEY.value:
+            continue
+
+        lat = (row.get("lat") or "").strip()
+        lon = (row.get("lon") or "").strip()
+        source = (row.get("geom_source") or GeomSource.UNSET.value).strip()
+
+        if lat and lon and source != GeomSource.UNSET.value:
+            camera.geom = func.ST_SetSRID(func.ST_MakePoint(float(lon), float(lat)), 4326)
+            camera.geom_source = source
+            radius = (row.get("confidence_radius_m") or "").strip()
+            camera.confidence_radius_m = float(radius) if radius else None
+            camera.resolved_by = row.get("resolved_by") or None
+            resolved_at = (row.get("resolved_at") or "").strip()
+            camera.resolved_at = (
+                datetime.fromisoformat(resolved_at) if resolved_at else datetime.now(timezone.utc)
+            )
+        else:
+            # Explicitly NULL rather than zero or a nearby guess. The table's CHECK
+            # constraint requires this to pair with geom_source='unset'.
+            camera.geom = None
+            camera.geom_source = GeomSource.UNSET.value
+            camera.confidence_radius_m = None
+            camera.resolved_by = None
+            camera.resolved_at = None
+            unset += 1
+
+    session.flush()
+
+    audit.append(
+        session,
+        action="CAMERA_BULK_IMPORT",
+        subject_type="camera",
+        subject_id=file.filename or "upload.csv",
+        actor_id=actor.subject,
+        actor_role=actor.role,
+        detail={
+            "rows_read": len(rows),
+            "accepted": len(accepted_rows),
+            "rejected": len(rejections),
+            "created": created,
+            "updated": updated,
+            "unset_coordinates": unset,
+        },
+    )
+    session.flush()
+
+    return BulkImportResult(
+        rows_read=len(rows),
+        accepted=len(accepted_rows),
+        rejected=len(rejections),
+        created=created,
+        updated=updated,
+        unset_coordinates=unset,
+        rejections=rejections,
     )
 
 

@@ -47,7 +47,16 @@ gateway, not asserted from code comments. `reports/evidence/preflight-*.json`.
 |---|---:|---|---|
 | Journey query, 12-hour window | median **38 ms**, p95 **60 ms** | under 3 s | meets |
 | Decode to alert | median **14 ms**, p95 **1486 ms** | under 2 s | meets |
-| Motion gate pass rate | **13.7%** | — | 86% of frames never reach the detector |
+| Frames reaching the plate detector | **13.7%** | — | 86.3% filtered out before the expensive stage |
+
+Two independent reductions produce that 86.3%, and they are **not** equally
+responsible. PTS-based sampling to a 5 fps analytic rate removes 83.2% on its own; the
+motion gate removes a further 32.7% of what survives. Earlier notes attributed the whole
+reduction to the motion gate — re-measuring on 2026-08-28 separated the two and that
+attribution was wrong. Enabling the gate changes the pipeline's output not at all (22
+plate regions, 2 valid registrations, with and without), so it is a free saving rather
+than a quality trade. Full table and reproduction commands:
+[`docs/EDGE_OPTIMISATION.md`](docs/EDGE_OPTIMISATION.md).
 
 ### Throughput and the 80,000-camera question
 

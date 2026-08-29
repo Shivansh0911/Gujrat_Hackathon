@@ -1,15 +1,25 @@
 -r requirements.txt
 
-pytest==8.3.3       # MIT
+pytest==9.1.1       # MIT — 9.0.3+ fixes CVE-2025-71176 (/tmp/pytest-of-{user})
 pytest-timeout==2.3.1  # MIT — used to assert the plate regex cannot backtrack (§7.3 ReDoS)
 ruff==0.6.9         # MIT
 mypy==1.11.2        # MIT
 pytest-cov==5.0.0   # MIT
-pip-audit==2.7.3    # Apache-2.0
-cyclonedx-bom==4.6.1  # Apache-2.0
+pip-audit==2.10.1   # Apache-2.0 — 2.7.3 capped cyclonedx-python-lib<8
+cyclonedx-bom==7.3.1  # Apache-2.0 — 4.6.1 pinned lxml<6, blocking the XXE fix
 
 # Type stubs. Without these, `mypy --strict` reports every call into these
 # libraries as untyped and the strictness is theatre rather than a check.
 types-requests==2.32.0.20240914   # Apache-2.0
 types-python-jose==3.3.4.20240106  # Apache-2.0
 types-passlib==1.7.7.20240819    # Apache-2.0
+
+# FastAPI's TestClient needs an HTTP client; starlette 1.x asks for httpx2 by name.
+# Test-only, and BSD-3-Clause -- checked against the licence policy in requirements.txt.
+httpx2==2.12.0      # BSD-3-Clause
+
+# Transitive, pinned deliberately. lxml arrives via cyclonedx-bom; 6.1.0+ fixes
+# CVE-2026-41066, an XXE in the default parser configuration. We only parse XML we
+# generated ourselves, so the exposure is small, but a pin costs nothing and the
+# audit stays green without an ignore.
+lxml>=6.1.2         # BSD-3-Clause

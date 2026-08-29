@@ -18,6 +18,8 @@ export type JourneyHop = components["schemas"]["JourneyHop"];
 export type CoverageGap = components["schemas"]["CoverageGap"];
 export type RejectedHop = components["schemas"]["RejectedHop"];
 export type SyncResult = components["schemas"]["SyncResult"];
+export type BulkImportResult = components["schemas"]["BulkImportResult"];
+export type VehicleCounts = components["schemas"]["VehicleCountResult"];
 export type AuditVerify = components["schemas"]["AuditVerifyOut"];
 export type StreamUrl = components["schemas"]["StreamUrlOut"];
 export type GapAnalysis = components["schemas"]["GapAnalysis"];
@@ -85,7 +87,11 @@ export class ApiError extends Error {
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers);
   if (accessToken) headers.set("Authorization", `Bearer ${accessToken}`);
-  if (init.body && !headers.has("Content-Type"))
+  // FormData must set its own Content-Type: the browser appends a multipart
+  // boundary to it, and overwriting the header with application/json makes the
+  // server unable to parse a body that is otherwise perfectly well formed.
+  const isFormData = init.body instanceof FormData;
+  if (init.body && !isFormData && !headers.has("Content-Type"))
     headers.set("Content-Type", "application/json");
 
   const res = await fetch(`${BASE}${path}`, { ...init, headers });
@@ -139,7 +145,16 @@ export const api = {
     }),
   streamUrl: (id: string) => request<StreamUrl>(`/cameras/${id}/stream-url`),
   syncCatalogue: () => request<SyncResult>("/cameras/sync-catalogue", { method: "POST" }),
+  bulkImportCameras: (file: File) => {
+    const body = new FormData();
+    body.append("file", file);
+    return request<BulkImportResult>("/cameras/bulk-import", { method: "POST", body });
+  },
   health: () => request<CameraHealth[]>("/health/cameras"),
+  vehicleCounts: (hours = 24, bucket: "minute" | "hour" | "day" = "hour") =>
+    request<VehicleCounts>(
+      `/analytics/vehicle-counts?${new URLSearchParams({ hours: String(hours), bucket })}`,
+    ),
   alerts: (params?: Record<string, string>) =>
     request<Alert[]>(`/alerts${params ? `?${new URLSearchParams(params)}` : ""}`),
   ackAlert: (id: string) => request<Alert>(`/alerts/${id}/ack`, { method: "POST" }),

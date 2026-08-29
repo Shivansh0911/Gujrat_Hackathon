@@ -27,6 +27,7 @@ from services.api.db import get_sessionmaker  # noqa: E402
 from services.api.tenancy import set_admin_context  # noqa: E402
 from services.common import redact  # noqa: E402
 from services.common.paths import SEED_DIR  # noqa: E402
+from services.registry.camera_import import validate_rows  # noqa: E402
 from services.registry.enums import CameraStatus, GeomSource, SourceType  # noqa: E402
 from services.registry.models import Camera, Department  # noqa: E402
 
@@ -59,50 +60,11 @@ def _validate_rows(rows: list[dict[str, str]]) -> None:
     occupies -- worse than having no coordinate at all, because nothing looks wrong.
 
     Validating on parse means a bad file stops the seed rather than corrupting the
-    registry.
+    registry. The per-row rules live in `services.registry.camera_import` so that the
+    bulk-import endpoint applies exactly the same ones; the difference is only that
+    this caller refuses the whole file while the endpoint reports row by row.
     """
-    permitted = {g.value for g in GeomSource} | {"published", "geocoded"}
-    problems: list[str] = []
-
-    for i, row in enumerate(rows, start=2):  # row 1 is the header
-        ref = (row.get("camera_ref") or "").strip()
-        source = (row.get("geom_source") or "").strip()
-        lat, lon = (row.get("lat") or "").strip(), (row.get("lon") or "").strip()
-
-        if not ref:
-            problems.append(f"line {i}: empty camera_ref")
-        if source not in permitted:
-            problems.append(
-                f"line {i} (camera {ref}): geom_source {source!r} is not one of "
-                f"{sorted(permitted)} -- a shifted column is the usual cause"
-            )
-            continue
-
-        has_coords = bool(lat and lon)
-        if source == GeomSource.UNSET.value and has_coords:
-            problems.append(f"line {i} (camera {ref}): geom_source=unset but coordinates present")
-        if source != GeomSource.UNSET.value and not has_coords:
-            problems.append(f"line {i} (camera {ref}): geom_source={source} but no coordinates")
-
-        for name, value, lo, hi in (("lat", lat, -90, 90), ("lon", lon, -180, 180)):
-            if not value:
-                continue
-            try:
-                number = float(value)
-            except ValueError:
-                problems.append(f"line {i} (camera {ref}): {name}={value!r} is not a number")
-                continue
-            if not lo <= number <= hi:
-                problems.append(f"line {i} (camera {ref}): {name}={number} out of range")
-
-        radius = (row.get("confidence_radius_m") or "").strip()
-        if radius:
-            try:
-                if float(radius) <= 0:
-                    problems.append(f"line {i} (camera {ref}): confidence_radius_m must be > 0")
-            except ValueError:
-                problems.append(f"line {i} (camera {ref}): confidence_radius_m={radius!r} invalid")
-
+    problems = validate_rows(rows)
     if problems:
         detail = chr(10) + "  " + (chr(10) + "  ").join(problems)
         raise SeedValidationError(f"{SEED_CSV} is malformed; refusing to seed:{detail}")

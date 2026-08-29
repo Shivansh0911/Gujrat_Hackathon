@@ -1,10 +1,11 @@
+import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "../lib/api";
+import { api, type BulkImportResult } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { Badge, ErrorBox, Spinner } from "../components/ui";
 
 /**
- * Two administrative capabilities that existed only as API endpoints.
+ * Administrative capabilities that had no console surface.
  *
  * **Audit chain verification.** The ledger is hash-chained and append-only, and a
  * verify endpoint has always existed — but the only way to run it was Swagger, which
@@ -15,6 +16,11 @@ import { Badge, ErrorBox, Spinner } from "../components/ui";
  * **Catalogue reconciliation.** The registry is the control plane; the gateway is
  * the reality. This diffs them and reports what changed, without applying anything
  * on its own — the estate is not ours to silently rewrite.
+ *
+ * **Bulk camera onboarding.** Model 1 requires this as a platform capability, and it
+ * previously existed only as a script run on the server. Rows are validated
+ * individually against the same rules the seed script uses, so a spreadsheet with two
+ * bad lines imports the rest and reports those two by line number and reason.
  */
 
 export default function SystemPage() {
@@ -25,6 +31,19 @@ export default function SystemPage() {
   const audit = useQuery({
     queryKey: ["audit-verify"],
     queryFn: () => api.auditVerify(),
+  });
+
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [chosen, setChosen] = useState<File | null>(null);
+
+  const bulkImport = useMutation({
+    mutationFn: (f: File) => api.bulkImportCameras(f),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["cameras"] });
+      qc.invalidateQueries({ queryKey: ["gap-analysis"] });
+      setChosen(null);
+      if (fileRef.current) fileRef.current.value = "";
+    },
   });
 
   const sync = useMutation({
@@ -175,6 +194,111 @@ export default function SystemPage() {
           </>
         )}
       </section>
+
+      {/* ---------------------------------------------------------- onboarding */}
+      <section className="panel p-4">
+        <div className="flex items-start justify-between gap-4 flex-wrap mb-3">
+          <div>
+            <h2 className="font-medium">Bulk camera onboarding</h2>
+            <p className="text-xs text-muted max-w-xl mt-0.5">
+              Upload a departmental camera list as CSV. Rows are validated one at a
+              time against the same rules the seed script uses, so good rows land and
+              bad ones come back with the line number and the reason — a spreadsheet
+              with two bad rows should not be an all-or-nothing rejection.
+            </p>
+          </div>
+        </div>
+
+        {!isAdmin && (
+          <p className="text-xs text-muted">Onboarding requires an admin account.</p>
+        )}
+
+        {isAdmin && (
+          <>
+            <div className="flex items-center gap-3 flex-wrap">
+              <input
+                ref={fileRef}
+                type="file"
+                accept=".csv,text/csv"
+                className="input"
+                onChange={(e) => setChosen(e.target.files?.[0] ?? null)}
+              />
+              <button
+                className="btn btn-primary"
+                disabled={!chosen || bulkImport.isPending}
+                onClick={() => chosen && bulkImport.mutate(chosen)}
+              >
+                {bulkImport.isPending ? "Importing…" : "Import cameras"}
+              </button>
+            </div>
+            <p className="text-[10px] text-muted mt-2">
+              Expected columns:{" "}
+              <span className="mono">
+                camera_ref, location_text, lat, lon, geom_source,
+                confidence_radius_m, resolved_by, resolved_at
+              </span>
+              . A camera already placed by manual survey keeps that coordinate — someone
+              stood at it, and a spreadsheet did not.
+            </p>
+
+            {bulkImport.error != null && (
+              <div className="mt-3">
+                <ErrorBox error={bulkImport.error} />
+              </div>
+            )}
+            {bulkImport.data && <ImportSummary result={bulkImport.data} />}
+          </>
+        )}
+      </section>
+    </div>
+  );
+}
+
+function ImportSummary({ result }: { result: BulkImportResult }) {
+  const clean = result.rejected === 0;
+  return (
+    <div className="mt-4">
+      <div className="flex items-center gap-3 flex-wrap mb-3">
+        <Badge tone={clean ? "ok" : "warn"}>
+          {result.accepted} of {result.rows_read} accepted
+        </Badge>
+        {result.rejected > 0 && <Badge tone="bad">{result.rejected} rejected</Badge>}
+        <span className="text-xs text-muted tabular-nums">
+          {result.created} created · {result.updated} updated
+          {result.unset_coordinates > 0 && (
+            <> · {result.unset_coordinates} without a coordinate</>
+          )}
+        </span>
+      </div>
+
+      {result.note && <p className="text-xs text-warn mb-3">{result.note}</p>}
+
+      {result.rejections.length > 0 && (
+        <div className="overflow-x-auto rounded border border-edge">
+          <table className="w-full text-sm">
+            <thead className="bg-ink-700 text-muted text-[11px] uppercase tracking-wide">
+              <tr>
+                <th className="text-right px-3 py-2">Line</th>
+                <th className="text-left px-3 py-2">Camera</th>
+                <th className="text-left px-3 py-2">Why it was not imported</th>
+              </tr>
+            </thead>
+            <tbody>
+              {result.rejections.map((r) => (
+                <tr key={r.line} className="border-t border-edge">
+                  <td className="px-3 py-2 text-right tabular-nums">{r.line}</td>
+                  <td className="px-3 py-2 mono">{r.camera_ref ?? "—"}</td>
+                  <td className="px-3 py-2 text-xs text-slate-300">
+                    {r.reasons.map((reason, i) => (
+                      <div key={i}>{reason}</div>
+                    ))}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }

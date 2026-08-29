@@ -101,6 +101,32 @@ class SyncResult(BaseModel):
     note: str | None = None
 
 
+class BulkImportRejection(BaseModel):
+    """One row that did not land, and why. Line numbers count the header as line 1."""
+
+    line: int
+    camera_ref: str | None = None
+    reasons: list[str]
+
+
+class BulkImportResult(BaseModel):
+    """Outcome of a bulk camera onboarding.
+
+    Partial success is the normal case and is reported as such: an operator importing
+    a departmental spreadsheet wants the good rows in and a list of the ones to fix,
+    not an all-or-nothing rejection with no indication of which line is wrong.
+    """
+
+    rows_read: int
+    accepted: int
+    rejected: int
+    created: int
+    updated: int
+    unset_coordinates: int
+    rejections: list[BulkImportRejection] = []
+    note: str | None = None
+
+
 class AuditVerifyOut(BaseModel):
     valid: bool
     entries_checked: int

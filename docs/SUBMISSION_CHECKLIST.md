@@ -12,7 +12,7 @@ at upload time.
 | # | Deliverable | Artefact | State |
 |---|---|---|---|
 | 1 | Solution Presentation | `SETU_Solution_Presentation.pdf` | ✅ complete — **do not regenerate** |
-| 2 | High-Level Design | `SETU_High_Level_Design.pdf` | ⚠️ complete, but **two claims need amending** — paste-ready replacement prose is in `HLD_RECONCILIATION.md` §Amendment text |
+| 2 | High-Level Design | [`docs/SETU_High_Level_Design.md`](SETU_High_Level_Design.md) | ✅ generated in-repo from measured evidence. Both previously-amended claims are correct from the start; `HLD_RECONCILIATION.md` remains as the dated audit trail of why |
 | 3 | Workflow / integration diagram | `SETU_Workflow_Integration_Diagram.png` | ✅ |
 | 4 | Repository README | `README.md` | ✅ model choice, screenshots, quickstart, measured results |
 
@@ -60,7 +60,6 @@ Script for both, screen by screen with timings and what to say:
 
 ## Before upload
 
-- [ ] Amend the two HLD claims — copy the prose from `HLD_RECONCILIATION.md` §Amendment text
 - [x] ~~Annotate the crops and run `make accuracy`~~ — done; **spot-check the annotations**
 - [ ] Replace the third-party own-feed clip with our own stationary footage, then
       `make demo-reset` and recapture screenshots
