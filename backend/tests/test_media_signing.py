@@ -10,7 +10,10 @@ from __future__ import annotations
 
 import time
 
+import pytest
+
 from services.api.media_signing import (
+    media_basename,
     sign_media_name,
     signed_media_url,
     verify_media_name,
@@ -70,3 +73,58 @@ def test_the_expiry_is_in_the_future_by_the_requested_ttl() -> None:
     exp, _ = sign_media_name("crop.jpg", SECRET, ttl_s=120)
     remaining = exp - int(time.time())
     assert 100 <= remaining <= 120
+
+
+# ------------------------------------------------- cross-platform crop paths
+
+
+@pytest.mark.parametrize(
+    ("stored", "expected"),
+    [
+        # A Linux worker.
+        ("/srv/setu/data/evidence/crops/CAM_1_GJ01AB1234.jpg", "CAM_1_GJ01AB1234.jpg"),
+        # A Windows worker. This is the one that broke the first deployment.
+        (
+            "C:"
+            + chr(92)
+            + "Users"
+            + chr(92)
+            + "dev"
+            + chr(92)
+            + "crops"
+            + chr(92)
+            + "CAM_1_GJ01AB1234.jpg",
+            "CAM_1_GJ01AB1234.jpg",
+        ),
+        # A relative Windows path.
+        ("data" + chr(92) + "evidence" + chr(92) + "crops" + chr(92) + "CAM_1.jpg", "CAM_1.jpg"),
+        # Already bare.
+        ("CAM_1.jpg", "CAM_1.jpg"),
+    ],
+)
+def test_the_basename_survives_either_separator(stored: str, expected: str) -> None:
+    """`crop_path` is written by the ingest worker and read by the API, and the two
+    need not run on the same operating system.
+
+    Seeding from Windows and serving from Linux stored a path whose separators the
+    server did not recognise, so asking `PurePosixPath` for the basename returned the
+    entire string -- drive letter and all. Every evidence image then 404'd behind a
+    perfectly valid signature, with an intact database behind that.
+    """
+    assert media_basename(stored) == expected
+
+
+def test_a_windows_path_signs_and_verifies_as_its_basename() -> None:
+    """End to end: a URL built on Linux from a Windows path is actually fetchable."""
+    stored = "C:" + chr(92) + "Users" + chr(92) + "dev" + chr(92) + "CAM_9_GJ18XY4242.jpg"
+    url = signed_media_url("/media/crops", stored, SECRET)
+
+    assert url.startswith("/media/crops/CAM_9_GJ18XY4242.jpg?")
+    # Neither a drive letter nor a separator reaches the browser.
+    assert "C:" not in url
+    assert chr(92) not in url
+
+    name = url.split("/media/crops/")[1].split("?")[0]
+    exp = int(url.split("exp=")[1].split("&")[0])
+    sig = url.split("sig=")[1]
+    assert verify_media_name(name, exp, sig, SECRET) is True

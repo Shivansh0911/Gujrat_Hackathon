@@ -28,12 +28,31 @@ from __future__ import annotations
 import hashlib
 import hmac
 import time
-from pathlib import Path
+from pathlib import PurePosixPath, PureWindowsPath
 
 #: How long a crop link stays valid. Long enough to open a journey, read it, and
 #: export it; short enough that a link pasted somewhere it should not be is dead
 #: before anyone follows it.
 DEFAULT_TTL_S = 3600
+
+
+def media_basename(path: str) -> str:
+    r"""The bare filename, whichever platform wrote the path.
+
+    `detection.crop_path` records where the pipeline wrote the crop, and the pipeline
+    does not have to run on the same operating system as the API. A worker ingesting
+    on Windows stores `C:\...\crops\CAM_123_GJ01AB1234.jpg`; the API serving it on
+    Linux then asks `PurePosixPath` for the basename, gets the entire string back --
+    a backslash is an ordinary character in a POSIX filename -- and signs a "filename"
+    containing a drive letter and separators. The media route resolves that inside the
+    crop directory, finds nothing, and returns 404. Every evidence image on the page
+    is then an empty box, with a valid signature and an intact database behind it.
+
+    Splitting on both separators is the whole fix. It cannot lose information: a real
+    crop filename contains neither `/` nor `\`, because the pipeline builds it from a
+    camera reference, a PTS and a plate.
+    """
+    return PureWindowsPath(PurePosixPath(path).name).name
 
 
 def _digest(name: str, expires_at: int, secret: str) -> str:
@@ -45,7 +64,7 @@ def sign_media_name(name: str, secret: str, ttl_s: int = DEFAULT_TTL_S) -> tuple
     """Return `(expires_at, signature)` for one media filename."""
     # Only ever sign a bare filename. Signing a path would make the signature assert
     # something about a directory the endpoint then has to re-derive.
-    bare = Path(name).name
+    bare = media_basename(name)
     expires_at = int(time.time()) + ttl_s
     return expires_at, _digest(bare, expires_at, secret)
 
@@ -54,7 +73,7 @@ def verify_media_name(name: str, expires_at: int, signature: str, secret: str) -
     """True if `signature` is ours and has not expired."""
     if expires_at < int(time.time()):
         return False
-    expected = _digest(Path(name).name, expires_at, secret)
+    expected = _digest(media_basename(name), expires_at, secret)
     # Constant-time: a timing oracle on a 128-bit signature is not a practical forgery
     # route, but comparing secrets with `==` is a habit worth not having.
     return hmac.compare_digest(expected, signature)
@@ -62,13 +81,14 @@ def verify_media_name(name: str, expires_at: int, signature: str, secret: str) -
 
 def signed_media_url(prefix: str, name: str, secret: str, ttl_s: int = DEFAULT_TTL_S) -> str:
     """Build the console-facing URL for one media file."""
-    bare = Path(name).name
+    bare = media_basename(name)
     expires_at, signature = sign_media_name(bare, secret, ttl_s)
     return f"{prefix}/{bare}?exp={expires_at}&sig={signature}"
 
 
 __all__ = [
     "DEFAULT_TTL_S",
+    "media_basename",
     "sign_media_name",
     "verify_media_name",
     "signed_media_url",
