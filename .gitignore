@@ -73,3 +73,6 @@ reports/detections-*.pdf
 # superseded the moment the footage or the console changes -- the runbook script is
 # the durable artefact, not its rendering.
 docs/demo-recordings/
+
+# Generated deployment secrets. Never committed.
+deploy-secrets.env
