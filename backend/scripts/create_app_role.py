@@ -39,6 +39,7 @@ BACKEND_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_ROOT))
 
 from sqlalchemy import create_engine, text  # noqa: E402
+from sqlalchemy.exc import ProgrammingError  # noqa: E402
 
 from services.common import redact  # noqa: E402
 from services.common.paths import ENV_FILE  # noqa: E402
@@ -120,10 +121,41 @@ def main() -> int:
         # via quote_literal rather than by hand -- hand-rolled SQL escaping is how
         # injection bugs are written, and the database already knows its own rules.
         quoted = conn.execute(text("SELECT quote_literal(:pw)"), {"pw": app_password}).scalar_one()
-        attributes = "NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE NOINHERIT"
+
+        # Two groups, because a managed Postgres will not let you set the first.
+        #
+        # SUPERUSER and BYPASSRLS can only be changed by a superuser -- including
+        # changing them *off*. Render, Neon, Supabase and most managed providers hand
+        # out an owner role that is not a superuser, so the combined statement fails
+        # with "Only roles with the SUPERUSER attribute may change the SUPERUSER
+        # attribute" and the container crash-loops on its own hardening.
+        #
+        # Dropping them loses nothing real. Postgres will not let a non-superuser
+        # create a superuser or a BYPASSRLS role in the first place, so a role created
+        # here is already NOSUPERUSER NOBYPASSRLS by construction. The explicit form is
+        # belt-and-braces for the case where the owner *is* a superuser and could
+        # otherwise hand those attributes on.
+        #
+        # What makes dropping them safe is not that argument, though -- it is that the
+        # verification below reads the attributes back out of pg_roles and refuses to
+        # report success if they are wrong. The guarantee is checked, not asserted.
+        privileged_attrs = "NOSUPERUSER NOBYPASSRLS"
+        ordinary_attrs = "NOCREATEDB NOCREATEROLE NOINHERIT"
 
         verb = "ALTER" if exists else "CREATE"
-        conn.execute(text(f'{verb} ROLE "{APP_ROLE}" WITH LOGIN PASSWORD {quoted} {attributes}'))
+        statement = f'{verb} ROLE "{APP_ROLE}" WITH LOGIN PASSWORD {quoted}'
+
+        try:
+            conn.execute(text(f"{statement} {privileged_attrs} {ordinary_attrs}"))
+        except ProgrammingError as exc:
+            if "SUPERUSER" not in str(exc) and "BYPASSRLS" not in str(exc):
+                raise
+            log.info(
+                "the connecting role cannot set SUPERUSER/BYPASSRLS (managed Postgres); "
+                "applying the remaining attributes and verifying the result instead"
+            )
+            conn.execute(text(f"{statement} {ordinary_attrs}"))
+
         log.info("%s role %s", "updated" if exists else "created", APP_ROLE)
 
         conn.execute(text(f'GRANT CONNECT ON DATABASE "{database}" TO "{APP_ROLE}"'))
