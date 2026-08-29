@@ -23,7 +23,7 @@ PYTHONPATH_BE := PYTHONPATH=backend
 .DEFAULT_GOAL := help
 .PHONY: help venv up down logs migrate seed test lint typecheck preflight probe \
         evidence pin-digests fps-guard audit sbom clean record-demo record-demo-gateway \
-        gateway-ingest gateway-report compare-recognisers
+        gateway-ingest gateway-report compare-recognisers deploy-secrets
 
 help:  ## List available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
@@ -94,6 +94,9 @@ frontend-dev:  ## Run the console dev server (proxies /api to the API)
 
 gen-api:  ## Regenerate the console's TypeScript types from the live OpenAPI schema
 	cd frontend && npm run gen:api
+
+deploy-secrets:  ## Generate deployment secrets into a gitignored deploy-secrets.env
+	$(BE) ../$(PY) scripts/generate_deploy_secrets.py
 
 record-demo:  ## First-draft demo video (own-feed). Human review + narration still required.
 	cd frontend && node scripts/record_demo.mjs

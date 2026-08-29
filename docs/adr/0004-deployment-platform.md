@@ -79,3 +79,47 @@ government-cloud or on-premise question involving data-residency rules that no
 commercial PaaS satisfies, and the federation architecture is deliberately agnostic to
 it — video stays at the edge, and only metadata reaches whatever the centre turns out
 to be.
+
+---
+
+## Addendum — 2026-08-29: Render, not Railway
+
+**Railway's free tier ended.** It now grants a one-time trial credit and then requires
+a card. That is a cost decision rather than a technical one, and it does not
+invalidate the comparison above: Railway remains the better platform for this
+workload, and `DEPLOY_STEP_BY_STEP.md` stays as its procedure for whenever the team's
+situation changes.
+
+The evaluation deployment moved to **Render** (backend and Postgres) with Netlify for
+the console and a free UptimeRobot monitor to keep the service warm. Render was the
+runner-up here and was rejected on two grounds; only one of them still bites.
+
+**The cold start no longer applies.** It was the deciding objection — a judge waiting
+about a minute on a spun-down free service — and a 5-minute UptimeRobot ping on
+`/healthz` removes it for the cost of a free account.
+
+**The 90-day Postgres limit was understated, and is worse than recorded.** Render's
+free Postgres expires **30 days after creation**, not 90, with a 14-day grace period
+after which the database is deleted outright. Created 2026-08-29, this instance
+expires **2026-09-28** — comfortably past both the 7 September submission and the
+10–11 September finale, so it needs no action for this timeline. Beyond that date it
+must be upgraded or it is lost. Keeping the web service warm does nothing about this;
+the two limits are unrelated.
+
+**Two further costs Render introduces:**
+
+- **No TimescaleDB guarantee.** Render does list `timescaledb` as supported on
+  PostgreSQL 13+, but with community features excluded. If it enables, the hypertable
+  is created as designed; if not, migration `0003` detects its absence and leaves
+  `detection` a plain table. Correctness is unaffected — only chunk exclusion on
+  time-window queries at an estate far larger than this one.
+- **No persistent disk on the free tier.** Render's free web services cannot attach
+  one at all, so evidence crops written *after* deployment do not survive a redeploy.
+  The image ships the demo crops, so the scripted demonstration is never empty; a live
+  ingest run against the deployed instance is what would lose its images.
+
+**Correcting the Consequences above:** the reference to `SETU_SKIP_HYPERTABLE=1` was
+never accurate. No such variable exists. Migration `0001` treats TimescaleDB and
+pgvector as optional behind a `SAVEPOINT`, and `0003` checks `pg_extension` at run
+time, so an absent extension is handled automatically and setting anything would be a
+no-op. `DEPLOYMENT.md` already records this; the ADR did not, and does now.
