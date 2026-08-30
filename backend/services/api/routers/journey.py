@@ -68,6 +68,10 @@ class JourneyHop(BaseModel):
     corrections: list[dict[str, Any]]
     confidence: float
     crop_url: str | None
+    #: `gateway` (the government feed) or `file` (footage we supplied). Surfaced so the
+    #: console can label every hop, rather than leaving a reviewer to infer where the
+    #: evidence came from by reading the camera's name.
+    camera_source_type: str = "gateway"
 
     distance_from_prev_m: float | None = None
     seconds_from_prev: float | None = None
@@ -133,6 +137,7 @@ class _Sighting:
     confidence: float
     crop_path: str | None
     exact: bool
+    source_type: str = "gateway"
 
 
 def _crop_url(path: str | None) -> str | None:
@@ -210,6 +215,7 @@ def reconstruct_journey(
                    d.corrections, d.crop_path, d.clock_confidence,
                    c.id AS camera_id, c.camera_ref, c.name AS camera_name,
                    c.location_text, c.geom_source, c.confidence_radius_m,
+                   c.source_type,
                    ST_Y(c.geom::geometry) AS lat, ST_X(c.geom::geometry) AS lon
             FROM detection d
             JOIN camera c ON c.id = d.camera_id
@@ -244,6 +250,7 @@ def reconstruct_journey(
                 camera_ref=row["camera_ref"],
                 camera_name=row["camera_name"],
                 location_text=row["location_text"] or "",
+                source_type=row["source_type"],
                 lat=float(row["lat"]),
                 lon=float(row["lon"]),
                 geom_source=row["geom_source"],
@@ -390,6 +397,7 @@ def _to_hop(s: _Sighting, seq: int) -> JourneyHop:
         corrections=s.corrections,
         confidence=s.confidence,
         crop_url=_crop_url(s.crop_path),
+        camera_source_type=s.source_type,
     )
 
 

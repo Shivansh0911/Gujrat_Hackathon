@@ -90,3 +90,57 @@ export function ErrorBox({ error }: { error: unknown }) {
     </div>
   );
 }
+
+
+/**
+ * Which feed a piece of evidence came from.
+ *
+ * This exists because its absence actively misled someone. The registry pulls its
+ * camera list from the government catalogue, so thirty Gujarat pins appear on the map
+ * whether or not any of them has ever produced a frame -- while every detection,
+ * journey hop and alert on the deployed instance came from our own footage. A reviewer
+ * looking at the console reasonably concluded the government feed was working. Nothing
+ * on screen said otherwise.
+ *
+ * `source_type` is the registry's own word for it: `gateway` for the feed the
+ * organisers provided, `file` for footage we supplied. The label spells that out
+ * rather than showing the raw enum, because "file" means nothing to an officer.
+ */
+export function SourceBadge({
+  sourceType,
+  className,
+}: {
+  sourceType: string | null | undefined;
+  className?: string;
+}) {
+  if (!sourceType) return null;
+  const gateway = sourceType === "gateway";
+  return (
+    <Badge
+      tone={gateway ? "accent" : "warn"}
+      title={
+        gateway
+          ? "Captured from the government-provided camera gateway"
+          : "Captured from footage we supplied ourselves, not the government feed"
+      }
+    >
+      <span className={className}>{gateway ? "Government feed" : "Own feed"}</span>
+    </Badge>
+  );
+}
+
+/**
+ * A camera that has never produced a detection.
+ *
+ * A pin with no data behind it and a pin with two hundred detections look identical on
+ * a map, which is half of why the confusion above happened. Saying so explicitly is
+ * cheaper than letting someone infer it wrongly.
+ */
+export function NoDataBadge({ count }: { count: number }) {
+  if (count > 0) return null;
+  return (
+    <Badge tone="muted" title="This camera is in the registry but has produced no detections">
+      no detections
+    </Badge>
+  );
+}

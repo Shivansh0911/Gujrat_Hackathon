@@ -6,7 +6,7 @@ import { useSearchParams } from "react-router-dom";
 import { api, type JourneyResult } from "../lib/api";
 import { circlePolygon } from "../lib/map";
 import { useMapLibre } from "../lib/useMap";
-import { Badge, Empty, ErrorBox, ProvenanceBadge } from "../components/ui";
+import { Badge, Empty, ErrorBox, ProvenanceBadge, SourceBadge } from "../components/ui";
 
 function isoLocal(d: Date) {
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -431,6 +431,7 @@ function Results({
           </div>
 
           <div className="flex flex-wrap gap-1.5">
+            <SourceBadge sourceType={hop.camera_source_type} />
             <ProvenanceBadge
               evidenceType={hop.evidence_type}
               corrections={hop.corrections as Array<Record<string, unknown>>}

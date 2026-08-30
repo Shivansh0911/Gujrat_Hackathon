@@ -5,7 +5,15 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, type Camera } from "../lib/api";
 import { circlePolygon, statusColour } from "../lib/map";
 import { useMapLibre } from "../lib/useMap";
-import { Badge, Empty, ErrorBox, Spinner, StatusDot } from "../components/ui";
+import {
+  Badge,
+  Empty,
+  ErrorBox,
+  NoDataBadge,
+  SourceBadge,
+  Spinner,
+  StatusDot,
+} from "../components/ui";
 import HlsPlayer from "../components/HlsPlayer";
 
 export default function MapPage() {
@@ -82,6 +90,10 @@ export default function MapPage() {
             id: c.id,
             colour: statusColour(c.status),
             precise: (c.confidence_radius_m ?? 0) <= 500 ? 1 : 0,
+            // A registry position with nothing behind it is drawn hollow. Thirty
+            // government pins and four own-feed pins looked identical here, and a
+            // reviewer reasonably read the map as thirty working cameras.
+            hasData: (c.detection_count ?? 0) > 0 ? 1 : 0,
           },
           geometry: { type: "Point" as const, coordinates: [c.lon!, c.lat!] },
         })),
@@ -122,9 +134,25 @@ export default function MapPage() {
           // An approximate camera gets a smaller, softer dot: the circle around it
           // carries the real information about where it might be.
           "circle-radius": ["case", ["==", ["get", "precise"], 1], 6, 4],
-          "circle-opacity": ["case", ["==", ["get", "precise"], 1], 1, 0.65],
-          "circle-stroke-width": 1.5,
-          "circle-stroke-color": "#0b0f14",
+          // Hollow means "in the registry, has never produced a detection". Filled
+          // means there is evidence behind this pin. Opacity already carries
+          // positional confidence, so presence-of-data uses fill instead of fading
+          // further -- two meanings on one channel would be unreadable.
+          "circle-opacity": [
+            "case",
+            ["==", ["get", "hasData"], 0],
+            0.12,
+            ["==", ["get", "precise"], 1],
+            1,
+            0.65,
+          ],
+          "circle-stroke-width": ["case", ["==", ["get", "hasData"], 0], 1.5, 1.5],
+          "circle-stroke-color": [
+            "case",
+            ["==", ["get", "hasData"], 0],
+            ["get", "colour"],
+            "#0b0f14",
+          ],
         },
       });
 
@@ -313,7 +341,8 @@ function CameraDetail({
           {camera.status}
         </Badge>
         <Badge tone="muted">{camera.department_code}</Badge>
-        <Badge tone="muted">{camera.source_type}</Badge>
+        <SourceBadge sourceType={camera.source_type} />
+        <NoDataBadge count={camera.detection_count ?? 0} />
         {approximate && (
           <Badge tone="warn" title="Positioned to a district centroid, not surveyed">
             ±{(camera.confidence_radius_m! / 1000).toFixed(1)} km

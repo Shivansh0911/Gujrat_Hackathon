@@ -44,6 +44,8 @@ class AlertOut(BaseModel):
 
     camera_id: uuid.UUID
     camera_name: str | None = None
+    #: `gateway` or `file` -- see JourneyHop.camera_source_type.
+    camera_source_type: str | None = None
     camera_lat: float | None = None
     camera_lon: float | None = None
 
@@ -153,6 +155,7 @@ def _project(session: Session, alert: Alert) -> AlertOut:
         is_movement=alert.is_movement,
         camera_id=alert.camera_id,
         camera_name=camera.name if camera else None,
+        camera_source_type=camera.source_type if camera else None,
         camera_lat=lat,
         camera_lon=lon,
         observed_at_utc=alert.observed_at_utc,

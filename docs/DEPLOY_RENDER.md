@@ -167,7 +167,19 @@ would rather not copy from a terminal.
    SETU_EVIDENCE_SIGNING_KEY=<generated hex>
    SETU_SEED_DEMO=1
    SETU_DEMO_FRAMES=900
+   SETU_GATEWAY_HOST=live.corp8.cloud
    ```
+
+   > **`SETU_GATEWAY_HOST` is not optional, and omitting it fails in a way that does
+   > not look like a missing variable.** It has no default on purpose -- a deployment
+   > should never silently fall back to some other team's gateway. But without it,
+   > pydantic raises the first time a request touches the feed configuration, FastAPI
+   > returns a bare 500, and the console shows "Load failed" on **Compare with
+   > gateway** and on live camera preview. Nothing on screen points at the cause. This
+   > list originally omitted it, and that is exactly how the first deployment failed.
+   >
+   > The endpoints now answer usefully when it is unset rather than 500-ing, but they
+   > still cannot reach a gateway that was never named.
 
    Render hands out a `postgresql://` URL. The entrypoint rewrites the scheme to
    `postgresql+psycopg://` itself, so paste it exactly as given.
@@ -337,6 +349,7 @@ role creation step did not run.
 | Symptom | Cause | Fix |
 |---|---|---|
 | First click after a quiet period takes ~1 minute | The free service spun down after 15 minutes idle | Expected. C5 prevents it — but the **very first** request, before UptimeRobot has run once, can still be slow. Open the link yourself once after setting the monitor up |
+| **Compare with gateway** or live preview says "Load failed", other screens fine | `SETU_GATEWAY_HOST` is unset on the API | Set it to `live.corp8.cloud` and redeploy. Everything not touching the feed works without it, which is why this looks like a one-screen bug |
 | Console loads, every API call fails, browser console says CORS | `SETU_CORS_ORIGINS` does not exactly match the Netlify origin | Copy the origin from the browser address bar. No trailing slash. Redeploy the backend |
 | Console loads, alerts list works, **status dot never turns green** | The WebSocket is not reaching the API | `VITE_API_ORIGIN` is unset or wrong. It is read at build time, so redeploy Netlify after changing it. Netlify cannot proxy `wss://` |
 | Deploy cancelled after 15 minutes | The service never became healthy | Check the Health Check Path is `/healthz`. If migrations are still running, look for the real error above them in the log |

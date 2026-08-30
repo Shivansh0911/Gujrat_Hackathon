@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { api, getToken, type Alert, websocketUrl } from "../lib/api";
-import { Badge, Empty, ErrorBox, Spinner } from "../components/ui";
+import { Badge, Empty, ErrorBox, SourceBadge, Spinner } from "../components/ui";
 
 export default function AlertsPage() {
   const qc = useQueryClient();
@@ -127,6 +127,7 @@ function AlertCard({
         <div className="min-w-0 flex-1 space-y-1.5">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="mono text-lg text-slate-100">{alert.matched_value}</span>
+            <SourceBadge sourceType={alert.camera_source_type} />
             <Badge tone={priorityTone}>priority {alert.priority.toFixed(2)}</Badge>
             <Badge tone={alert.match_type === "exact" ? "ok" : "warn"}>
               {alert.match_type} · {alert.match_score.toFixed(2)}

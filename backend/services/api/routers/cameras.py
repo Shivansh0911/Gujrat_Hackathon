@@ -26,11 +26,12 @@ from services.api.schemas import (
 )
 from services.api.security import AdminActor, CurrentActor, camera_scope, get_camera_or_404
 from services.common.catalogue import fetch_catalogue
+from services.common.config import Settings as FeedSettings
 from services.common.config import get_settings as get_feed_settings
 from services.registry.camera_import import validate_row
 from services.registry.enums import CameraStatus, GeomSource, SourceType, assert_transition
 from services.registry.enums import IllegalTransition
-from services.registry.models import Camera, Department
+from services.registry.models import Camera, Department, Detection
 
 #: Bulk import is an operator pasting a departmental spreadsheet, not a data feed.
 #: The cap keeps a mistaken upload from becoming a memory event; the real seed file
@@ -42,8 +43,43 @@ router = APIRouter(prefix="/cameras", tags=["cameras"])
 SessionDep = Annotated[Session, Depends(get_session)]
 
 
-def _to_out(session: Session, camera: Camera) -> CameraOut:
-    """Project a Camera row, extracting lat/lon from PostGIS geography."""
+def _feed_settings_or_none() -> "FeedSettings | None":
+    """The gateway configuration, or None when it is not configured.
+
+    `SETU_GATEWAY_HOST` has no default: a platform deployment that forgets it should
+    not silently fall back to some other team's gateway. But the resulting pydantic
+    ValidationError surfaced as a bare HTTP 500, which told the operator nothing --
+    the console showed "Load failed" and the cause was an unset environment variable
+    on the API, three layers away from anything visible.
+
+    Returning None lets each caller answer usefully instead: this instance has no feed
+    configured, which is a different statement from "the feed is down" and a different
+    one again from "the server broke".
+    """
+    try:
+        return get_feed_settings()
+    except Exception:  # noqa: BLE001 -- any config failure means "not configured"
+        return None
+
+
+def _detection_counts(session: Session, camera_ids: list[uuid.UUID]) -> dict[uuid.UUID, int]:
+    """Detections per camera, in one query rather than one per camera."""
+    if not camera_ids:
+        return {}
+    rows = session.execute(
+        select(Detection.camera_id, func.count(Detection.id))
+        .where(Detection.camera_id.in_(camera_ids))
+        .group_by(Detection.camera_id)
+    ).all()
+    return {row[0]: int(row[1]) for row in rows}
+
+
+def _to_out(session: Session, camera: Camera, detection_count: int | None = None) -> CameraOut:
+    """Project a Camera row, extracting lat/lon from PostGIS geography.
+
+    `detection_count` is passed in by list endpoints that already counted every camera
+    in one grouped query; a single-camera read counts its own.
+    """
     lat = lon = None
     if camera.geom is not None:
         # ST_X/ST_Y are geometry functions; a geography column must be cast first.
@@ -83,6 +119,11 @@ def _to_out(session: Session, camera: Camera) -> CameraOut:
         transport=camera.transport,
         source_type=camera.source_type,
         last_seen_at=camera.last_seen_at,
+        detection_count=(
+            detection_count
+            if detection_count is not None
+            else _detection_counts(session, [camera.id]).get(camera.id, 0)
+        ),
     )
 
 
@@ -116,7 +157,8 @@ def list_cameras(
         )
 
     cameras = session.execute(stmt.order_by(Camera.camera_ref).limit(limit)).scalars().all()
-    return [_to_out(session, c) for c in cameras]
+    counts = _detection_counts(session, [c.id for c in cameras])
+    return [_to_out(session, c, counts.get(c.id, 0)) for c in cameras]
 
 
 @router.get("/{camera_id}", response_model=CameraOut)
@@ -182,7 +224,18 @@ def sync_catalogue(session: SessionDep, actor: AdminActor) -> SyncResult:
     """
     from services.api.events import CameraEvent, event_bus
 
-    feed_settings = get_feed_settings()
+    feed_settings = _feed_settings_or_none()
+    if feed_settings is None:
+        return SyncResult(
+            catalogue_reachable=False,
+            cameras_in_catalogue=0,
+            note=(
+                "no camera gateway is configured on this deployment: set "
+                "SETU_GATEWAY_HOST (and SETU_GATEWAY_SCHEME if not https) and redeploy. "
+                "The registry is unchanged."
+            ),
+        )
+
     try:
         descriptors = fetch_catalogue(feed_settings)
     except Exception as exc:  # noqa: BLE001 - third-party infrastructure
@@ -491,9 +544,18 @@ def get_stream_url(
     that should be attributable.
     """
     camera = get_camera_or_404(session, actor, camera_id)
-    feed_settings = get_feed_settings()
+    feed_settings = _feed_settings_or_none()
 
-    if camera.source_type == SourceType.GATEWAY.value:
+    if camera.source_type == SourceType.GATEWAY.value and feed_settings is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=(
+                "no camera gateway is configured on this deployment, so there is no "
+                "upstream to play. Set SETU_GATEWAY_HOST and redeploy."
+            ),
+        )
+
+    if camera.source_type == SourceType.GATEWAY.value and feed_settings is not None:
         url = feed_settings.hls_url(camera.camera_ref)
         transport = "hls"
     elif camera.source_type == SourceType.FILE.value:

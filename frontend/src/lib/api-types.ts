@@ -443,6 +443,8 @@ export interface components {
             camera_id: string;
             /** Camera Name */
             camera_name?: string | null;
+            /** Camera Source Type */
+            camera_source_type?: string | null;
             /** Camera Lat */
             camera_lat?: number | null;
             /** Camera Lon */
@@ -693,6 +695,11 @@ export interface components {
             source_type: string;
             /** Last Seen At */
             last_seen_at?: string | null;
+            /**
+             * Detection Count
+             * @default 0
+             */
+            detection_count: number;
         };
         /** CoverageGap */
         CoverageGap: {
@@ -843,6 +850,11 @@ export interface components {
             confidence: number;
             /** Crop Url */
             crop_url: string | null;
+            /**
+             * Camera Source Type
+             * @default gateway
+             */
+            camera_source_type: string;
             /** Distance From Prev M */
             distance_from_prev_m?: number | null;
             /** Seconds From Prev */

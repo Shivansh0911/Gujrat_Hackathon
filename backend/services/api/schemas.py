@@ -64,6 +64,14 @@ class CameraOut(BaseModel):
     source_type: str
     last_seen_at: datetime | None = None
 
+    #: How many detections this camera actually has behind it.
+    #:
+    #: A pin with no detections and a pin with two hundred look identical on a map,
+    #: and that ambiguity is what made a reviewer read thirty registry positions from
+    #: the government catalogue as thirty working cameras. The console greys out the
+    #: empty ones, which it can only do if the count comes with the camera.
+    detection_count: int = 0
+
 
 class GeomPatch(BaseModel):
     """Operator pin-drop. Writes manual_survey provenance and an audit entry."""
