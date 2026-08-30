@@ -480,6 +480,43 @@ capability is worse than none.
 | **Rate-limited login** | Failed authentications are audited in an independent transaction so a 401 rollback cannot erase them |
 | **Watchlist expiry** | `NOT NULL` — §6.3 |
 
+#### Authentication, and the department-federated upgrade path
+
+Access is a **closed, two-role system**: `admin` (System Administrator) and
+`operator` (Control Room Operator), with passwords issued from the deployment
+environment. There is no self-registration, no default credential, and no
+consumer identity provider. `POST /auth/login` returns 503 rather than falling back
+to a known password if the environment does not supply one. Passwords are bcrypt
+hashed, login is rate-limited, and failed attempts are audited in an independent
+transaction so that a 401's rollback cannot erase them.
+
+**No third-party consumer login, deliberately.** Adding Google sign-in was considered
+and rejected on threat-model grounds rather than effort. This is a law-enforcement
+system with a closed user population; unscoped consumer OAuth would let anyone
+holding a Gmail account reach the authenticated boundary and attempt access, which
+enlarges the attack surface without serving any real user. It would only be an
+improvement if restricted to a government Workspace domain, and no such domain exists
+for this deployment.
+
+**What department-wise access actually requires, and how far it is built.** The RBAC
+model already scopes every read to a department: `camera_scope()` filters at the
+application layer, and Postgres row-level security enforces the same boundary against
+raw SQL that bypasses the application entirely (§8.4). What is missing is not
+enforcement but *identity* — a way for an officer to authenticate as a member of the
+Traffic department rather than being handed an operator password.
+
+The production answer is **OIDC federation against each department's own directory**,
+with Keycloak as the broker. `docker-compose.yml` already provisions a Keycloak
+service and a realm import, behind a `planned` profile so it is not started by
+default; the enforcement side it would feed is complete and tested. What remains is
+the token exchange and a department claim mapped onto the existing scope.
+
+This was deliberately **not** implemented during the hackathon timeline. Replacing
+token issuance is an architecture change whose failure mode is losing access to the
+platform entirely, and the current scheme is correct for a closed evaluation
+deployment. The gap is one of convenience and directory integration, not of
+enforcement.
+
 Dependency posture: `pip-audit --strict` on every push, with exactly one suppression
 (`PYSEC-2026-1325` in `ecdsa`, unreachable here and unfixable upstream), documented in
 `SECURITY.md`. Container images are digest-pinned, and CI fails on a floating tag.
@@ -540,8 +577,10 @@ gitleaks over full history · CycloneDX SBOM.
    detection is genuine inference with a real crop; only *which camera saw it* is
    simulated, and the `REPLAY` prefix is visible in the UI.
 3. **ANPR accuracy is 29.6%**, and the ceiling is what the estate publishes (§7.2).
-4. **The gateway media plane was unreachable for much of the build.** It recovered on
-   2026-08-27; 25 of 30 cameras produced frames, 5 did not.
+4. **The gateway media plane is intermittent.** Cameras producing frames measured 17,
+   then 25, then 18 of 30 across 27–30 August, with a total 502 in between. The
+   2026-08-30 sweep decoded 5,055 frames for **zero** grammar-valid registrations
+   against two on 27 August — same pipeline, different feed.
 
 ---
 

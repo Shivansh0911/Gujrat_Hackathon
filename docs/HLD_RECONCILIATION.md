@@ -26,7 +26,7 @@ document is what changes.** Two claims below need amending.
 | Never trust the declared frame rate | **12 of 16 cameras that produced frames diverge.** Camera 26 declares 13.35 fps and delivers 25.0 (+87%); cameras 13 and 16 declare 12.5 and deliver 9.96 (−20%); 9 declare nothing at all | `catalogue-probe-2026-08-26T21-07-28Z` |
 | Signed evidence verifiable without SETU | Ed25519 detached signature over a canonical manifest. Verified: valid passes, tampered manifest fails, altered signature fails, wrong key fails, manifest byte-deterministic | Part B verification |
 | Coordinates never invented | 18 geocoded, 10 district-centroid approximate, 2 unset. Every row traces to a cached geocoder response | `data/seed/geocode_cache.json` |
-| Government-feed test case | **Ran across the estate.** 25 of 30 cameras produced frames, 9,158 frames decoded, 30 plate regions, 2 grammar-valid registrations. Cameras 17 and 18 return HTTP 500; 22, 23 and 30 time out | `gateway-output-report-2026-08-27.md` |
+| Government-feed test case | **Ran across the estate, twice.** 2026-08-27: 25 of 30 cameras produced frames, 9,158 frames, 30 plate regions, **2** grammar-valid registrations. 2026-08-30: 18 of 30 cameras, 5,055 frames, 17 plate regions, **0** grammar-valid registrations. The pipeline behaved identically; the feed did not | `gateway-output-report-2026-08-27.md`, `-2026-08-30.md` |
 | Never trust the declared frame rate (re-measured live) | **5 of 8** cameras that declare a rate and delivered frames diverge by more than 5%; camera 15 declares 12.5 and delivers 5.38 (-57%). A further 17 delivered frames while declaring nothing | same |
 
 ---

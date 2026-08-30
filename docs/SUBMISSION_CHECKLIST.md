@@ -21,7 +21,7 @@ at upload time.
 | # | Deliverable | Artefact | State |
 |---|---|---|---|
 | 5 | Own-feed screen recording | — | ⏳ **Harshit** |
-| 6 | Government-feed screen recording | — | ⏳ **Harshit** — 25 of 30 cameras produce frames; use camera 7, the only one with a legible plate |
+| 6 | Government-feed screen recording | — | ⏳ **Harshit** — availability swings: 18 of 30 cameras on 2026-08-30, 25 of 30 on 2026-08-27. Camera 7 is the only one that has ever produced a legible plate; **check it is up before recording** |
 
 Script for both, screen by screen with timings and what to say:
 `docs/DEMO_RUNBOOK.md`.
@@ -31,7 +31,7 @@ Script for both, screen by screen with timings and what to say:
 | # | Deliverable | Artefact | State |
 |---|---|---|---|
 | 7 | Detected vehicles and plates with timestamps | `reports/detections-*.csv` and `.pdf`, `make detection-report` | ✅ 56 detections, 4 cameras, 32 grammar-valid, 8 distinct plates |
-| 8 | Government-feed output report | `reports/evidence/gateway-output-report-2026-08-27.md` | ✅ **25 of 30 cameras, 9,158 frames, 30 plate regions, 2 valid registrations.** `make gateway-ingest` then `make gateway-report` |
+| 8 | Government-feed output report | `reports/evidence/gateway-output-report-2026-08-27.md` and `-2026-08-30.md` | ✅ **two dated runs.** 27 Aug: 25 of 30 cameras, 9,158 frames, 2 valid registrations. 30 Aug: 18 of 30, 5,055 frames, **0** valid. Both kept — the difference is the feed, not the pipeline |
 | 9 | ANPR precision and recall | `data/seed/anpr_ground_truth.csv`, `reports/evidence/anpr-accuracy-*` | ✅ **measured: 29.6% precision, 29.6% recall, 26.9% CER** (was 0.0% before three defects were found and fixed). Annotations were made by reading each crop; **have a second person spot-check them** |
 
 ## Platform
@@ -41,8 +41,8 @@ Script for both, screen by screen with timings and what to say:
 | 10 | GitHub repository | `github.com/Shivansh0911/Gujrat_Hackathon` | ✅ |
 | 11 | Screenshots, all screens, real data | `docs/screenshots/` | ✅ 11 images covering all eight screens |
 | 12 | Screenshots of the deployed instance | `docs/screenshots/deployed/` | ✅ 8 images, captured against the container stack |
-| 13 | Hosted URL + test credentials | — | ⏳ **containers verified 9/9 locally; the Railway push needs the team account.** Steps in `docs/DEPLOYMENT.md` §4 |
-| 14 | Test accounts for the screening committee | `admin` and `operator`, credentials in `.env.prod` | ⚠️ generated per deployment; record the live values in `DEMO_RUNBOOK.md` §1 once hosted |
+| 13 | Hosted URL + test credentials | **Console: https://setu-gujrat.netlify.app** · API: https://setu-api-ai7z.onrender.com | ✅ **live**, verified 10/10 by `verify_deployment.py`. Deployed on Render + Netlify, not Railway — see `docs/adr/0004` addendum. Credentials in `deploy-secrets.env` (gitignored) |
+| 14 | Test accounts for the screening committee | `admin` (System Administrator) and `operator` (Control Room Operator) | ⚠️ live values are in the gitignored `deploy-secrets.env`; copy them into `DEMO_RUNBOOK.md` §1 before submitting |
 
 ## Evidence
 
@@ -66,7 +66,7 @@ Script for both, screen by screen with timings and what to say:
 - [ ] Record both demonstration videos
 - [ ] Deploy and record the live URL with credentials
 - [ ] Send `docs/SUPPORT_QUERY.md`
-- [ ] Re-run `gitleaks detect` over full history
+- [ ] Re-run `gitleaks detect` over full history — **still outstanding**, the binary could not be downloaded on this connection and Docker was unavailable; last clean run was 2026-08-27
 - [ ] Confirm the four limitations in `README.md` still read accurately
 
 ## Four limitations to state up front

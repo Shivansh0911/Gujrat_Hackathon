@@ -232,7 +232,18 @@ vanishing from a third-party feed for ten minutes is not authority to delete its
 identity, its history or its evidence.
 
 ### Login
-JWT held in memory, never `localStorage`.
+Two roles — **Control Room Operator** and **System Administrator** — with passwords
+issued from the deployment environment. No self-registration, no default credential,
+no consumer identity provider: `POST /auth/login` returns 503 rather than falling back
+to a known password if none is configured. The JWT is held in memory, never in
+`localStorage`, so a single XSS cannot steal a session that outlives the tab.
+
+**Google sign-in is deliberately absent.** For a closed law-enforcement system,
+unscoped consumer OAuth would let anyone with a Gmail account reach the authenticated
+boundary — a larger attack surface serving no real user. Department-federated login
+via OIDC (Keycloak, already provisioned behind a `planned` compose profile) is the
+production path; the department scoping it would feed is already built and enforced in
+Postgres row-level security. See `docs/SETU_High_Level_Design.md` §8.4.
 
 ---
 
@@ -338,9 +349,17 @@ submission.
    across 25 live cameras yielded three human-legible plates. This bounds what any
    recogniser could have achieved here, and it is the empirical case for processing at
    the edge where full resolution still exists.
-5. **The gateway media plane returned 502 for most of the build.** It recovered on
-   2026-08-27 partially: 25 of 30 cameras produce frames, cameras 17 and 18 return
-   HTTP 500 and three time out. `docs/SUPPORT_QUERY.md` is the prepared fault report.
-6. **No hosted URL yet.** The container stack is verified 9/9 from a clean state; the
-   deployment needs the team's platform account. See
+5. **The gateway media plane is intermittent, and its plate legibility is worse
+   than its uptime.** Availability measured 17, then 25, then **18 of 30 cameras**
+   producing frames across 27–30 August, with a total 502 in between. More
+   importantly, a full sweep on 2026-08-30 decoded 5,055 frames and produced
+   **zero** grammar-valid registrations; the 27 August sweep produced two. The
+   pipeline behaved identically — the difference is what the cameras publish.
+   `docs/SUPPORT_QUERY.md` is the prepared fault report.
+6. **The deployed instance carries own-feed detections only.** It is live at
+   https://setu-gujrat.netlify.app and passes 10/10 deployment checks, but every
+   detection in it came from our own footage: the government gateway has not yet
+   yielded a legible plate during a run against the deployed database. The console
+   labels the source of every hop and alert so this is visible rather than assumed.
+   See
    [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) §4.

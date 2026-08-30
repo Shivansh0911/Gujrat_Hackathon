@@ -35,10 +35,11 @@ documented migration path.
 
 ### A3. Known constraints
 
-- **The gateway recovered on 2026-08-27** after roughly two days of 502 on every
-  media playlist. It is now partially healthy: **17 of 30 cameras produce frames, 13
-  return none.** Treat availability as unreliable — every demo path must still work
-  with the media plane unreachable.
+- **Gateway availability swings by the hour** and is the least predictable thing in
+  this project. Measured: 17 of 30 cameras producing frames on 2026-08-27 morning,
+  25 of 30 that afternoon, **18 of 30 on 2026-08-30**, and a complete 502 across
+  every endpoint in between. Every demo path must still work with the media plane
+  unreachable, and any figure quoted is a reading rather than a property.
 - **RTSP and WHEP are unreachable** — Cloudflare proxies 443/80 only, so 8554 and 8889
   never reach origin. HLS is the transport. The gateway gates on a `cookieCheck=1`
   query parameter that FFmpeg drops when following a master playlist; we resolve the
@@ -157,7 +158,7 @@ regenerate.**
 | Throughput, published 2560×1440 | 0.81 cameras/worker | — | ~98,500 workers for 80k |
 | Throughput, 704×396 sub-stream | 3.82 cameras/worker | — | ~21,000 workers, but see below |
 | ANPR plate-level precision / recall | **29.6% / 29.6%** (CER 26.9%), up from 0.0% | implies a working recogniser | **amend to the measured figure** |
-| Government feed: cameras producing frames | **25 of 30** | — | tested |
+| Government feed: cameras producing frames | **18 of 30** (2026-08-30; was 25 of 30 on 2026-08-27) | — | tested |
 | Government feed: valid registrations | **4** exactly correct of 7 crops on camera 7 | — | resolution-bound elsewhere |
 | Declared vs measured fps, live estate | **5 of 8 comparable diverge >5%** | "never trust declared fps" | holds |
 | Declared vs measured fps, live gateway | **12 of 16 diverge** | "never trust declared fps" | holds |
