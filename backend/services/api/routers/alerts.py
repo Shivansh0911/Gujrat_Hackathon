@@ -9,11 +9,21 @@ import uuid
 from datetime import datetime, timezone
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect, status
+from fastapi import (
+    Response,
+    APIRouter,
+    Depends,
+    HTTPException,
+    Query,
+    WebSocket,
+    WebSocketDisconnect,
+    status,
+)
 from pydantic import BaseModel, Field
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
+from services.analytics.plate_grammar import normalise_plate
 from services.api import audit
 from services.api.config import get_api_settings
 from services.api.media_signing import signed_media_url
@@ -306,10 +316,33 @@ def create_watchlist_entry(
     if actor.role != Role.ADMIN.value:
         raise HTTPException(status_code=403, detail="adding a watchlist entry requires admin")
     if body.valid_to <= datetime.now(timezone.utc):
-        raise HTTPException(status_code=422, detail="valid_to must be in the future")
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "the expiry date must be in the future. An entry that has already "
+                "expired would never match anything."
+            ),
+        )
+
+    # Validate with the same grammar the recogniser's output is checked against, rather
+    # than a second implementation. A watchlist plate that could never be produced by
+    # the ANPR pipeline can never match one, so accepting it creates an entry that
+    # looks active on the desk and is silently inert -- the worst kind of failure here,
+    # because nobody finds out until the vehicle they were watching for goes unnoticed.
+    candidate = body.plate_normalised.upper().replace(" ", "").replace("-", "")
+    parsed = normalise_plate(candidate)
+    if not parsed.valid:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"'{body.plate_normalised}' is not a valid Indian registration. "
+                "Expected formats: GJ01AB1234 (state, district, series, number) or a "
+                "BH-series plate such as 22BH1234A."
+            ),
+        )
 
     entry = WatchlistEntry(
-        plate_normalised=body.plate_normalised.upper().replace(" ", ""),
+        plate_normalised=parsed.normalised,
         entity_type="vehicle",
         watchlist_name=body.watchlist_name,
         source_system=body.authority,
@@ -343,6 +376,54 @@ def create_watchlist_entry(
         },
     )
     return WatchlistOut.model_validate(entry, from_attributes=True)
+
+
+@router.delete("/watchlist/{entry_id}", status_code=204)
+def delete_watchlist_entry(
+    entry_id: uuid.UUID, session: SessionDep, actor: CurrentActor
+) -> Response:
+    """Remove a watchlist entry.
+
+    Deletion is audited *before* the row goes, and the audit entry carries the plate,
+    authority and case reference. That ordering is the point: once the row is gone the
+    ledger is the only remaining evidence that the vehicle was ever watched, and a
+    surveillance authorisation that can be removed without trace is not an
+    authorisation.
+
+    Entries normally end by expiring -- `valid_to` is mandatory for exactly that
+    reason. This is for the other cases: a plate entered wrongly, or an authority
+    withdrawn before its expiry.
+
+    Alerts already raised are untouched. They are evidence of what was observed, and
+    they reference the entry rather than depending on it.
+    """
+    if actor.role != Role.ADMIN.value:
+        raise HTTPException(status_code=403, detail="removing a watchlist entry requires admin")
+
+    entry = session.get(WatchlistEntry, entry_id)
+    if entry is None:
+        raise HTTPException(status_code=404, detail="watchlist entry not found")
+
+    audit.append(
+        session,
+        action="WATCHLIST_ENTRY_REMOVED",
+        subject_type="watchlist_entry",
+        subject_id=str(entry.id),
+        actor_id=actor.subject,
+        actor_role=actor.role,
+        detail={
+            "plate": entry.plate_normalised,
+            "watchlist_name": entry.watchlist_name,
+            "authority": entry.authority,
+            "case_ref": entry.case_ref,
+            "expires_at": entry.valid_to.isoformat(),
+        },
+    )
+    session.flush()
+
+    session.delete(entry)
+    session.flush()
+    return Response(status_code=204)
 
 
 # ------------------------------------------------------------------- websocket

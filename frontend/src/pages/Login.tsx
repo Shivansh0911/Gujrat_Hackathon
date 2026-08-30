@@ -1,6 +1,31 @@
 import { FormEvent, useState } from "react";
 import { useAuth } from "../lib/auth";
 
+/**
+ * The two roles, named as an officer would recognise them.
+ *
+ * The RBAC model underneath is unchanged -- these are still exactly `admin` and
+ * `operator`, and the server authorises on those strings. What changes is that the
+ * login screen no longer asks someone to identify themselves as a database noun.
+ *
+ * Deliberately not a third-party identity provider. This is a closed law-enforcement
+ * system: consumer Google login would let anyone with a Gmail account reach the sign-in
+ * boundary, which is a regression rather than an improvement. Department-federated
+ * login via OIDC is the real upgrade path and is documented in the HLD.
+ */
+const ROLES = [
+  {
+    id: "operator",
+    label: "Control Room Operator",
+    hint: "View cameras, trace vehicles, work the alert desk",
+  },
+  {
+    id: "admin",
+    label: "System Administrator",
+    hint: "Everything above, plus camera onboarding and watchlist management",
+  },
+];
+
 export default function Login() {
   const { signIn } = useAuth();
   const [username, setUsername] = useState("admin");
@@ -32,13 +57,24 @@ export default function Login() {
         </div>
 
         <div>
-          <label className="label">Username</label>
-          <input
-            className="input"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            autoComplete="username"
-          />
+          <label className="label">Role</label>
+          <div className="space-y-1.5">
+            {ROLES.map((r) => (
+              <button
+                key={r.id}
+                type="button"
+                onClick={() => setUsername(r.id)}
+                className={`w-full text-left px-2.5 py-1.5 rounded border text-sm transition-colors ${
+                  username === r.id
+                    ? "bg-accent/15 text-accent border-accent/50"
+                    : "bg-ink-900 border-edge text-slate-300 hover:bg-ink-700"
+                }`}
+              >
+                <div className="font-medium">{r.label}</div>
+                <div className="text-[10px] text-muted leading-tight mt-0.5">{r.hint}</div>
+              </button>
+            ))}
+          </div>
         </div>
         <div>
           <label className="label">Password</label>

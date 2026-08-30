@@ -13,6 +13,27 @@ function isoLocal(d: Date) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+/**
+ * Common reasons for tracing a vehicle, as one click each.
+ *
+ * Purpose stays mandatory: it is written to the audit ledger *before* the query runs,
+ * so that a search returning nothing is recorded exactly like one returning a route.
+ * The case that control exists for is someone searching a plate they should not be,
+ * and that case is invisible if the field can be skipped.
+ *
+ * What was worth fixing is the friction, not the requirement. Typing a sentence before
+ * every search is what makes an officer resent the control; picking a reason and adding
+ * a case number is not. Each preset ends mid-sentence on purpose, so the natural next
+ * action is to type the reference that makes it specific.
+ */
+const PURPOSE_PRESETS = [
+  "FIR reference — vehicle trace",
+  "Stolen vehicle enquiry — case ",
+  "Traffic offence follow-up — challan ",
+  "Missing person enquiry — case ",
+  "Court-directed enquiry — order ",
+];
+
 export default function JourneyPage() {
   const [params] = useSearchParams();
   const { ref: mapContainerRef, mapRef } = useMapLibre();
@@ -260,6 +281,19 @@ export default function JourneyPage() {
             minLength={8}
             required
           />
+          <div className="flex flex-wrap gap-1 mt-1.5">
+            {PURPOSE_PRESETS.map((p) => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => setPurpose(p)}
+                className="text-[10px] px-2 py-0.5 rounded border border-edge bg-ink-700
+                           hover:bg-ink-600 text-muted hover:text-slate-200 transition-colors"
+              >
+                {p.trim()}
+              </button>
+            ))}
+          </div>
         </div>
         <button className="btn btn-primary h-[34px]" disabled={run.isPending}>
           {run.isPending ? "Searching…" : "Trace vehicle"}

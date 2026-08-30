@@ -67,7 +67,12 @@ export default function MapPage() {
   // ---- render cameras -----------------------------------------------------
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !placed.length) return;
+    // Only the map itself is a precondition. An empty `placed` is a real result --
+    // it is what a status filter matching nothing produces -- and it has to reach
+    // the GeoJSON source so the previous filter's pins are cleared. Returning early
+    // on it left the map showing the last non-empty selection, which reads as the
+    // filter having silently failed rather than having matched nothing.
+    if (!map) return;
 
     const draw = () => {
       // Confidence circles first, so precise pins draw on top of the uncertainty

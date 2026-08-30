@@ -167,6 +167,8 @@ export const api = {
     request<WatchlistEntry[]>(
       `/watchlist${includeExpired ? "?include_expired=true" : ""}`,
     ),
+  deleteWatchlistEntry: (id: string) =>
+    request<void>(`/watchlist/${id}`, { method: "DELETE" }),
   addWatchlistEntry: (body: WatchlistCreate) =>
     request<WatchlistEntry>("/watchlist", {
       method: "POST",

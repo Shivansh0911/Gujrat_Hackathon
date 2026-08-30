@@ -23,6 +23,30 @@ import { Badge, Empty, ErrorBox, Spinner } from "../components/ui";
  * make sense of an alert -- but not extend it.
  */
 
+/**
+ * The same shapes `services/analytics/plate_grammar.py` accepts, mirrored here so the
+ * form can refuse a plate before the round trip.
+ *
+ * The server remains the authority -- this is not a substitute for it, and the API
+ * still validates. The point is that being told "GJ01AB1234 is the expected format"
+ * while typing is a different experience from a 422 after pressing the button.
+ */
+const PLATE_STANDARD = /^[A-Z]{2}\d{1,2}[A-Z]{1,3}\d{1,4}$/;
+const PLATE_BH = /^\d{2}BH\d{1,4}[A-Z]{1,2}$/;
+
+function plateLooksValid(raw: string): boolean {
+  const p = raw.toUpperCase().replace(/[\s-]/g, "");
+  return PLATE_STANDARD.test(p) || PLATE_BH.test(p);
+}
+
+/** Local datetime string for an <input type="datetime-local">, N days out. */
+function localDateTimeIn(days: number): string {
+  const d = new Date(Date.now() + days * 86_400_000);
+  // Shift by the timezone offset so the picker shows local time, not UTC.
+  const local = new Date(d.getTime() - d.getTimezoneOffset() * 60_000);
+  return local.toISOString().slice(0, 16);
+}
+
 const SEVERITIES = ["low", "medium", "high", "critical"] as const;
 
 const SEVERITY_TONE: Record<string, "bad" | "warn" | "ok" | "muted"> = {
@@ -36,10 +60,9 @@ function daysUntil(iso: string): number {
   return Math.ceil((new Date(iso).getTime() - Date.now()) / 86_400_000);
 }
 
+/** Thirty days out: long enough to be useful, short enough to be a real bound. */
 function defaultExpiry(): string {
-  const d = new Date(Date.now() + 30 * 86_400_000);
-  // `datetime-local` wants a value with no timezone suffix.
-  return d.toISOString().slice(0, 16);
+  return localDateTimeIn(30);
 }
 
 const EMPTY_FORM: WatchlistCreate = {
@@ -79,6 +102,11 @@ export default function WatchlistPage() {
     },
   });
 
+  const remove = useMutation({
+    mutationFn: (id: string) => api.deleteWatchlistEntry(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["watchlist"] }),
+  });
+
   const entries = useMemo(
     () => [...(data ?? [])].sort((a, b) => b.priority - a.priority),
     [data],
@@ -86,6 +114,9 @@ export default function WatchlistPage() {
 
   const set = <K extends keyof WatchlistCreate>(k: K, v: WatchlistCreate[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
+
+  const plateTouched = form.plate_normalised.length > 0;
+  const plateOk = plateLooksValid(form.plate_normalised);
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -136,9 +167,18 @@ export default function WatchlistPage() {
           onSubmit={submit}
           className="mb-5 rounded border border-edge bg-ink-800 p-4 grid gap-3 md:grid-cols-3"
         >
-          <Field label="Registration" hint="As it would be read, without spaces">
+          <Field
+            label="Registration"
+            hint={
+              plateTouched && !plateOk
+                ? "Not a valid Indian registration — expected GJ01AB1234, or 22BH1234A for a BH-series plate"
+                : "As it would be read, without spaces"
+            }
+          >
             <input
-              className="input mono uppercase"
+              className={`input mono uppercase ${
+                plateTouched && !plateOk ? "border-bad/70" : ""
+              }`}
               required
               minLength={4}
               value={form.plate_normalised}
@@ -196,15 +236,36 @@ export default function WatchlistPage() {
           </Field>
           <Field
             label="Expires"
-            hint="Required. An entry with no end date is a permanent record."
+            hint="Required. An entry with no end date is a permanent record about a citizen."
           >
             <input
               type="datetime-local"
               className="input"
               required
+              // `min` disables past dates in the picker itself. Previously the only
+              // signal was a 422 after submitting, which taught the operator nothing
+              // about what was wrong until the work was already done.
+              min={localDateTimeIn(0)}
               value={form.valid_to}
               onChange={(e) => set("valid_to", e.target.value)}
             />
+            <div className="flex gap-1 mt-1.5">
+              {[
+                ["7 days", 7],
+                ["30 days", 30],
+                ["90 days", 90],
+              ].map(([label, days]) => (
+                <button
+                  key={label as string}
+                  type="button"
+                  onClick={() => set("valid_to", localDateTimeIn(days as number))}
+                  className="text-[10px] px-2 py-0.5 rounded border border-edge bg-ink-700
+                             hover:bg-ink-600 text-muted hover:text-slate-200 transition-colors"
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </Field>
           <Field label="Notes" hint="Context for the officer who sees the alert">
             <input
@@ -214,7 +275,11 @@ export default function WatchlistPage() {
             />
           </Field>
           <div className="flex items-end">
-            <button className="btn btn-primary w-full" disabled={add.isPending}>
+            <button
+              className="btn btn-primary w-full"
+              disabled={add.isPending || !plateOk}
+              title={plateOk ? undefined : "Enter a valid registration first"}
+            >
               {add.isPending ? "Adding…" : "Add to watchlist"}
             </button>
           </div>
@@ -251,11 +316,18 @@ export default function WatchlistPage() {
                 <th className="text-right px-3 py-2">Priority</th>
                 <th className="text-left px-3 py-2">Severity</th>
                 <th className="text-left px-3 py-2">Expires</th>
+                <th className="px-3 py-2"></th>
               </tr>
             </thead>
             <tbody>
               {entries.map((e) => (
-                <Row key={e.id} entry={e} />
+                <Row
+                  key={e.id}
+                  entry={e}
+                  canRemove={isAdmin}
+                  removing={remove.isPending}
+                  onRemove={() => remove.mutate(e.id)}
+                />
               ))}
             </tbody>
           </table>
@@ -273,7 +345,18 @@ export default function WatchlistPage() {
   );
 }
 
-function Row({ entry }: { entry: WatchlistEntry }) {
+function Row({
+  entry,
+  canRemove,
+  removing,
+  onRemove,
+}: {
+  entry: WatchlistEntry;
+  canRemove: boolean;
+  removing: boolean;
+  onRemove: () => void;
+}) {
+  const [confirming, setConfirming] = useState(false);
   const days = daysUntil(entry.valid_to);
   const expired = days <= 0;
   return (
@@ -294,6 +377,35 @@ function Row({ entry }: { entry: WatchlistEntry }) {
             {days} day{days === 1 ? "" : "s"} left
           </span>
         )}
+      </td>
+      <td className="px-3 py-2 text-right whitespace-nowrap">
+        {canRemove &&
+          (confirming ? (
+            <span className="inline-flex items-center gap-1.5">
+              <span className="text-[11px] text-muted">Remove?</span>
+              <button
+                className="btn text-[11px] py-0.5 px-2 border-bad/60 text-bad hover:bg-bad/10"
+                disabled={removing}
+                onClick={onRemove}
+              >
+                {removing ? "Removing…" : "Yes, remove"}
+              </button>
+              <button
+                className="btn text-[11px] py-0.5 px-2"
+                onClick={() => setConfirming(false)}
+              >
+                Cancel
+              </button>
+            </span>
+          ) : (
+            <button
+              className="btn text-[11px] py-0.5 px-2 text-muted hover:text-bad"
+              onClick={() => setConfirming(true)}
+              title="Remove this entry. The removal is written to the audit ledger."
+            >
+              Remove
+            </button>
+          ))}
       </td>
     </tr>
   );

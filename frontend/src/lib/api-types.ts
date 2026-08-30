@@ -334,6 +334,39 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/watchlist/{entry_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Watchlist Entry
+         * @description Remove a watchlist entry.
+         *
+         *     Deletion is audited *before* the row goes, and the audit entry carries the plate,
+         *     authority and case reference. That ordering is the point: once the row is gone the
+         *     ledger is the only remaining evidence that the vehicle was ever watched, and a
+         *     surveillance authorisation that can be removed without trace is not an
+         *     authorisation.
+         *
+         *     Entries normally end by expiring -- `valid_to` is mandatory for exactly that
+         *     reason. This is for the other cases: a plate entered wrongly, or an authority
+         *     withdrawn before its expiry.
+         *
+         *     Alerts already raised are untouched. They are evidence of what was observed, and
+         *     they reference the entry rather than depending on it.
+         */
+        delete: operations["delete_watchlist_entry_watchlist__entry_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/journey": {
         parameters: {
             query?: never;
@@ -1619,6 +1652,35 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["WatchlistOut"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_watchlist_entry_watchlist__entry_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                entry_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
