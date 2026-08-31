@@ -231,6 +231,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/health/gateway": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Gateway Status
+         * @description Current reachability of the government gateway, from the passive watcher.
+         *
+         *     Cheap on purpose: this returns the last recorded observation rather than probing,
+         *     so the console can poll it without turning a page refresh into load on somebody
+         *     else's infrastructure. The watcher does the probing, once a minute.
+         */
+        get: operations["gateway_status_health_gateway_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/audit/verify": {
         parameters: {
             query?: never;
@@ -798,6 +822,45 @@ export interface components {
             summary: Record<string, never>;
             /** Interpretation */
             interpretation: string;
+        };
+        /**
+         * GatewayStatusOut
+         * @description Whether the government gateway is answering, and since when.
+         *
+         *     `reachable` is deliberately three-valued. `null` means the watcher has not
+         *     completed a check yet -- on a cold start, or on a free-tier host that was asleep --
+         *     and the console says "not yet checked" rather than presenting an unknown as an
+         *     outage. Reporting a state we have not observed is how a dashboard becomes
+         *     something nobody trusts.
+         */
+        GatewayStatusOut: {
+            /** Reachable */
+            reachable?: boolean | null;
+            /** Last Checked At */
+            last_checked_at?: string | null;
+            /** Last Success At */
+            last_success_at?: string | null;
+            /** Unreachable Since */
+            unreachable_since?: string | null;
+            /** Cameras In Catalogue */
+            cameras_in_catalogue?: number | null;
+            /** Last Error */
+            last_error?: string | null;
+            /**
+             * Consecutive Failures
+             * @default 0
+             */
+            consecutive_failures: number;
+            /**
+             * Checks Performed
+             * @default 0
+             */
+            checks_performed: number;
+            /**
+             * Poll Interval S
+             * @default 60
+             */
+            poll_interval_s: number;
         };
         /**
          * GeomPatch
@@ -1475,6 +1538,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CameraHealthOut"][];
+                };
+            };
+        };
+    };
+    gateway_status_health_gateway_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GatewayStatusOut"];
                 };
             };
         };

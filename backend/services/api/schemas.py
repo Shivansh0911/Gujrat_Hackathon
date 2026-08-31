@@ -135,6 +135,27 @@ class BulkImportResult(BaseModel):
     note: str | None = None
 
 
+class GatewayStatusOut(BaseModel):
+    """Whether the government gateway is answering, and since when.
+
+    `reachable` is deliberately three-valued. `null` means the watcher has not
+    completed a check yet -- on a cold start, or on a free-tier host that was asleep --
+    and the console says "not yet checked" rather than presenting an unknown as an
+    outage. Reporting a state we have not observed is how a dashboard becomes
+    something nobody trusts.
+    """
+
+    reachable: bool | None = None
+    last_checked_at: str | None = None
+    last_success_at: str | None = None
+    unreachable_since: str | None = None
+    cameras_in_catalogue: int | None = None
+    last_error: str | None = None
+    consecutive_failures: int = 0
+    checks_performed: int = 0
+    poll_interval_s: float = 60.0
+
+
 class AuditVerifyOut(BaseModel):
     valid: bool
     entries_checked: int

@@ -21,6 +21,7 @@ export type SyncResult = components["schemas"]["SyncResult"];
 export type BulkImportResult = components["schemas"]["BulkImportResult"];
 export type VehicleCounts = components["schemas"]["VehicleCountResult"];
 export type AuditVerify = components["schemas"]["AuditVerifyOut"];
+export type GatewayStatus = components["schemas"]["GatewayStatusOut"];
 export type StreamUrl = components["schemas"]["StreamUrlOut"];
 export type GapAnalysis = components["schemas"]["GapAnalysis"];
 export type DistrictCoverage = components["schemas"]["DistrictCoverage"];
@@ -179,6 +180,7 @@ export const api = {
       `/journey?${new URLSearchParams({ plate, from, to, purpose })}`,
     ),
   auditVerify: () => request<AuditVerify>("/audit/verify"),
+  gatewayStatus: () => request<GatewayStatus>("/health/gateway"),
   gapAnalysis: () => request<GapAnalysis>("/cameras/gap-analysis"),
 
   /**

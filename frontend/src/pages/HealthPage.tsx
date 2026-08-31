@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { api, type CameraHealth, type VehicleCounts } from "../lib/api";
+import { api, type CameraHealth, type GatewayStatus, type VehicleCounts } from "../lib/api";
 import { Badge, ErrorBox, Spinner, StatusDot } from "../components/ui";
 
 type SortKey = "status" | "camera_ref" | "drift" | "measured";
@@ -22,6 +22,14 @@ export default function HealthPage() {
   });
 
   const { data: alerts } = useQuery({ queryKey: ["alerts", ""], queryFn: () => api.alerts() });
+
+  // Polled rather than probed: the endpoint returns the watcher's last observation,
+  // so refreshing this page never puts load on somebody else's infrastructure.
+  const gateway = useQuery({
+    queryKey: ["gateway-status"],
+    queryFn: () => api.gatewayStatus(),
+    refetchInterval: 30_000,
+  });
 
   const [countHours, setCountHours] = useState(24);
   const vehicleCounts = useQuery({
@@ -68,6 +76,7 @@ export default function HealthPage() {
 
   return (
     <div className="h-full flex flex-col">
+      <GatewayCard status={gateway.data} />
       <div className="p-3 border-b border-edge bg-ink-800 flex items-center gap-3 flex-wrap">
         <div className="font-medium">Feed health</div>
         {Object.entries(counts).map(([status, n]) => (
@@ -358,6 +367,91 @@ function Stat({ label, value }: { label: string; value: number }) {
     <div>
       <div className="text-2xl font-semibold tabular-nums">{value}</div>
       <div className="text-[10px] uppercase tracking-wider text-muted">{label}</div>
+    </div>
+  );
+}
+
+
+/** How long ago, in words an operator can read at a glance. */
+function since(iso: string | null | undefined): string {
+  if (!iso) return "unknown";
+  const ms = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(ms / 60_000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins} minute${mins === 1 ? "" : "s"}`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs} hour${hrs === 1 ? "" : "s"}`;
+  const days = Math.floor(hrs / 24);
+  return `${days} day${days === 1 ? "" : "s"}`;
+}
+
+/**
+ * Gateway reachability, always on screen.
+ *
+ * Before this, the only way to learn the government feed was down was to press
+ * "Compare with gateway" on another page. That answers "is it up now" and never
+ * "when did it stop", which is the question actually asked — including, most
+ * awkwardly, mid-demonstration.
+ *
+ * The distinction the card is careful about: an empty Alert Desk because nothing
+ * matched, and an empty Alert Desk because the feed died forty minutes ago, look
+ * identical. Only one of them is a problem with this platform.
+ */
+function GatewayCard({ status }: { status: GatewayStatus | undefined }) {
+  if (!status) return null;
+
+  const notYetChecked = status.reachable === null || status.reachable === undefined;
+  const up = status.reachable === true;
+
+  const tone = notYetChecked ? "muted" : up ? "ok" : "bad";
+  const label = notYetChecked
+    ? "not yet checked"
+    : up
+      ? "government gateway reachable"
+      : "government gateway unreachable";
+
+  return (
+    <div
+      className={`px-3 py-2 border-b border-edge flex items-center gap-3 flex-wrap text-xs ${
+        up || notYetChecked ? "bg-ink-800" : "bg-bad/10"
+      }`}
+    >
+      <Badge tone={tone as "ok" | "bad" | "muted"}>{label}</Badge>
+
+      {!up && !notYetChecked && status.unreachable_since && (
+        <span className="text-bad">
+          down for <span className="font-medium">{since(status.unreachable_since)}</span>
+          <span className="text-muted">
+            {" "}
+            (since {new Date(status.unreachable_since).toLocaleTimeString()})
+          </span>
+        </span>
+      )}
+
+      {up && status.cameras_in_catalogue != null && (
+        <span className="text-muted tabular-nums">
+          {status.cameras_in_catalogue} cameras in catalogue
+        </span>
+      )}
+
+      <span className="text-muted">
+        {status.last_checked_at
+          ? `checked ${since(status.last_checked_at)} ago`
+          : "awaiting first check"}
+      </span>
+
+      {status.last_success_at && !up && (
+        <span className="text-muted">last reached {since(status.last_success_at)} ago</span>
+      )}
+
+      <div className="flex-1" />
+
+      {!up && !notYetChecked && (
+        <span className="text-muted max-w-md truncate" title={status.last_error ?? ""}>
+          This is the organiser's feed, not this platform. Everything below is from our
+          own records and is unaffected.
+        </span>
+      )}
     </div>
   );
 }

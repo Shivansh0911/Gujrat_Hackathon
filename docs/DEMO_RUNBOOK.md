@@ -277,19 +277,73 @@ architecture. Say that too.
 
 ## 3. If the gateway is 502 on the day
 
-It probably will be. Nothing above depends on it.
+It probably will be. **Nothing in section 2 depends on it**, and the platform now says
+so on screen rather than leaving you to explain it.
 
-- The **live HLS player** on the camera detail panel will show
-  `Live feed unavailable — upstream returned HTTP 502` with the camera's last known
-  status. This is deliberate: a spinner that never resolves looks like our defect
-  rather than theirs. Say so plainly and move on.
-- **Everything else works**: registry, GIS, journey, alerts, health, audit — all read
-  from data already ingested.
-- `docs/SUPPORT_QUERY.md` contains the fault report already prepared for the
-  organisers, including the DNS and port-reachability evidence.
+### What is actually measured
 
-If the gateway **does** recover, run `python backend/scripts/probe_catalogue.py --sequential
---emit-evidence` to capture live properties, then extend ingest across the catalogue.
+Do not describe this vaguely — the numbers are recorded and they make the point better
+than an apology does:
+
+| Date | Cameras producing frames | Valid registrations read |
+|---|---:|---:|
+| 2026-08-27 | 25 of 30 | 2 |
+| 2026-08-30 | 18 of 30 | 0 |
+| 2026-08-31 | **0 of 30** — Cloudflare 502 on every endpoint | — |
+
+Same pipeline on all three days. The only thing that changed was the feed.
+
+### What to say, in about twenty seconds
+
+Open **Health**. The card at the top of the page states the gateway's status, and if it
+is down, when it went down and how long ago. Then say roughly this:
+
+> "The government gateway is unreachable right now — our health page shows it went
+> down at *[time on screen]*. That's the organiser's origin server; Cloudflare is
+> answering, the host behind it isn't. What you're seeing below is our own recorded
+> data, which is unaffected. We designed for this: the feed has been between 25 and 0
+> of 30 cameras across the last week, so the platform treats gateway availability as
+> something to report rather than depend on."
+
+Then carry on with the demonstration. Do not apologise repeatedly, and do not go
+looking for a workaround mid-demo — there isn't one, because the fault is not ours.
+
+### Why this reads as strength rather than excuse
+
+Three things are true at once, and saying all three is what makes it credible:
+
+1. **It is visibly handled.** The status card is on screen before anyone asks, with a
+   real timestamp. A platform that discovers its dependency is down only when someone
+   clicks a button has not thought about operations.
+2. **It is bounded.** Only live camera preview and fresh ingestion need the gateway.
+   Registry, GIS, journey reconstruction, alerts, audit and evidence export all read
+   from data already recorded, and all of them work with the feed completely dark.
+3. **It is documented, and was reported.** `docs/SUPPORT_QUERY.md` is the fault report
+   prepared for the organisers, with DNS and port-reachability evidence attached.
+
+### What the platform does under the hood
+
+Worth one sentence if asked, not more: each camera session backs off exponentially
+with **full jitter**, capped, so a whole-domain outage does not turn ~50 workers into a
+thundering herd against infrastructure we do not own. A full-domain 502 and a single
+camera failing take the identical path — connect fails, back off, retry — which is why
+no special case was needed for this outage.
+
+The passive watcher polls once a minute using the same catalogue call the ingest path
+uses, so "reachable" means the same thing everywhere. It logs an outage **once**, at
+the transition, rather than every minute.
+
+### If it recovers mid-demo
+
+The card flips to reachable on the next poll, within a minute. To capture fresh
+evidence:
+
+```bash
+make gateway-ingest && make gateway-report
+```
+
+Do not do this during the demonstration itself — a full sweep takes about twenty
+minutes.
 
 ---
 

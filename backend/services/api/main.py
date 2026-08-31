@@ -9,6 +9,9 @@ from __future__ import annotations
 
 import logging
 
+from contextlib import asynccontextmanager
+from typing import AsyncIterator
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -20,6 +23,28 @@ redact.install(level=logging.INFO)
 
 settings = get_api_settings()
 
+
+@asynccontextmanager
+async def _lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    """Run the gateway watch for the life of the process.
+
+    Started here rather than on first request so that "unreachable since" is anchored
+    to when the service came up, not to whenever somebody first happened to look.
+
+    On a free-tier host that sleeps after idle, the watcher sleeps with it and the
+    recorded history has a hole. That is a property of the hosting rather than a bug,
+    and the console shows `last_checked_at` so the gap is visible instead of being
+    mistaken for continuous observation.
+    """
+    from services.api import gateway_watch
+
+    gateway_watch.start()
+    try:
+        yield
+    finally:
+        await gateway_watch.stop()
+
+
 app = FastAPI(
     title="Project SETU",
     version="0.1.0",
@@ -28,6 +53,7 @@ app = FastAPI(
         "Police Innovation Challenge 2026."
     ),
     openapi_version="3.1.0",
+    lifespan=_lifespan,
 )
 
 # Explicit origin list, never "*". A wildcard origin with credentialed requests is

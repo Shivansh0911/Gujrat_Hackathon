@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from services.api import audit as audit_mod
 from services.api.db import get_session
-from services.api.schemas import AuditVerifyOut, CameraHealthOut
+from services.api.schemas import AuditVerifyOut, CameraHealthOut, GatewayStatusOut
 from services.api.security import CurrentActor, camera_scope
 from services.registry.enums import GeomSource
 from services.registry.models import Camera
@@ -51,6 +51,19 @@ def camera_health(session: SessionDep, actor: CurrentActor) -> list[CameraHealth
             )
         )
     return out
+
+
+@router.get("/health/gateway", response_model=GatewayStatusOut)
+def gateway_status(actor: CurrentActor) -> GatewayStatusOut:
+    """Current reachability of the government gateway, from the passive watcher.
+
+    Cheap on purpose: this returns the last recorded observation rather than probing,
+    so the console can poll it without turning a page refresh into load on somebody
+    else's infrastructure. The watcher does the probing, once a minute.
+    """
+    from services.api import gateway_watch
+
+    return GatewayStatusOut(**gateway_watch.current_status().as_dict())  # type: ignore[arg-type]
 
 
 @router.get("/audit/verify", response_model=AuditVerifyOut)
