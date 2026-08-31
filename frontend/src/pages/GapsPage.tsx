@@ -173,9 +173,11 @@ export default function GapsPage() {
             <div className="space-y-1.5">
               {data.districts.map((d) => (
                 <div key={d.district} className="text-[11px]">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-slate-300">{d.district}</span>
-                    <span className="text-muted">
+                  {/* min-w-0 on the label so a long district name shrinks rather
+                      than shoving the camera count off the right edge on a phone. */}
+                  <div className="flex items-center justify-between gap-2 min-w-0">
+                    <span className="text-slate-300 truncate min-w-0">{d.district}</span>
+                    <span className="text-muted whitespace-nowrap shrink-0">
                       {d.cameras_total} camera{d.cameras_total !== 1 ? "s" : ""} ·{" "}
                       {(d.coverage_confidence * 100).toFixed(0)}%
                     </span>

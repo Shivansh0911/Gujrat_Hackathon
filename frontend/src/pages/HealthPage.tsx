@@ -109,7 +109,14 @@ export default function HealthPage() {
           />
         </div>
 
-        <table className="w-full text-xs">
+        {/*
+          The table has ten columns and does not fit a phone. It gets its own
+          horizontal scroller rather than being allowed to widen the page: wide content
+          scrolls inside its container, the page body never does. `min-w-[52rem]` stops
+          the columns collapsing into an unreadable concertina on the way.
+        */}
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[52rem] text-xs">
           <thead className="sticky top-0 bg-ink-800 border-b border-edge">
             <tr className="text-left text-muted">
               <th className="px-3 py-2 font-medium">Camera</th>
@@ -175,6 +182,7 @@ export default function HealthPage() {
             })}
           </tbody>
         </table>
+        </div>
 
         <div className="p-3 text-[11px] text-muted max-w-3xl leading-snug">
           <strong className="text-slate-300">Declared versus measured frame rate.</strong>{" "}
