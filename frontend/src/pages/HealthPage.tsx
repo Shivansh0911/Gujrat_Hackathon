@@ -304,21 +304,7 @@ function VehicleCountCard({
           </div>
 
           {peak !== undefined && peak > 0 && (
-            <div className="mt-4">
-              <div className="label">
-                Reads per {data.bucket}, oldest first
-              </div>
-              <div className="flex items-end gap-[3px] h-16">
-                {data.windows.map((w) => (
-                  <div
-                    key={w.bucket_start_utc}
-                    className="flex-1 min-w-[3px] bg-accent/70 rounded-sm"
-                    style={{ height: `${Math.max(4, (w.reads / peak) * 100)}%` }}
-                    title={`${new Date(w.bucket_start_utc).toLocaleString()} — ${w.reads} reads, ${w.distinct_plates} distinct`}
-                  />
-                ))}
-              </div>
-            </div>
+            <ReadsChart windows={data.windows} bucket={data.bucket} peak={peak} />
           )}
 
           {data.by_camera.length > 0 && (
@@ -460,6 +446,108 @@ function GatewayCard({ status }: { status: GatewayStatus | undefined }) {
           own records and is unaffected.
         </span>
       )}
+    </div>
+  );
+}
+
+
+/**
+ * Reads per time bucket.
+ *
+ * The previous version was a row of bars with a native `title` and nothing else: no
+ * axis, no scale, no indication of the period covered. A bar's height meant nothing
+ * you could name, and "what am I looking at" had to be asked out loud, which for a
+ * chart is the whole failure.
+ *
+ * Four things fix that, and none of them needs a charting library: the y-axis states
+ * its own maximum, the x-axis states the span in local time, hovering names the exact
+ * bucket, and a caption says in one line what a bar counts. Empty buckets are drawn as
+ * a faint floor rather than omitted, because "no vehicle passed in this hour" is a
+ * reading and a missing bar looks like missing data.
+ */
+function ReadsChart({
+  windows,
+  bucket,
+  peak,
+}: {
+  windows: VehicleCounts["windows"];
+  bucket: string;
+  peak: number;
+}) {
+  const [hover, setHover] = useState<number | null>(null);
+  if (windows.length === 0) return null;
+
+  const active = hover !== null ? windows[hover] : null;
+  const first = windows[0];
+  const last = windows[windows.length - 1];
+  const fmt = (iso: string) =>
+    new Date(iso).toLocaleString(undefined, {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+  return (
+    <div className="mt-4">
+      <div className="flex items-baseline justify-between gap-3 flex-wrap mb-1.5">
+        <div className="label !mb-0">Plate reads per {bucket}</div>
+        <div className="text-[11px] text-muted tabular-nums h-4">
+          {active ? (
+            <>
+              <span className="text-slate-200">{fmt(active.bucket_start_utc)}</span>
+              {" — "}
+              <span className="text-accent">{active.reads} reads</span>
+              {", "}
+              {active.distinct_plates} distinct vehicle
+              {active.distinct_plates === 1 ? "" : "s"}
+            </>
+          ) : (
+            <span>hover a bar for its exact count</span>
+          )}
+        </div>
+      </div>
+
+      <div className="flex gap-2">
+        {/* y-axis: the scale the bars are drawn against, stated rather than implied */}
+        <div className="flex flex-col justify-between text-[10px] text-muted tabular-nums h-16 shrink-0 text-right w-8">
+          <span>{peak}</span>
+          <span>0</span>
+        </div>
+
+        <div className="flex-1 min-w-0">
+          <div
+            className="flex items-end gap-[3px] h-16 border-l border-b border-edge pl-1 pb-px"
+            onMouseLeave={() => setHover(null)}
+          >
+            {windows.map((w, i) => (
+              <div
+                key={w.bucket_start_utc}
+                className={`flex-1 min-w-[3px] rounded-sm transition-colors ${
+                  hover === i ? "bg-accent" : w.reads > 0 ? "bg-accent/70" : "bg-edge"
+                }`}
+                style={{
+                  height: w.reads > 0 ? `${Math.max(6, (w.reads / peak) * 100)}%` : "2px",
+                }}
+                onMouseEnter={() => setHover(i)}
+                title={`${fmt(w.bucket_start_utc)} — ${w.reads} reads, ${w.distinct_plates} distinct`}
+              />
+            ))}
+          </div>
+
+          {/* x-axis: the period actually covered, in the reader's own timezone */}
+          <div className="flex justify-between text-[10px] text-muted mt-1 tabular-nums">
+            <span>{fmt(first.bucket_start_utc)}</span>
+            <span>{fmt(last.bucket_start_utc)}</span>
+          </div>
+        </div>
+      </div>
+
+      <p className="text-[10px] text-muted mt-1.5 leading-snug">
+        Each bar is one {bucket}: how many number plates were read in it, across every
+        camera. A flat bar is an interval where nothing was read — which on this estate
+        usually means the feed was down, not that the road was empty.
+      </p>
     </div>
   );
 }

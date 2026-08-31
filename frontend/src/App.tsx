@@ -9,11 +9,13 @@ import HealthPage from "./pages/HealthPage";
 import GapsPage from "./pages/GapsPage";
 import WatchlistPage from "./pages/WatchlistPage";
 import SystemPage from "./pages/SystemPage";
+import ControlRoomPage from "./pages/ControlRoomPage";
 
 const NAV = [
   { to: "/map", label: "GIS Map", hint: "Camera registry" },
   { to: "/journey", label: "Journey", hint: "Route reconstruction" },
   { to: "/alerts", label: "Alert Desk", hint: "Live watchlist matches" },
+  { to: "/control-room", label: "Control Room", hint: "Multi-camera video wall" },
   { to: "/health", label: "Health", hint: "Feed diagnostics" },
   { to: "/gaps", label: "Coverage", hint: "Gap analysis" },
   { to: "/watchlist", label: "Watchlist", hint: "Vehicles being watched" },
@@ -111,6 +113,7 @@ function Shell() {
           <Route path="/map" element={<MapPage />} />
           <Route path="/journey" element={<JourneyPage />} />
           <Route path="/alerts" element={<AlertsPage />} />
+          <Route path="/control-room" element={<ControlRoomPage />} />
           <Route path="/health" element={<HealthPage />} />
           <Route path="/gaps" element={<GapsPage />} />
           <Route path="/watchlist" element={<WatchlistPage />} />
