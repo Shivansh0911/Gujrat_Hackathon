@@ -40,6 +40,8 @@ Script for both, screen by screen with timings and what to say:
 | # | Deliverable | Artefact | State |
 |---|---|---|---|
 | 10 | GitHub repository | `github.com/Shivansh0911/Gujrat_Hackathon` | ✅ |
+| 10a | **Manual + bulk camera onboarding** (Model 1) | `POST /cameras` and `POST /cameras/bulk-import`, both on the System screen | ✅ both demonstrable, both audited |
+| 10b | **Control Room video wall** (Model 2) | Console → Control Room | ✅ 1 / 2×2 / 2×3 tiles, capped at six concurrent streams |
 | 11 | Screenshots, all screens, real data | `docs/screenshots/` | ✅ 11 images covering all eight screens |
 | 12 | Screenshots of the deployed instance | `docs/screenshots/deployed/` | ✅ 8 images, captured against the container stack |
 | 13 | Hosted URL + test credentials | **Console: https://setu-gujrat.netlify.app** · API: https://setu-api-ai7z.onrender.com | ✅ **live**, verified 10/10 by `verify_deployment.py`. Deployed on Render + Netlify, not Railway — see `docs/adr/0004` addendum. Credentials in `deploy-secrets.env` (gitignored) |

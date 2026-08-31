@@ -74,3 +74,115 @@ submission cites both and the range.
   cameras; `gateway_report.py` merged both dated passes.
 - Numeric claims grepped across `README.md` and `docs/*.md` to confirm no two
   documents state different figures for the same measurement.
+
+
+---
+
+# Completeness audit — 2026-08-31
+
+Second pass. The 2026-08-30 entry above stands unchanged; this appends what changed
+today rather than rewriting it.
+
+Deployment audited: **https://setu-gujrat.netlify.app** against
+**https://setu-api-ai7z.onrender.com**.
+
+## The gateway, measured again
+
+| Date | Cameras producing frames | Valid registrations |
+|---|---:|---:|
+| 2026-08-27 | 25 of 30 | 2 |
+| 2026-08-30 | 18 of 30 | 0 |
+| **2026-08-31** | **0 of 30** — Cloudflare 502 on every endpoint | — |
+
+Checked once at the start of the session and not looped on. The origin behind
+Cloudflare is down; this is the organiser's infrastructure and there is nothing in
+this repository to fix. `gateway-ingest` was therefore not run, and **the 2026-08-30
+figures remain the most recent real measurement** everywhere they are quoted.
+
+## What was built about it
+
+The platform's *handling* of the outage changed; the outage did not.
+
+A passive watcher polls the catalogue once a minute and records transitions, so the
+console can answer "when did it stop" rather than only "is it up". `unreachable_since`
+is set at the transition and cleared on recovery — a detail with its own test, because
+overwriting it each poll would report a four-hour outage as "down for one minute",
+every minute. Reachability is three-valued: `null` means not yet checked, and the card
+says so rather than presenting an unknown as an outage.
+
+The reconnect logic was **read and left alone**. A whole-domain 502 and a single
+camera failing take the identical path — connect fails, jittered backoff, retry — and
+the full jitter already exists so that ~50 workers do not become a thundering herd
+against infrastructure we do not own. Nothing mishandled a full-domain outage, so
+nothing was changed.
+
+`DEMO_RUNBOOK.md` §3 now carries the three-day table and the wording to use if the
+feed drops mid-demonstration.
+
+## Found on the deployed API, still outstanding
+
+**`SETU_GATEWAY_HOST` is not set on Render.** The live watcher reports
+`no gateway configured (SETU_GATEWAY_HOST unset)` rather than a 502, which means the
+deployed API does not know where the gateway is and has never attempted to reach it.
+Last session made the endpoints report this instead of returning an opaque 500; the
+variable itself still needs adding in the Render dashboard. Until it is, live camera
+preview and **Compare with gateway** cannot work even when the organiser's feed
+recovers.
+
+## What was checked and corrected
+
+| # | Item | Finding |
+|---|---|---|
+| 1 | Responsive layout | The first audit **passed every page and was wrong**. `main` carries `overflow-hidden`, so content is clipped rather than scrolled and `scrollWidth` never grows. At 375px the sidebar took 55% of the viewport and the GIS page rendered with **no map at all** |
+| 2 | Audit method | Corrected twice: it could not see clipping, then it could not tell clipping from legitimate scrolling inside `overflow-x-auto`. It now checks geometry, walks up for a scrollable ancestor, and fails when navigation exceeds a third of a phone viewport |
+| 3 | Navigation | Sidebar becomes a drawer below `md`, closing on route change, 44px targets, transition disabled under `prefers-reduced-motion` |
+| 4 | Health table | Ten columns clipped at **every** width including 1024px. Now scrolls inside its own container |
+| 5 | Screenshot scripts | `capture_screenshots.mjs` and `record_demo.mjs` still filled `input[autocomplete="username"]`, which the role-button login removed last session. They were broken and nothing had noticed |
+| 6 | Department filter | Verified with a temporary fixture: two cameras moved to `HEALTH`, both codes offered, each filter returned the right set, then reverted. **The filter needs data, not code** — all 34 cameras sit in `HOME` because the catalogue has no departmental demarcation. No departments were fabricated |
+| 7 | ANPR accuracy | Re-measured: **29.6% precision / 29.6% recall, 26.9% CER**, unchanged. Consistent across README, BUILD_INSTRUCTION, DEMO_RUNBOOK, DISCOVERY and the HLD |
+| 8 | Secret scanning | Resolved after three sessions outstanding — see below |
+
+## Secret scanning, resolved
+
+Both routes succeeded, not just one.
+
+**CI `gitleaks`, full history** — the *Secret scan (full history)* step is green on
+`42700d8`, run
+[33355613476](https://github.com/Shivansh0911/Gujrat_Hackathon/actions/runs/33355613476).
+This is the authoritative check: history is where a committed-then-deleted secret
+hides, and a working-tree scan cannot see it.
+
+**Local `detect-secrets`** — installs through pip where the gitleaks binary would not
+download and Docker was unavailable. 18 findings over tracked files, each read and
+confirmed a false positive: the `change-me-locally` placeholder the API refuses to
+start on, the regex in `redact.py` that *detects* credentials, a test constant, and
+fifteen `git_sha` provenance fields whose 40-character hashes read as high-entropy
+hex. Committed as `.secrets.baseline`; documented in `SECURITY.md`.
+
+No credential is committed. `.env`, `.env.prod` and `deploy-secrets.env` appear only
+in an `--all-files` scan, never in the tracked-file one.
+
+## Added this session
+
+| Capability | Evidence |
+|---|---|
+| Passive gateway watch | `GET /health/gateway`, card on Health, 10 tests |
+| Manual camera onboarding | `POST /cameras`, form on System, 9 tests run against the deployed database |
+| Sample gap-analysis report | `reports/gap-analysis-2026-08-31T06-14-08Z.md` — 10 districts, 28 camera gaps, grouped by remedy. `make gap-report` |
+| Control Room video wall | 1 / 2×2 / 2×3 tiles, capped at six concurrent streams |
+| Reads-per-hour chart | Labelled axes, hover detail, caption |
+
+## Not built, and why
+
+**Speed-based flagging.** It needs genuine cross-camera timestamps. The only
+multi-camera data available is the REPLAY harness, where camera attribution is
+simulated — a speed alert computed from fake attribution is a fabricated capability
+presented as a real one, which is worse than the feature's absence. The last gateway
+run to produce any valid plate at all was 27 August, with two. It stays unbuilt.
+
+## Method
+
+Deployed database queried directly; `verify_deployment.py` with `--api-origin`;
+`ground_truth.py score` re-run; `responsive_audit.mjs` at 375/390/768/1024 against the
+live site; gateway probed once; `detect-secrets` over tracked files; CI job status read
+from the Actions API.

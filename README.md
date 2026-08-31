@@ -351,7 +351,10 @@ submission.
    the edge where full resolution still exists.
 5. **The gateway media plane is intermittent, and its plate legibility is worse
    than its uptime.** Availability measured 17, then 25, then **18 of 30 cameras**
-   producing frames across 27–30 August, with a total 502 in between. More
+   producing frames across 27–30 August, and on **31 August a Cloudflare 502 on every
+   endpoint** — the organiser's origin, not their edge. The console now carries a
+   passive gateway-status card showing exactly when contact was lost, so an outage is
+   visible rather than looking like our own failure. More
    importantly, a full sweep on 2026-08-30 decoded 5,055 frames and produced
    **zero** grammar-valid registrations; the 27 August sweep produced two. The
    pipeline behaved identically — the difference is what the cameras publish.

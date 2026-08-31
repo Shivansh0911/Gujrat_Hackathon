@@ -66,8 +66,26 @@ export default function HealthPage() {
     return list;
   }, [data, sort, onlyProblems]);
 
-  if (isLoading) return <Spinner label="Loading camera health…" />;
-  if (error) return <div className="p-4"><ErrorBox error={error} /></div>;
+  // The gateway card renders above these early returns on purpose. It answers a
+  // question that has nothing to do with whether the camera table has loaded, and a
+  // page that shows nothing at all while it loads cannot be called always-visible --
+  // which is the entire point of a passive indicator.
+  if (isLoading)
+    return (
+      <div className="h-full flex flex-col">
+        <GatewayCard status={gateway.data} />
+        <Spinner label="Loading camera health…" />
+      </div>
+    );
+  if (error)
+    return (
+      <div className="h-full flex flex-col">
+        <GatewayCard status={gateway.data} />
+        <div className="p-4">
+          <ErrorBox error={error} />
+        </div>
+      </div>
+    );
 
   const counts = (data ?? []).reduce<Record<string, number>>((acc, c) => {
     acc[c.status] = (acc[c.status] ?? 0) + 1;
