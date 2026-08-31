@@ -19,6 +19,7 @@ from services.api.db import get_session
 from services.api.schemas import (
     BulkImportRejection,
     BulkImportResult,
+    CameraCreate,
     CameraOut,
     GeomPatch,
     StreamUrlOut,
@@ -125,6 +126,111 @@ def _to_out(session: Session, camera: Camera, detection_count: int | None = None
             else _detection_counts(session, [camera.id]).get(camera.id, 0)
         ),
     )
+
+
+@router.post("", response_model=CameraOut, status_code=201)
+def create_camera(body: CameraCreate, session: SessionDep, actor: AdminActor) -> CameraOut:
+    """Onboard a single camera by hand.
+
+    Model 1 asks for manual *and* bulk onboarding to be demonstrable. Bulk import
+    handles a departmental spreadsheet; this handles the one camera someone is
+    standing in front of, and the two share their coordinate rules rather than
+    drifting apart.
+
+    Rejects a duplicate `camera_ref` with 409 rather than silently updating: a
+    registry that quietly overwrites an existing camera because two people chose the
+    same reference is how one camera's evidence ends up filed under another's.
+
+    Created as DRAFT, never ACTIVE. Nothing has been probed yet, and a camera that
+    claims to be active before anything has connected to it is a claim the registry
+    cannot support.
+    """
+    ref = body.camera_ref.strip()
+
+    existing = session.execute(select(Camera).where(Camera.camera_ref == ref)).scalar_one_or_none()
+    if existing is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                f"camera_ref '{ref}' already exists. Use the map's pin-drop to correct "
+                "its position, or choose a different reference."
+            ),
+        )
+
+    # Coordinates are all-or-nothing. A latitude with no longitude is a typo, and
+    # storing half a position would place the camera on the prime meridian.
+    if (body.lat is None) != (body.lon is None):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="supply both lat and lon, or neither",
+        )
+    if body.lat is not None and body.confidence_radius_m is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=(
+                "confidence_radius_m is required with coordinates. A position with no "
+                "stated uncertainty reads as survey-grade."
+            ),
+        )
+
+    department = None
+    if body.department_code:
+        department = session.execute(
+            select(Department).where(Department.code == body.department_code.upper())
+        ).scalar_one_or_none()
+        if department is None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"unknown department code '{body.department_code}'",
+            )
+    if department is None:
+        department = session.execute(select(Department).order_by(Department.code)).scalars().first()
+    if department is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="no departments exist in the registry; run the department seed first",
+        )
+
+    camera = Camera(
+        camera_ref=ref,
+        name=body.name.strip(),
+        location_text=(body.location_text or "").strip(),
+        department_id=department.id,
+        source_type=SourceType.GATEWAY.value,
+        status=CameraStatus.DRAFT.value,
+        geom_source=GeomSource.UNSET.value,
+    )
+
+    if body.lat is not None and body.lon is not None:
+        camera.geom = func.ST_SetSRID(func.ST_MakePoint(body.lon, body.lat), 4326)
+        # manual_survey, because a person supplied it. That provenance is what the map
+        # renders as a precise pin rather than an uncertainty circle.
+        camera.geom_source = GeomSource.MANUAL_SURVEY.value
+        camera.confidence_radius_m = body.confidence_radius_m
+        camera.resolved_by = f"manual entry by {actor.subject}"
+        camera.resolved_at = datetime.now(timezone.utc)
+
+    session.add(camera)
+    session.flush()
+
+    audit.append(
+        session,
+        action="CAMERA_CREATED",
+        subject_type="camera",
+        subject_id=str(camera.id),
+        actor_id=actor.subject,
+        actor_role=actor.role,
+        detail={
+            "camera_ref": camera.camera_ref,
+            "name": camera.name,
+            "department": department.code,
+            "geom_source": camera.geom_source,
+            "note": body.note,
+        },
+    )
+    session.flush()
+
+    return _to_out(session, camera, 0)
 
 
 @router.get("", response_model=list[CameraOut])

@@ -1,0 +1,772 @@
+{
+  "kind": "gap-analysis",
+  "generated_at": "2026-08-31T06:14:08.362994Z",
+  "provenance": {
+    "git_sha": "d38fe5236a4c9773f733f9c2a55df597e90da9d5",
+    "git_tree_dirty": true,
+    "git_branch": "main",
+    "python": "3.12.5",
+    "platform": "Windows-11-10.0.26200-SP0"
+  },
+  "cameras_total": 34,
+  "districts": [
+    {
+      "district": "Ahmedabad",
+      "cameras_total": 9,
+      "cameras_placed": 8,
+      "cameras_unset": 1,
+      "cameras_approximate": 5,
+      "cameras_degraded": 0,
+      "cameras_unreachable": 0,
+      "mean_confidence_radius_m": 2362.5,
+      "spread_km2": 2742.49,
+      "coverage_confidence": 0.711,
+      "findings": [
+        "1 camera(s) with no coordinate",
+        "5 camera(s) placed only to within 2.4 km"
+      ]
+    },
+    {
+      "district": "Banaskantha",
+      "cameras_total": 1,
+      "cameras_placed": 1,
+      "cameras_unset": 0,
+      "cameras_approximate": 1,
+      "cameras_degraded": 0,
+      "cameras_unreachable": 0,
+      "mean_confidence_radius_m": 5000.0,
+      "spread_km2": null,
+      "coverage_confidence": 0.6,
+      "findings": [
+        "1 camera(s) placed only to within 5.0 km"
+      ]
+    },
+    {
+      "district": "Gandhinagar",
+      "cameras_total": 3,
+      "cameras_placed": 3,
+      "cameras_unset": 0,
+      "cameras_approximate": 3,
+      "cameras_degraded": 0,
+      "cameras_unreachable": 0,
+      "mean_confidence_radius_m": 5000.0,
+      "spread_km2": 0.0,
+      "coverage_confidence": 0.6,
+      "findings": [
+        "3 camera(s) placed only to within 5.0 km",
+        "3 cameras occupy under 1 km\u00b2 \u2014 clustered, not distributed"
+      ]
+    },
+    {
+      "district": "Gir Somnath",
+      "cameras_total": 1,
+      "cameras_placed": 1,
+      "cameras_unset": 0,
+      "cameras_approximate": 1,
+      "cameras_degraded": 0,
+      "cameras_unreachable": 0,
+      "mean_confidence_radius_m": 5000.0,
+      "spread_km2": null,
+      "coverage_confidence": 0.6,
+      "findings": [
+        "1 camera(s) placed only to within 5.0 km"
+      ]
+    },
+    {
+      "district": "Junagadh",
+      "cameras_total": 6,
+      "cameras_placed": 6,
+      "cameras_unset": 0,
+      "cameras_approximate": 5,
+      "cameras_degraded": 0,
+      "cameras_unreachable": 0,
+      "mean_confidence_radius_m": 2716.7,
+      "spread_km2": 115.83,
+      "coverage_confidence": 0.667,
+      "findings": [
+        "5 camera(s) placed only to within 2.7 km"
+      ]
+    },
+    {
+      "district": "Kutch",
+      "cameras_total": 1,
+      "cameras_placed": 1,
+      "cameras_unset": 0,
+      "cameras_approximate": 1,
+      "cameras_degraded": 0,
+      "cameras_unreachable": 0,
+      "mean_confidence_radius_m": 4000.0,
+      "spread_km2": null,
+      "coverage_confidence": 0.6,
+      "findings": [
+        "1 camera(s) placed only to within 4.0 km"
+      ]
+    },
+    {
+      "district": "Navsari",
+      "cameras_total": 6,
+      "cameras_placed": 5,
+      "cameras_unset": 1,
+      "cameras_approximate": 4,
+      "cameras_degraded": 0,
+      "cameras_unreachable": 0,
+      "mean_confidence_radius_m": 3460.0,
+      "spread_km2": 186.7,
+      "coverage_confidence": 0.633,
+      "findings": [
+        "1 camera(s) with no coordinate",
+        "4 camera(s) placed only to within 3.5 km"
+      ]
+    },
+    {
+      "district": "Patan",
+      "cameras_total": 1,
+      "cameras_placed": 1,
+      "cameras_unset": 0,
+      "cameras_approximate": 1,
+      "cameras_degraded": 0,
+      "cameras_unreachable": 0,
+      "mean_confidence_radius_m": 4000.0,
+      "spread_km2": null,
+      "coverage_confidence": 0.6,
+      "findings": [
+        "1 camera(s) placed only to within 4.0 km"
+      ]
+    },
+    {
+      "district": "Rajkot",
+      "cameras_total": 3,
+      "cameras_placed": 3,
+      "cameras_unset": 0,
+      "cameras_approximate": 3,
+      "cameras_degraded": 0,
+      "cameras_unreachable": 0,
+      "mean_confidence_radius_m": 4000.0,
+      "spread_km2": 0.0,
+      "coverage_confidence": 0.6,
+      "findings": [
+        "3 camera(s) placed only to within 4.0 km",
+        "3 cameras occupy under 1 km\u00b2 \u2014 clustered, not distributed"
+      ]
+    },
+    {
+      "district": "Unclassified",
+      "cameras_total": 3,
+      "cameras_placed": 3,
+      "cameras_unset": 0,
+      "cameras_approximate": 2,
+      "cameras_degraded": 0,
+      "cameras_unreachable": 0,
+      "mean_confidence_radius_m": 3100.0,
+      "spread_km2": 19649.41,
+      "coverage_confidence": 0.733,
+      "findings": [
+        "2 camera(s) placed only to within 3.1 km"
+      ]
+    }
+  ],
+  "camera_gaps": [
+    {
+      "camera_id": "67d97977-877a-4bae-adb2-498a9e8a0bbd",
+      "camera_ref": "1",
+      "name": "Camera 1",
+      "location_text": "01 Chiman bhai Bridge",
+      "district": "Ahmedabad",
+      "kind": "low_confidence",
+      "detail": "Positioned to within 5.0 km (approximate). Route plausibility widens its tolerance by this much wherever this camera appears, weakening every journey it contributes to. A survey fixes it.",
+      "confidence_radius_m": 5000.0,
+      "lat": 22.745539,
+      "lon": 72.297491
+    },
+    {
+      "camera_id": "d3ffdb98-a948-4d7e-88f9-931ec6bc4fb2",
+      "camera_ref": "10",
+      "name": "Camera 10",
+      "location_text": "10 char-chowk-road-2-junagadh",
+      "district": "Junagadh",
+      "kind": "low_confidence",
+      "detail": "Positioned to within 4.0 km (geocoded). Route plausibility widens its tolerance by this much wherever this camera appears, weakening every journey it contributes to. A survey fixes it.",
+      "confidence_radius_m": 4000.0,
+      "lat": 21.522042,
+      "lon": 70.458246
+    },
+    {
+      "camera_id": "e6c85078-372f-4fbd-adb4-d73731812ec2",
+      "camera_ref": "11",
+      "name": "Camera 11",
+      "location_text": "11 dolatpara-junagadh",
+      "district": "Junagadh",
+      "kind": "low_confidence",
+      "detail": "Positioned to within 1.5 km (geocoded). Route plausibility widens its tolerance by this much wherever this camera appears, weakening every journey it contributes to. A survey fixes it.",
+      "confidence_radius_m": 1500.0,
+      "lat": 21.558757,
+      "lon": 70.465922
+    },
+    {
+      "camera_id": "228eb559-2faf-45ef-a66b-3786f7d6bd19",
+      "camera_ref": "12",
+      "name": "Camera 12",
+      "location_text": "12 Tri Mandir Adalaj Tollnaka",
+      "district": "Gandhinagar",
+      "kind": "low_confidence",
+      "detail": "Positioned to within 5.0 km (approximate). Route plausibility widens its tolerance by this much wherever this camera appears, weakening every journey it contributes to. A survey fixes it.",
+      "confidence_radius_m": 5000.0,
+      "lat": 23.281952,
+      "lon": 72.653631
+    },
+    {
+      "camera_id": "49282b64-dd94-46b6-9e42-98986ee223a2",
+      "camera_ref": "13",
+      "name": "Camera 13",
+      "location_text": "13 CN Vidhyalaya",
+      "district": "Ahmedabad",
+      "kind": "low_confidence",
+      "detail": "Positioned to within 5.0 km (approximate). Route plausibility widens its tolerance by this much wherever this camera appears, weakening every journey it contributes to. A survey fixes it.",
+      "confidence_radius_m": 5000.0,
+      "lat": 22.745539,
+      "lon": 72.297491
+    },
+    {
+      "camera_id": "a3741934-fac0-4eaf-bb20-d0d271ae1b93",
+      "camera_ref": "14",
+      "name": "Camera 14",
+      "location_text": "14 Delight",
+      "district": "Unclassified",
+      "kind": "low_confidence",
+      "detail": "Positioned to within 5.0 km (approximate). Route plausibility widens its tolerance by this much wherever this camera appears, weakening every journey it contributes to. A survey fixes it.",
+      "confidence_radius_m": 5000.0,
+      "lat": 22.745539,
+      "lon": 72.297491
+    },
+    {
+      "camera_id": "cd7f8efb-b2b3-498c-acef-38f952ffef86",
+      "camera_ref": "15",
+      "name": "Camera 15",
+      "location_text": "15 Suvidha park",
+      "district": "Ahmedabad",
+      "kind": "low_confidence",
+      "detail": "Positioned to within 5.0 km (approximate). Route plausibility widens its tolerance by this much wherever this camera appears, weakening every journey it contributes to. A survey fixes it.",
+      "confidence_radius_m": 5000.0,
+      "lat": 22.745539,
+      "lon": 72.297491
+    },
+    {
+      "camera_id": "0aa3e04a-ca53-451e-b5c6-fc40d85ec0d5",
+      "camera_ref": "17",
+      "name": "Camera 17",
+      "location_text": "17 Rajkot Bus Port CCTV",
+      "district": "Rajkot",
+      "kind": "low_confidence",
+      "detail": "Positioned to within 4.0 km (geocoded). Route plausibility widens its tolerance by this much wherever this camera appears, weakening every journey it contributes to. A survey fixes it.",
+      "confidence_radius_m": 4000.0,
+      "lat": 22.305326,
+      "lon": 70.802838
+    },
+    {
+      "camera_id": "1413d3ea-d79f-4983-b613-07edf8a4bdc0",
+      "camera_ref": "18",
+      "name": "Camera 18",
+      "location_text": "18 Rajkot CCTV",
+      "district": "Rajkot",
+      "kind": "low_confidence",
+      "detail": "Positioned to within 4.0 km (geocoded). Route plausibility widens its tolerance by this much wherever this camera appears, weakening every journey it contributes to. A survey fixes it.",
+      "confidence_radius_m": 4000.0,
+      "lat": 22.305326,
+      "lon": 70.802838
+    },
+    {
+      "camera_id": "9b9e68e1-8a06-4396-8ea0-3b4a9cd6633b",
+      "camera_ref": "19",
+      "name": "Camera 19",
+      "location_text": "19 KHAPARIA GRAM PANCHAYAT , TALUKA GANDEVI, DISTRICT NAVSARI",
+      "district": "Navsari",
+      "kind": "low_confidence",
+      "detail": "Positioned to within 5.0 km (approximate). Route plausibility widens its tolerance by this much wherever this camera appears, weakening every journey it contributes to. A survey fixes it.",
+      "confidence_radius_m": 5000.0,
+      "lat": 20.829714,
+      "lon": 73.033234
+    },
+    {
+      "camera_id": "e6bb9105-085a-4e46-9b9f-d85b98816f88",
+      "camera_ref": "20",
+      "name": "Camera 20",
+      "location_text": "20 Mohanpura",
+      "district": "Ahmedabad",
+      "kind": "no_coordinate",
+      "detail": "No coordinate on record. This camera cannot contribute to route reconstruction or any spatial query, and is excluded from them rather than silently ignored. A pin drop resolves it in seconds.",
+      "confidence_radius_m": null,
+      "lat": null,
+      "lon": null
+    },
+    {
+      "camera_id": "f478a4a8-65d2-4d3b-92e0-57bfc3f2cfff",
+      "camera_ref": "21",
+      "name": "Camera 21",
+      "location_text": "23 Patan Dethali Char Rasta",
+      "district": "Patan",
+      "kind": "low_confidence",
+      "detail": "Positioned to within 4.0 km (geocoded). Route plausibility widens its tolerance by this much wherever this camera appears, weakening every journey it contributes to. A survey fixes it.",
+      "confidence_radius_m": 4000.0,
+      "lat": 23.850503,
+      "lon": 72.11334
+    },
+    {
+      "camera_id": "3a60b0c8-b8ca-430a-9166-a9197f4038bb",
+      "camera_ref": "22",
+      "name": "Camera 22",
+      "location_text": "28 BK Mervada tran Rasta",
+      "district": "Banaskantha",
+      "kind": "low_confidence",
+      "detail": "Positioned to within 5.0 km (approximate). Route plausibility widens its tolerance by this much wherever this camera appears, weakening every journey it contributes to. A survey fixes it.",
+      "confidence_radius_m": 5000.0,
+      "lat": 24.269387,
+      "lon": 72.536751
+    },
+    {
+      "camera_id": "32a7f042-e77e-43ee-9fa2-9b34e3c12ec8",
+      "camera_ref": "23",
+      "name": "Camera 23",
+      "location_text": "30 kheram",
+      "district": "Navsari",
+      "kind": "no_coordinate",
+      "detail": "No coordinate on record. This camera cannot contribute to route reconstruction or any spatial query, and is excluded from them rather than silently ignored. A pin drop resolves it in seconds.",
+      "confidence_radius_m": null,
+      "lat": null,
+      "lon": null
+    },
+    {
+      "camera_id": "bb0a5ad0-3cbf-4456-b349-894bca43e5d8",
+      "camera_ref": "24",
+      "name": "Camera 24",
+      "location_text": "33 dehgam",
+      "district": "Gandhinagar",
+      "kind": "low_confidence",
+      "detail": "Positioned to within 5.0 km (approximate). Route plausibility widens its tolerance by this much wherever this camera appears, weakening every journey it contributes to. A survey fixes it.",
+      "confidence_radius_m": 5000.0,
+      "lat": 23.281952,
+      "lon": 72.653631
+    },
+    {
+      "camera_id": "4d8a3e2f-9c6f-4713-8826-30335414ccbc",
+      "camera_ref": "27",
+      "name": "Camera 27",
+      "location_text": "36 bilimora",
+      "district": "Navsari",
+      "kind": "low_confidence",
+      "detail": "Positioned to within 4.0 km (geocoded). Route plausibility widens its tolerance by this much wherever this camera appears, weakening every journey it contributes to. A survey fixes it.",
+      "confidence_radius_m": 4000.0,
+      "lat": 20.767169,
+      "lon": 72.969345
+    },
+    {
+      "camera_id": "d2e173eb-dd1a-47fa-af2d-bd3500a50557",
+      "camera_ref": "28",
+      "name": "Camera 28",
+      "location_text": "37 bilimora",
+      "district": "Navsari",
+      "kind": "low_confidence",
+      "detail": "Positioned to within 4.0 km (geocoded). Route plausibility widens its tolerance by this much wherever this camera appears, weakening every journey it contributes to. A survey fixes it.",
+      "confidence_radius_m": 4000.0,
+      "lat": 20.767169,
+      "lon": 72.969345
+    },
+    {
+      "camera_id": "045d49a4-141a-4977-9807-92ad0351f6c3",
+      "camera_ref": "29",
+      "name": "Camera 29",
+      "location_text": "38 bilimora",
+      "district": "Navsari",
+      "kind": "low_confidence",
+      "detail": "Positioned to within 4.0 km (geocoded). Route plausibility widens its tolerance by this much wherever this camera appears, weakening every journey it contributes to. A survey fixes it.",
+      "confidence_radius_m": 4000.0,
+      "lat": 20.767169,
+      "lon": 72.969345
+    },
+    {
+      "camera_id": "0097413c-7184-4a48-801e-41e66fbc0d98",
+      "camera_ref": "3",
+      "name": "Camera 3",
+      "location_text": "03 O.N.G.C. Office",
+      "district": "Unclassified",
+      "kind": "low_confidence",
+      "detail": "Positioned to within 4.0 km (geocoded). Route plausibility widens its tolerance by this much wherever this camera appears, weakening every journey it contributes to. A survey fixes it.",
+      "confidence_radius_m": 4000.0,
+      "lat": 23.021537,
+      "lon": 72.580057
+    },
+    {
+      "camera_id": "ff270e29-1719-41d7-a2ce-f138f06bedb1",
+      "camera_ref": "30",
+      "name": "Camera 30",
+      "location_text": "Gandhidham Rambaugh p2",
+      "district": "Kutch",
+      "kind": "low_confidence",
+      "detail": "Positioned to within 4.0 km (geocoded). Route plausibility widens its tolerance by this much wherever this camera appears, weakening every journey it contributes to. A survey fixes it.",
+      "confidence_radius_m": 4000.0,
+      "lat": 23.071874,
+      "lon": 70.131715
+    },
+    {
+      "camera_id": "93f1bcbf-31ab-4762-aefe-292ac38945cb",
+      "camera_ref": "4",
+      "name": "Camera 4",
+      "location_text": "04 Paldi Circle",
+      "district": "Ahmedabad",
+      "kind": "low_confidence",
+      "detail": "Positioned to within 1.5 km (geocoded). Route plausibility widens its tolerance by this much wherever this camera appears, weakening every journey it contributes to. A survey fixes it.",
+      "confidence_radius_m": 1500.0,
+      "lat": 23.014553,
+      "lon": 72.563543
+    },
+    {
+      "camera_id": "ebdce7bc-2c25-40a8-b134-2c7296571395",
+      "camera_ref": "7",
+      "name": "Camera 7",
+      "location_text": "07 hero-showroom-gir-somnath",
+      "district": "Gir Somnath",
+      "kind": "low_confidence",
+      "detail": "Positioned to within 5.0 km (approximate). Route plausibility widens its tolerance by this much wherever this camera appears, weakening every journey it contributes to. A survey fixes it.",
+      "confidence_radius_m": 5000.0,
+      "lat": 20.929818,
+      "lon": 70.762758
+    },
+    {
+      "camera_id": "dc9af065-87a4-4837-9210-864bff95c898",
+      "camera_ref": "8",
+      "name": "Camera 8",
+      "location_text": "08 majewadi-gate-junagadh",
+      "district": "Junagadh",
+      "kind": "low_confidence",
+      "detail": "Positioned to within 5.0 km (approximate). Route plausibility widens its tolerance by this much wherever this camera appears, weakening every journey it contributes to. A survey fixes it.",
+      "confidence_radius_m": 5000.0,
+      "lat": 21.336478,
+      "lon": 70.425043
+    },
+    {
+      "camera_id": "18799a42-86bf-4b7a-ac3a-345d330aaba7",
+      "camera_ref": "9",
+      "name": "Camera 9",
+      "location_text": "09 new-bypass-near-by-circle-junagadh-2",
+      "district": "Junagadh",
+      "kind": "low_confidence",
+      "detail": "Positioned to within 4.0 km (geocoded). Route plausibility widens its tolerance by this much wherever this camera appears, weakening every journey it contributes to. A survey fixes it.",
+      "confidence_radius_m": 4000.0,
+      "lat": 21.522042,
+      "lon": 70.458246
+    },
+    {
+      "camera_id": "300071d8-5d74-4e17-8e11-ff85c067a969",
+      "camera_ref": "REPLAY-01",
+      "name": "REPLAY \u00b7 11 dolatpara-junagadh",
+      "location_text": "11 dolatpara-junagadh",
+      "district": "Junagadh",
+      "kind": "low_confidence",
+      "detail": "Positioned to within 1.5 km (geocoded). Route plausibility widens its tolerance by this much wherever this camera appears, weakening every journey it contributes to. A survey fixes it.",
+      "confidence_radius_m": 1500.0,
+      "lat": 21.558757,
+      "lon": 70.465922
+    },
+    {
+      "camera_id": "8b073073-490e-4871-b34d-880f87a9b0a9",
+      "camera_ref": "REPLAY-02",
+      "name": "REPLAY \u00b7 17 Rajkot Bus Port CCTV",
+      "location_text": "17 Rajkot Bus Port CCTV",
+      "district": "Rajkot",
+      "kind": "low_confidence",
+      "detail": "Positioned to within 4.0 km (geocoded). Route plausibility widens its tolerance by this much wherever this camera appears, weakening every journey it contributes to. A survey fixes it.",
+      "confidence_radius_m": 4000.0,
+      "lat": 22.305326,
+      "lon": 70.802838
+    },
+    {
+      "camera_id": "3c5fa1ad-0b62-453e-9031-8de139f83f12",
+      "camera_ref": "REPLAY-03",
+      "name": "REPLAY \u00b7 04 Paldi Circle",
+      "location_text": "04 Paldi Circle",
+      "district": "Ahmedabad",
+      "kind": "low_confidence",
+      "detail": "Positioned to within 1.5 km (geocoded). Route plausibility widens its tolerance by this much wherever this camera appears, weakening every journey it contributes to. A survey fixes it.",
+      "confidence_radius_m": 1500.0,
+      "lat": 23.014553,
+      "lon": 72.563543
+    },
+    {
+      "camera_id": "33cd863c-cbda-453a-b62c-12b7dbd92ecb",
+      "camera_ref": "REPLAY-04",
+      "name": "REPLAY \u00b7 12 Tri Mandir Adalaj Tollnaka",
+      "location_text": "12 Tri Mandir Adalaj Tollnaka",
+      "district": "Gandhinagar",
+      "kind": "low_confidence",
+      "detail": "Positioned to within 5.0 km (approximate). Route plausibility widens its tolerance by this much wherever this camera appears, weakening every journey it contributes to. A survey fixes it.",
+      "confidence_radius_m": 5000.0,
+      "lat": 23.281952,
+      "lon": 72.653631
+    }
+  ],
+  "journey_gaps": [
+    {
+      "camera_id": "67d97977-877a-4bae-adb2-498a9e8a0bbd",
+      "camera_ref": "1",
+      "name": "Camera 1",
+      "lat": 22.745539,
+      "lon": 72.297491,
+      "times_implied": 12,
+      "detail": "In scope for 12 recent plate queries and recorded nothing in any of those windows."
+    },
+    {
+      "camera_id": "d3ffdb98-a948-4d7e-88f9-931ec6bc4fb2",
+      "camera_ref": "10",
+      "name": "Camera 10",
+      "lat": 21.522042,
+      "lon": 70.458246,
+      "times_implied": 12,
+      "detail": "In scope for 12 recent plate queries and recorded nothing in any of those windows."
+    },
+    {
+      "camera_id": "e6c85078-372f-4fbd-adb4-d73731812ec2",
+      "camera_ref": "11",
+      "name": "Camera 11",
+      "lat": 21.558757,
+      "lon": 70.465922,
+      "times_implied": 12,
+      "detail": "In scope for 12 recent plate queries and recorded nothing in any of those windows."
+    },
+    {
+      "camera_id": "228eb559-2faf-45ef-a66b-3786f7d6bd19",
+      "camera_ref": "12",
+      "name": "Camera 12",
+      "lat": 23.281952,
+      "lon": 72.653631,
+      "times_implied": 12,
+      "detail": "In scope for 12 recent plate queries and recorded nothing in any of those windows."
+    },
+    {
+      "camera_id": "49282b64-dd94-46b6-9e42-98986ee223a2",
+      "camera_ref": "13",
+      "name": "Camera 13",
+      "lat": 22.745539,
+      "lon": 72.297491,
+      "times_implied": 12,
+      "detail": "In scope for 12 recent plate queries and recorded nothing in any of those windows."
+    },
+    {
+      "camera_id": "a3741934-fac0-4eaf-bb20-d0d271ae1b93",
+      "camera_ref": "14",
+      "name": "Camera 14",
+      "lat": 22.745539,
+      "lon": 72.297491,
+      "times_implied": 12,
+      "detail": "In scope for 12 recent plate queries and recorded nothing in any of those windows."
+    },
+    {
+      "camera_id": "cd7f8efb-b2b3-498c-acef-38f952ffef86",
+      "camera_ref": "15",
+      "name": "Camera 15",
+      "lat": 22.745539,
+      "lon": 72.297491,
+      "times_implied": 12,
+      "detail": "In scope for 12 recent plate queries and recorded nothing in any of those windows."
+    },
+    {
+      "camera_id": "b43d6456-c814-4a85-804e-33ca687a3c87",
+      "camera_ref": "16",
+      "name": "Camera 16",
+      "lat": 23.119257,
+      "lon": 72.56567,
+      "times_implied": 12,
+      "detail": "In scope for 12 recent plate queries and recorded nothing in any of those windows."
+    },
+    {
+      "camera_id": "0aa3e04a-ca53-451e-b5c6-fc40d85ec0d5",
+      "camera_ref": "17",
+      "name": "Camera 17",
+      "lat": 22.305326,
+      "lon": 70.802838,
+      "times_implied": 12,
+      "detail": "In scope for 12 recent plate queries and recorded nothing in any of those windows."
+    },
+    {
+      "camera_id": "1413d3ea-d79f-4983-b613-07edf8a4bdc0",
+      "camera_ref": "18",
+      "name": "Camera 18",
+      "lat": 22.305326,
+      "lon": 70.802838,
+      "times_implied": 12,
+      "detail": "In scope for 12 recent plate queries and recorded nothing in any of those windows."
+    },
+    {
+      "camera_id": "9b9e68e1-8a06-4396-8ea0-3b4a9cd6633b",
+      "camera_ref": "19",
+      "name": "Camera 19",
+      "lat": 20.829714,
+      "lon": 73.033234,
+      "times_implied": 12,
+      "detail": "In scope for 12 recent plate queries and recorded nothing in any of those windows."
+    },
+    {
+      "camera_id": "7228ed7f-3f42-41f6-8d53-d815e2f71e7d",
+      "camera_ref": "2",
+      "name": "Camera 2",
+      "lat": 23.570767,
+      "lon": 72.370524,
+      "times_implied": 12,
+      "detail": "In scope for 12 recent plate queries and recorded nothing in any of those windows."
+    },
+    {
+      "camera_id": "f478a4a8-65d2-4d3b-92e0-57bfc3f2cfff",
+      "camera_ref": "21",
+      "name": "Camera 21",
+      "lat": 23.850503,
+      "lon": 72.11334,
+      "times_implied": 12,
+      "detail": "In scope for 12 recent plate queries and recorded nothing in any of those windows."
+    },
+    {
+      "camera_id": "3a60b0c8-b8ca-430a-9166-a9197f4038bb",
+      "camera_ref": "22",
+      "name": "Camera 22",
+      "lat": 24.269387,
+      "lon": 72.536751,
+      "times_implied": 12,
+      "detail": "In scope for 12 recent plate queries and recorded nothing in any of those windows."
+    },
+    {
+      "camera_id": "bb0a5ad0-3cbf-4456-b349-894bca43e5d8",
+      "camera_ref": "24",
+      "name": "Camera 24",
+      "lat": 23.281952,
+      "lon": 72.653631,
+      "times_implied": 12,
+      "detail": "In scope for 12 recent plate queries and recorded nothing in any of those windows."
+    },
+    {
+      "camera_id": "a47cff8f-cd2e-45b4-b02a-2ee84cbaa05d",
+      "camera_ref": "25",
+      "name": "Camera 25",
+      "lat": 20.838862,
+      "lon": 73.023955,
+      "times_implied": 12,
+      "detail": "In scope for 12 recent plate queries and recorded nothing in any of those windows."
+    },
+    {
+      "camera_id": "a2da6158-174f-4e96-af68-fed7c35c7302",
+      "camera_ref": "26",
+      "name": "Camera 26",
+      "lat": 20.860591,
+      "lon": 73.130617,
+      "times_implied": 12,
+      "detail": "In scope for 12 recent plate queries and recorded nothing in any of those windows."
+    },
+    {
+      "camera_id": "4d8a3e2f-9c6f-4713-8826-30335414ccbc",
+      "camera_ref": "27",
+      "name": "Camera 27",
+      "lat": 20.767169,
+      "lon": 72.969345,
+      "times_implied": 12,
+      "detail": "In scope for 12 recent plate queries and recorded nothing in any of those windows."
+    },
+    {
+      "camera_id": "d2e173eb-dd1a-47fa-af2d-bd3500a50557",
+      "camera_ref": "28",
+      "name": "Camera 28",
+      "lat": 20.767169,
+      "lon": 72.969345,
+      "times_implied": 12,
+      "detail": "In scope for 12 recent plate queries and recorded nothing in any of those windows."
+    },
+    {
+      "camera_id": "045d49a4-141a-4977-9807-92ad0351f6c3",
+      "camera_ref": "29",
+      "name": "Camera 29",
+      "lat": 20.767169,
+      "lon": 72.969345,
+      "times_implied": 12,
+      "detail": "In scope for 12 recent plate queries and recorded nothing in any of those windows."
+    },
+    {
+      "camera_id": "0097413c-7184-4a48-801e-41e66fbc0d98",
+      "camera_ref": "3",
+      "name": "Camera 3",
+      "lat": 23.021537,
+      "lon": 72.580057,
+      "times_implied": 12,
+      "detail": "In scope for 12 recent plate queries and recorded nothing in any of those windows."
+    },
+    {
+      "camera_id": "ff270e29-1719-41d7-a2ce-f138f06bedb1",
+      "camera_ref": "30",
+      "name": "Camera 30",
+      "lat": 23.071874,
+      "lon": 70.131715,
+      "times_implied": 12,
+      "detail": "In scope for 12 recent plate queries and recorded nothing in any of those windows."
+    },
+    {
+      "camera_id": "93f1bcbf-31ab-4762-aefe-292ac38945cb",
+      "camera_ref": "4",
+      "name": "Camera 4",
+      "lat": 23.014553,
+      "lon": 72.563543,
+      "times_implied": 12,
+      "detail": "In scope for 12 recent plate queries and recorded nothing in any of those windows."
+    },
+    {
+      "camera_id": "4505fdd0-b109-47a4-a694-f6e31c9d3570",
+      "camera_ref": "5",
+      "name": "Camera 5",
+      "lat": 23.119257,
+      "lon": 72.56567,
+      "times_implied": 12,
+      "detail": "In scope for 12 recent plate queries and recorded nothing in any of those windows."
+    },
+    {
+      "camera_id": "1e34a104-de16-476d-b8df-c1f33337cec3",
+      "camera_ref": "6",
+      "name": "Camera 6",
+      "lat": 21.50052,
+      "lon": 70.42387,
+      "times_implied": 12,
+      "detail": "In scope for 12 recent plate queries and recorded nothing in any of those windows."
+    },
+    {
+      "camera_id": "ebdce7bc-2c25-40a8-b134-2c7296571395",
+      "camera_ref": "7",
+      "name": "Camera 7",
+      "lat": 20.929818,
+      "lon": 70.762758,
+      "times_implied": 12,
+      "detail": "In scope for 12 recent plate queries and recorded nothing in any of those windows."
+    },
+    {
+      "camera_id": "dc9af065-87a4-4837-9210-864bff95c898",
+      "camera_ref": "8",
+      "name": "Camera 8",
+      "lat": 21.336478,
+      "lon": 70.425043,
+      "times_implied": 12,
+      "detail": "In scope for 12 recent plate queries and recorded nothing in any of those windows."
+    },
+    {
+      "camera_id": "18799a42-86bf-4b7a-ac3a-345d330aaba7",
+      "camera_ref": "9",
+      "name": "Camera 9",
+      "lat": 21.522042,
+      "lon": 70.458246,
+      "times_implied": 12,
+      "detail": "In scope for 12 recent plate queries and recorded nothing in any of those windows."
+    }
+  ],
+  "summary": {
+    "cameras_total": 34,
+    "no_coordinate": 2,
+    "low_confidence": 26,
+    "degraded": 0,
+    "unreachable": 0,
+    "districts_covered": 10,
+    "districts_with_findings": 10,
+    "journey_implied_gaps": 28,
+    "journey_window_days": 7
+  },
+  "interpretation": "Gaps are separated by remedy, because the cost of each differs by orders of magnitude. A missing coordinate is fixed with a pin drop; an approximate one needs a survey; a degraded camera needs maintenance on capital already spent; genuinely uncovered ground needs procurement. The journey-implied gaps are the strongest evidence here: a position that real investigations keep needing, and where nothing was seen, is an evidence-backed case for the next camera rather than an opinion about it."
+}

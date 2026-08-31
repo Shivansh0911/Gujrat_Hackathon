@@ -30,6 +30,7 @@ Script for both, screen by screen with timings and what to say:
 
 | # | Deliverable | Artefact | State |
 |---|---|---|---|
+| 7a | **Sample gap-analysis report** (Model 1) | `reports/gap-analysis-2026-08-31T06-14-08Z.md` | ✅ **10 districts, 28 cameras with a gap, 28 investigation-derived.** Grouped by remedy rather than severity, because a pin drop and a procurement do not belong on one scale. `make gap-report` |
 | 7 | Detected vehicles and plates with timestamps | `reports/detections-*.csv` and `.pdf`, `make detection-report` | ✅ 56 detections, 4 cameras, 32 grammar-valid, 8 distinct plates |
 | 8 | Government-feed output report | `reports/evidence/gateway-output-report-2026-08-27.md` and `-2026-08-30.md` | ✅ **two dated runs.** 27 Aug: 25 of 30 cameras, 9,158 frames, 2 valid registrations. 30 Aug: 18 of 30, 5,055 frames, **0** valid. Both kept — the difference is the feed, not the pipeline |
 | 9 | ANPR precision and recall | `data/seed/anpr_ground_truth.csv`, `reports/evidence/anpr-accuracy-*` | ✅ **measured: 29.6% precision, 29.6% recall, 26.9% CER** (was 0.0% before three defects were found and fixed). Annotations were made by reading each crop; **have a second person spot-check them** |

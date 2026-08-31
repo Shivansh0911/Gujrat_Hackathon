@@ -74,7 +74,24 @@ export interface paths {
          */
         get: operations["list_cameras_cameras_get"];
         put?: never;
-        post?: never;
+        /**
+         * Create Camera
+         * @description Onboard a single camera by hand.
+         *
+         *     Model 1 asks for manual *and* bulk onboarding to be demonstrable. Bulk import
+         *     handles a departmental spreadsheet; this handles the one camera someone is
+         *     standing in front of, and the two share their coordinate rules rather than
+         *     drifting apart.
+         *
+         *     Rejects a duplicate `camera_ref` with 409 rather than silently updating: a
+         *     registry that quietly overwrites an existing camera because two people chose the
+         *     same reference is how one camera's evidence ends up filed under another's.
+         *
+         *     Created as DRAFT, never ACTIVE. Nothing has been probed yet, and a camera that
+         *     claims to be active before anything has connected to it is a claim the registry
+         *     cannot support.
+         */
+        post: operations["create_camera_cameras_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -635,6 +652,41 @@ export interface components {
              * @default []
              */
             rejections: components["schemas"]["BulkImportRejection"][];
+            /** Note */
+            note?: string | null;
+        };
+        /**
+         * CameraCreate
+         * @description One camera, onboarded by hand.
+         *
+         *     Bulk import exists for a departmental spreadsheet; this is for the single camera
+         *     an officer is standing in front of. Both paths validate coordinates the same way
+         *     and both write to the audit ledger, because onboarding a camera is an assertion
+         *     that surveillance exists at a place and should be attributable either way.
+         *
+         *     Coordinates are optional, deliberately. A camera whose position nobody has
+         *     established yet is a real and common state -- two of the thirty in this estate are
+         *     in it -- and the registry records that honestly as `geom_source=unset` rather than
+         *     forcing an invented number. It can be placed later with the map's pin-drop.
+         */
+        CameraCreate: {
+            /** Camera Ref */
+            camera_ref: string;
+            /** Name */
+            name: string;
+            /**
+             * Location Text
+             * @default
+             */
+            location_text: string;
+            /** Department Code */
+            department_code?: string | null;
+            /** Lat */
+            lat?: number | null;
+            /** Lon */
+            lon?: number | null;
+            /** Confidence Radius M */
+            confidence_radius_m?: number | null;
             /** Note */
             note?: string | null;
         };
@@ -1359,6 +1411,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CameraOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_camera_cameras_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CameraCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CameraOut"];
                 };
             };
             /** @description Validation Error */

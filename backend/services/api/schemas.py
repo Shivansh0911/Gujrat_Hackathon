@@ -84,6 +84,34 @@ class GeomPatch(BaseModel):
     note: str | None = Field(default=None, max_length=500)
 
 
+class CameraCreate(BaseModel):
+    """One camera, onboarded by hand.
+
+    Bulk import exists for a departmental spreadsheet; this is for the single camera
+    an officer is standing in front of. Both paths validate coordinates the same way
+    and both write to the audit ledger, because onboarding a camera is an assertion
+    that surveillance exists at a place and should be attributable either way.
+
+    Coordinates are optional, deliberately. A camera whose position nobody has
+    established yet is a real and common state -- two of the thirty in this estate are
+    in it -- and the registry records that honestly as `geom_source=unset` rather than
+    forcing an invented number. It can be placed later with the map's pin-drop.
+    """
+
+    camera_ref: str = Field(min_length=1, max_length=64)
+    name: str = Field(min_length=1, max_length=200)
+    location_text: str = Field(default="", max_length=500)
+    department_code: str | None = Field(default=None, max_length=32)
+
+    lat: float | None = Field(default=None, ge=-90, le=90)
+    lon: float | None = Field(default=None, ge=-180, le=180)
+    #: Metres. Required when coordinates are supplied: a position with no stated
+    #: uncertainty reads as survey-grade, and an operator typing a rooftop location
+    #: off a map is not that.
+    confidence_radius_m: float | None = Field(default=None, gt=0, le=100_000)
+    note: str | None = Field(default=None, max_length=500)
+
+
 class CameraHealthOut(BaseModel):
     camera_id: uuid.UUID
     camera_ref: str

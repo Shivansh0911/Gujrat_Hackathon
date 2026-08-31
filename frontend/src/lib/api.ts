@@ -19,6 +19,7 @@ export type CoverageGap = components["schemas"]["CoverageGap"];
 export type RejectedHop = components["schemas"]["RejectedHop"];
 export type SyncResult = components["schemas"]["SyncResult"];
 export type BulkImportResult = components["schemas"]["BulkImportResult"];
+export type CameraCreate = components["schemas"]["CameraCreate"];
 export type VehicleCounts = components["schemas"]["VehicleCountResult"];
 export type AuditVerify = components["schemas"]["AuditVerifyOut"];
 export type GatewayStatus = components["schemas"]["GatewayStatusOut"];
@@ -146,6 +147,8 @@ export const api = {
     }),
   streamUrl: (id: string) => request<StreamUrl>(`/cameras/${id}/stream-url`),
   syncCatalogue: () => request<SyncResult>("/cameras/sync-catalogue", { method: "POST" }),
+  createCamera: (body: CameraCreate) =>
+    request<Camera>("/cameras", { method: "POST", body: JSON.stringify(body) }),
   bulkImportCameras: (file: File) => {
     const body = new FormData();
     body.append("file", file);

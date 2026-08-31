@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, type BulkImportResult } from "../lib/api";
+import { api, type BulkImportResult, type CameraCreate } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { Badge, ErrorBox, Spinner } from "../components/ui";
 
@@ -23,6 +23,16 @@ import { Badge, ErrorBox, Spinner } from "../components/ui";
  * bad lines imports the rest and reports those two by line number and reason.
  */
 
+/** A camera nobody has placed yet is a real state; the coordinate fields stay empty. */
+const EMPTY_CAMERA: CameraCreate = {
+  camera_ref: "",
+  name: "",
+  location_text: "",
+  lat: null,
+  lon: null,
+  confidence_radius_m: null,
+};
+
 export default function SystemPage() {
   const { role } = useAuth();
   const isAdmin = role === "admin";
@@ -43,6 +53,19 @@ export default function SystemPage() {
       qc.invalidateQueries({ queryKey: ["gap-analysis"] });
       setChosen(null);
       if (fileRef.current) fileRef.current.value = "";
+    },
+  });
+
+  const [camera, setCamera] = useState<CameraCreate>(EMPTY_CAMERA);
+  const [withPosition, setWithPosition] = useState(false);
+
+  const addCamera = useMutation({
+    mutationFn: (body: CameraCreate) => api.createCamera(body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["cameras"] });
+      qc.invalidateQueries({ queryKey: ["gap-analysis"] });
+      setCamera(EMPTY_CAMERA);
+      setWithPosition(false);
     },
   });
 
@@ -248,6 +271,165 @@ export default function SystemPage() {
             )}
             {bulkImport.data && <ImportSummary result={bulkImport.data} />}
           </>
+        )}
+      </section>
+
+      {/* ------------------------------------------------------ manual onboarding */}
+      <section className="panel p-4">
+        <div className="mb-3">
+          <h2 className="font-medium">Add a single camera</h2>
+          <p className="text-xs text-muted max-w-xl mt-0.5">
+            For the one camera someone is standing in front of. The CSV path above is
+            for a departmental spreadsheet; both validate coordinates the same way and
+            both are written to the audit ledger, because onboarding a camera asserts
+            that surveillance exists at a place.
+          </p>
+        </div>
+
+        {!isAdmin ? (
+          <p className="text-xs text-muted">Onboarding requires an admin account.</p>
+        ) : (
+          <form
+            className="grid gap-3 md:grid-cols-3"
+            onSubmit={(e) => {
+              e.preventDefault();
+              addCamera.mutate({
+                ...camera,
+                camera_ref: camera.camera_ref.trim(),
+                name: camera.name.trim(),
+                lat: withPosition ? camera.lat : null,
+                lon: withPosition ? camera.lon : null,
+                confidence_radius_m: withPosition ? camera.confidence_radius_m : null,
+              });
+            }}
+          >
+            <label className="block">
+              <div className="text-xs text-slate-300 mb-1">Camera reference</div>
+              <input
+                className="input mono"
+                required
+                value={camera.camera_ref}
+                onChange={(e) => setCamera({ ...camera, camera_ref: e.target.value })}
+                placeholder="GJ-AHM-042"
+              />
+              <div className="text-[10px] text-muted mt-1">
+                Must be unique. A duplicate is refused, not merged.
+              </div>
+            </label>
+
+            <label className="block">
+              <div className="text-xs text-slate-300 mb-1">Name</div>
+              <input
+                className="input"
+                required
+                value={camera.name}
+                onChange={(e) => setCamera({ ...camera, name: e.target.value })}
+                placeholder="Bhavani Char Rasta, east approach"
+              />
+            </label>
+
+            <label className="block">
+              <div className="text-xs text-slate-300 mb-1">Location</div>
+              <input
+                className="input"
+                value={camera.location_text ?? ""}
+                onChange={(e) => setCamera({ ...camera, location_text: e.target.value })}
+                placeholder="Ahmedabad"
+              />
+            </label>
+
+            <div className="md:col-span-3">
+              <label className="text-xs text-muted flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={withPosition}
+                  onChange={(e) => setWithPosition(e.target.checked)}
+                />
+                I know this camera&rsquo;s coordinates
+              </label>
+              {!withPosition && (
+                <p className="text-[10px] text-muted mt-1">
+                  Leave unticked if you do not. The camera is recorded as{" "}
+                  <span className="mono">coordinate missing</span> and can be placed
+                  later with the map&rsquo;s pin-drop — which is honest, where an
+                  invented position would not be.
+                </p>
+              )}
+            </div>
+
+            {withPosition && (
+              <>
+                <label className="block">
+                  <div className="text-xs text-slate-300 mb-1">Latitude</div>
+                  <input
+                    className="input mono"
+                    type="number"
+                    step="any"
+                    min={-90}
+                    max={90}
+                    required
+                    value={camera.lat ?? ""}
+                    onChange={(e) =>
+                      setCamera({ ...camera, lat: e.target.value === "" ? null : Number(e.target.value) })
+                    }
+                    placeholder="23.0225"
+                  />
+                </label>
+                <label className="block">
+                  <div className="text-xs text-slate-300 mb-1">Longitude</div>
+                  <input
+                    className="input mono"
+                    type="number"
+                    step="any"
+                    min={-180}
+                    max={180}
+                    required
+                    value={camera.lon ?? ""}
+                    onChange={(e) =>
+                      setCamera({ ...camera, lon: e.target.value === "" ? null : Number(e.target.value) })
+                    }
+                    placeholder="72.5714"
+                  />
+                </label>
+                <label className="block">
+                  <div className="text-xs text-slate-300 mb-1">Uncertainty (metres)</div>
+                  <input
+                    className="input mono"
+                    type="number"
+                    min={1}
+                    required
+                    value={camera.confidence_radius_m ?? ""}
+                    onChange={(e) =>
+                      setCamera({
+                        ...camera,
+                        confidence_radius_m: e.target.value === "" ? null : Number(e.target.value),
+                      })
+                    }
+                    placeholder="25"
+                  />
+                  <div className="text-[10px] text-muted mt-1">
+                    Required with a position. Without it the coordinate reads as
+                    survey-grade, and the map would draw a precise pin it cannot justify.
+                  </div>
+                </label>
+              </>
+            )}
+
+            <div className="md:col-span-3 flex items-center gap-3">
+              <button className="btn btn-primary" disabled={addCamera.isPending}>
+                {addCamera.isPending ? "Adding\u2026" : "Add camera"}
+              </button>
+              {addCamera.isSuccess && (
+                <Badge tone="ok">added as DRAFT — nothing probed yet</Badge>
+              )}
+            </div>
+
+            {addCamera.error != null && (
+              <div className="md:col-span-3">
+                <ErrorBox error={addCamera.error} />
+              </div>
+            )}
+          </form>
         )}
       </section>
     </div>
