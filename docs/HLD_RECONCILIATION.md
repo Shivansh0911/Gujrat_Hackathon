@@ -20,7 +20,7 @@ document is what changes.** Two claims below need amending.
 |---|---|---|
 | Journey query under 3 s | **p95 60 ms**, median 38 ms, over a 12-hour window | `benchmarks-2026-08-26T13-56-28Z` |
 | Decode to alert under 2 s | **p95 1486 ms**, median 14 ms | same |
-| Feed-contract compliance | **8/8** on the organiser's own checklist, exercised empirically against the live gateway | `reports/preflight.json` |
+| Feed-contract compliance | **8/8** on the organiser's own checklist, exercised empirically against the live gateway on 2026-08-27. Re-run 2026-08-31: 1 pass, 0 fail, **7 not exercised** — the catalogue 502s, so seven checks had no feed to test. The two static guarantees (TCP forced everywhere, no timing from declared FPS) hold regardless, because they are properties of the source | `preflight-2026-08-27T14-11-24Z` |
 | Three-level tenant isolation | Gateway policy, scoped accessors, **and Postgres RLS**. 9 tests issue raw SQL bypassing the application; `setu_app` verified `rolsuper=false`, `rolbypassrls=false` in the deployed container | `test_row_level_security.py`, deployment check 8 |
 | Tamper-evident audit chain | 8 tests prove modification, actor rewriting and deletion are all detected. The ledger is append-only at the database level — the application holds no UPDATE grant | `test_audit_chain.py` |
 | Never trust the declared frame rate | **12 of 16 cameras that produced frames diverge.** Camera 26 declares 13.35 fps and delivers 25.0 (+87%); cameras 13 and 16 declare 12.5 and deliver 9.96 (−20%); 9 declare nothing at all | `catalogue-probe-2026-08-26T21-07-28Z` |

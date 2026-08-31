@@ -295,3 +295,95 @@ Each of those was caught by measurement and each is written down, here and in
 `DISCOVERY.md` and `HLD_RECONCILIATION.md`, with the date and the number. A reviewer
 who goes looking for the weak points will find them already documented — which is the
 only reason to trust the parts that are strong.
+
+
+---
+
+# Partner test round — 2026-08-31 (evening)
+
+Avani tested the deployed console on a phone and ran the feed-contract preflight on
+her own machine. Five findings, all real, all fixed. This entry records them because
+three of them were things our own checks had passed.
+
+## What she found
+
+| # | Finding | Status |
+|---|---|---|
+| 1 | Gap analysis opens in a tab but cannot be taken away as a document | Fixed — signed PDF export |
+| 2 | Coverage and Journey are unusable on a phone | Fixed — both stack below `lg` |
+| 3 | Content runs off the right edge with no way to scroll to it | Fixed — same root cause as 2 |
+| 4 | Too many floating cards on Journey; the map is not visible | Fixed — cards move inline below `lg` |
+| 5 | `preflight_check.py` dies on a traceback | Fixed — catalogue failure is caught and reported |
+
+## Findings 2, 3 and 4 were one defect
+
+Coverage and Journey each put a fixed-width side panel next to a `flex-1` map. At
+375 px the panel alone (27 rem / 432 px) is wider than the viewport, so the map
+resolved to **zero width** and the panel's right-hand third was clipped by `main`'s
+`overflow-hidden` with nothing to scroll. The floating cards then appeared to hover
+over nothing, because there was nothing.
+
+This is the *third* time this exact defect has been found, after the GIS page on
+30 Aug. The responsive audit did not catch it either time, and the reason is
+specific: its clipping rule ignores an element hanging less than a quarter of its own
+width past the edge, and 432 px in a 375 px viewport hangs 13%. The audit measured
+the panel and never the map.
+
+**The audit now measures the map directly**, as a fraction of `main` rather than of
+the viewport — a healthy desktop layout legitimately gives the map only half the
+screen, so a viewport-relative threshold would flag the good case. Validated against
+a reconstruction of both layouts before being trusted:
+
+| Layout | 375 px | 768 px | 1024 px |
+|---|---|---|---|
+| Old | map at **0%** → FAIL | **23%** → FAIL | — |
+| New | 100% → pass | 100% → pass | 47% → pass |
+
+The 768 px column is why the breakpoint moved from `md` to `lg`: on a tablet the old
+layout left **128 px of map** beside a 432 px panel, and nobody had ever looked,
+because nothing measured it.
+
+## The preflight traceback
+
+`preflight_check.py` called `fetch_catalogue` unguarded. With the gateway returning
+502 the script died before check 1, producing a bare `requests.exceptions.HTTPError`.
+Two things were wrong with that. It reads as "SETU is broken" when the finding is
+"the feed did not answer", and it aborted the two checks that need no network at all.
+
+Now: the fetch is caught, the static checks still run, every live check reports NOT
+EXERCISED with the reason, and **exit code 3** distinguishes an upstream outage from
+both a pass (0) and a pipeline failure (1). Two further places reported an outage as
+a defect and were fixed with it — check 4 dereferenced the `None` camera its own
+signature allows, and check 6 called an empty catalogue a sourcing violation.
+
+Measured against the live gateway, 31 Aug:
+
+```
+1/8 checks passed, 0 failed, 7 not exercised     exit 3
+HTTPError: 502 Server Error: Bad Gateway for url: https://live.corp8.cloud/api/ingest
+```
+
+Before this change the same command produced a traceback and no report at all.
+
+**`SUBMISSION_CHECKLIST.md` and `HLD_RECONCILIATION.md` were corrected**: both cited
+"8/8" against `reports/preflight.json`, a scratch file that this run overwrote. They
+now cite the dated evidence record from 27 Aug, the last day the checklist could be
+exercised, and state the 31 Aug result beside it.
+
+## Gap analysis as a document
+
+`GET /cameras/gap-analysis/export` returns the analysis as a PDF carrying the same
+Ed25519 detached signature and canonical manifest as the evidence export, audited as
+`EXPORT_GAP_ANALYSIS` before the document is produced. A planning document naming
+specific cameras as defective gets forwarded to people who were not in the room; they
+should be able to check the figures were not edited on the way. Four tests, including
+one that requires an altered manifest to fail verification.
+
+## Not verified on this run
+
+The layout fix was measured against a reconstruction, not against the deployed site:
+the push to GitHub could not complete from this session — the credential helper falls
+back to an interactive prompt — so Netlify and Render are still serving the previous
+build. **Re-run `responsive_audit.mjs` against the live console once the deploy
+lands.** Backend: 213 tests pass, `ruff` clean, and the frontend builds and
+typechecks.

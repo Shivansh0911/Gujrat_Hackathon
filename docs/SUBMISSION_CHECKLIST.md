@@ -51,7 +51,7 @@ Script for both, screen by screen with timings and what to say:
 
 | # | Artefact | State |
 |---|---|---|
-| 15 | Feed-contract compliance, 8/8 | `reports/preflight.json` | ✅ |
+| 15 | Feed-contract compliance | `reports/evidence/preflight-2026-08-27T14-11-24Z.*` | ✅ **8/8 on 27 Aug**, the last day the gateway answered. Re-run 31 Aug: **1 pass, 0 fail, 7 NOT EXERCISED**, exit 3 — the catalogue returns a Cloudflare 502, so seven checks had nothing to exercise. That is an upstream outage, not a regression, and the script now says so instead of reporting a pass or dying on a traceback |
 | 16 | Catalogue probe, declared vs measured | `reports/evidence/catalogue-probe-*` | ✅ two dated runs, including one against the recovered gateway |
 | 17 | Performance benchmarks | `reports/evidence/benchmarks-*` | ✅ |
 | 18 | Gateway outage support query | `docs/SUPPORT_QUERY.md` | ⏳ **Harshit — send it.** It is the evidence that we reported the fault |
