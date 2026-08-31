@@ -107,3 +107,38 @@ deployed pins on 2026-08-27 — `pypdf`, `starlette`, `cryptography`, `python-jo
 upgrading, and the full test suite and the nine deployment checks were re-run against
 the upgraded stack before the pins were committed. Pinning is not the same as being
 current; the audit is what makes the difference visible.
+
+## Secret scanning
+
+Two independent scans, because they catch different things and neither alone is
+sufficient.
+
+**`gitleaks`, over the full history, in CI.** Runs on every push as the *Secret scan
+(full history)* step. History is the part that matters most: a secret committed and
+then deleted is still in the repository, and a working-tree scan will not find it.
+This is the authoritative check.
+
+**`detect-secrets`, over tracked files, locally.** Added 2026-08-31 because the
+gitleaks binary could not be downloaded on the development connection across three
+sessions and the Docker daemon was unavailable, leaving the local check repeatedly
+unrun. `detect-secrets` installs through pip, which works where the others did not.
+It is a *substitute for the local run*, not for the CI one — it scans the working
+tree, not history, and uses different heuristics.
+
+```bash
+pip install detect-secrets
+detect-secrets scan > .secrets.baseline     # regenerate
+detect-secrets scan --baseline .secrets.baseline   # check against it
+```
+
+`.secrets.baseline` is committed. Every entry in it has been read and confirmed:
+
+| Flagged | What it actually is |
+|---|---|
+| `.env.example` database URL | The literal placeholder `change-me-locally`. The API refuses to start on it |
+| `services/common/redact.py` | The regular expression that *detects* credentials in log output. The scanner flagging the redactor is it working correctly |
+| `tests/test_media_signing.py` | `SECRET = "test-secret-not-used-anywhere-else"` |
+| 15 files under `reports/evidence/` | The `git_sha` provenance field. A 40-character commit hash reads as a high-entropy hex string |
+
+No credential is committed. `.env`, `.env.prod` and `deploy-secrets.env` are
+gitignored and appear in a `--all-files` scan only, never in the tracked-file scan.

@@ -1,0 +1,225 @@
+/**
+ * Measure every console screen at four widths, and fail on horizontal overflow.
+ *
+ * Responsiveness kept getting cut for time, and "it looked fine when I resized the
+ * window" is not a measurement. This one is: for each page at each viewport it
+ * compares `document.documentElement.scrollWidth` against the viewport width, and any
+ * page whose body scrolls sideways is a failure with the offending element named.
+ *
+ * A page body that scrolls horizontally on a phone is the specific defect worth
+ * catching. Wide content -- tables, the map -- is allowed to scroll *inside its own
+ * container*; what must never happen is the whole layout sliding, because then the
+ * navigation and half the controls are simply off-screen.
+ *
+ *   node scripts/responsive_audit.mjs
+ *   SETU_CONSOLE_URL=https://setu-gujrat.netlify.app node scripts/responsive_audit.mjs
+ */
+import { chromium } from "playwright";
+import { mkdirSync, readFileSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+const ROOT = resolve(HERE, "..", "..");
+const OUT = join(ROOT, "docs", "screenshots", "responsive");
+const BASE = process.env.SETU_CONSOLE_URL ?? "http://127.0.0.1:5173";
+
+/** iPhone SE, iPhone 14, iPad portrait, small laptop. */
+const VIEWPORTS = [
+  { name: "375", width: 375, height: 812 },
+  { name: "390", width: 390, height: 844 },
+  { name: "768", width: 768, height: 1024 },
+  { name: "1024", width: 1024, height: 768 },
+];
+
+const PAGES = [
+  { name: "map", nav: "GIS Map" },
+  { name: "journey", nav: "Journey" },
+  { name: "alerts", nav: "Alert Desk" },
+  { name: "health", nav: "Health" },
+  { name: "coverage", nav: "Coverage" },
+  { name: "watchlist", nav: "Watchlist" },
+  { name: "system", nav: "System" },
+  { name: "controlroom", nav: "Control Room", optional: true },
+];
+
+function secret(key) {
+  const envFile = process.env.SETU_ENV_FILE ?? "deploy-secrets.env";
+  try {
+    const line = readFileSync(join(ROOT, envFile), "utf8")
+      .split(/\r?\n/)
+      .find((l) => l.startsWith(`${key}=`));
+    if (line) return line.slice(key.length + 1).trim();
+  } catch {
+    /* fall through to .env */
+  }
+  const line = readFileSync(join(ROOT, ".env"), "utf8")
+    .split(/\r?\n/)
+    .find((l) => l.startsWith(`${key}=`));
+  if (!line) throw new Error(`${key} not found in ${envFile} or .env`);
+  return line.slice(key.length + 1).trim();
+}
+
+/**
+ * Sign in.
+ *
+ * The role is chosen with a button, not typed into a field -- the login screen names
+ * the two roles operationally rather than asking an officer to type a database noun.
+ * Scripts that still filled `input[autocomplete="username"]` broke silently when that
+ * changed, which is why this is one helper rather than three copies.
+ */
+async function signIn(page, password) {
+  await page.goto(BASE, { waitUntil: "networkidle" });
+  const roleButton = page.locator('button:has-text("System Administrator")');
+  if (await roleButton.count()) await roleButton.first().click();
+  await page.fill('input[autocomplete="current-password"]', password);
+  await page.click('button:has-text("Sign in")');
+  await page.waitForSelector("nav", { timeout: 25000 });
+}
+
+/** Open the page, coping with the nav being behind a menu button on narrow screens. */
+async function navigateTo(page, label) {
+  const burger = page.locator('button[aria-label="Open navigation"]');
+  if (await burger.count()) {
+    const visible = await burger.first().isVisible();
+    if (visible) await burger.first().click();
+  }
+  const link = page.locator(`a:has-text("${label}")`).first();
+  if (!(await link.count())) return false;
+  await link.click();
+  await page.waitForTimeout(1400);
+  return true;
+}
+
+const problems = [];
+
+async function measure(page, pageName, vp) {
+  const metrics = await page.evaluate(() => {
+    const doc = document.documentElement;
+    const overflowing = [];
+    // Clipped, not merely overflowing. `overflow-hidden` on a container means content
+    // wider than the viewport is silently cut off instead of scrolling, so scrollWidth
+    // never grows and a naive check reports the layout as fine while half of it is
+    // off-screen. That exact false pass is why this looks at element geometry too.
+    const clipped = [];
+    for (const el of document.querySelectorAll("main *")) {
+      const r = el.getBoundingClientRect();
+      if (r.width <= 0 || r.height <= 0) continue;
+      if (r.right > window.innerWidth + 2) {
+        const cls = typeof el.className === "string" ? el.className.slice(0, 50) : "";
+        const desc = `${el.tagName.toLowerCase()}.${cls}`.slice(0, 70);
+        overflowing.push(desc);
+        // More than a quarter of the element beyond the right edge is content the
+        // operator simply cannot read.
+        if (r.right - window.innerWidth > r.width * 0.25) clipped.push(desc);
+      }
+    }
+    // How much of the width the navigation is consuming.
+    const aside = document.querySelector("aside");
+    const asideRect = aside ? aside.getBoundingClientRect() : null;
+    const navShare =
+      asideRect && asideRect.width > 0 && asideRect.left >= -1
+        ? asideRect.width / window.innerWidth
+        : 0;
+    return {
+      scrollWidth: doc.scrollWidth,
+      innerWidth: window.innerWidth,
+      overflowing: [...new Set(overflowing)].slice(0, 4),
+      clipped: [...new Set(clipped)].slice(0, 4),
+      navShare,
+    };
+  });
+
+  // Two pixels of slack: sub-pixel rounding on scaled viewports is not a defect.
+  const overflows = metrics.scrollWidth > metrics.innerWidth + 2;
+  const clipped = metrics.clipped.length > 0;
+  // Navigation eating more than a third of a phone screen is a layout failure even
+  // when nothing overflows: it is what pushed the map off the GIS page entirely.
+  const navTooWide = vp.width < 768 && metrics.navShare > 0.34;
+  const tag = `${pageName} @ ${vp.name}px`;
+
+  if (overflows) {
+    problems.push(
+      `${tag}: body scrolls horizontally ` +
+        `(${metrics.scrollWidth}px content in ${metrics.innerWidth}px viewport)`,
+    );
+  }
+  if (clipped) {
+    problems.push(`${tag}: content clipped off-screen — ${metrics.clipped.join(", ")}`);
+  }
+  if (navTooWide) {
+    problems.push(
+      `${tag}: navigation occupies ${(metrics.navShare * 100).toFixed(0)}% of the viewport`,
+    );
+  }
+
+  const ok = !overflows && !clipped && !navTooWide;
+  console.log(
+    ok
+      ? `  ok   ${tag}`
+      : `  FAIL ${tag}` +
+          (overflows ? " overflow" : "") +
+          (clipped ? ` clipped:${metrics.clipped.length}` : "") +
+          (navTooWide ? ` nav:${(metrics.navShare * 100).toFixed(0)}%` : ""),
+  );
+  return ok;
+}
+
+const run = async () => {
+  mkdirSync(OUT, { recursive: true });
+  const browser = await chromium.launch();
+  const password = secret("SETU_ADMIN_PASSWORD");
+
+  console.log(`auditing ${BASE}\n`);
+
+  for (const vp of VIEWPORTS) {
+    console.log(`viewport ${vp.width}x${vp.height}`);
+    const context = await browser.newContext({
+      viewport: { width: vp.width, height: vp.height },
+      hasTouch: vp.width < 900,
+      isMobile: vp.width < 900,
+      deviceScaleFactor: 2,
+    });
+    const page = await context.newPage();
+
+    await signIn(page, password);
+    await page.waitForTimeout(2500);
+    await measure(page, "login+map", vp);
+    await page.screenshot({ path: join(OUT, `map-${vp.name}.png`) });
+
+    for (const p of PAGES.slice(1)) {
+      const went = await navigateTo(page, p.nav);
+      if (!went) {
+        if (!p.optional) problems.push(`${p.name} @ ${vp.name}px: nav link not found`);
+        continue;
+      }
+      await measure(page, p.name, vp);
+      // Keep evidence for the two narrowest and the tablet width only; four full
+      // sets of eight is noise in a submission.
+      if (vp.name !== "1024") {
+        await page.screenshot({ path: join(OUT, `${p.name}-${vp.name}.png`) });
+      }
+    }
+
+    await context.close();
+    console.log("");
+  }
+
+  await browser.close();
+
+  console.log("=".repeat(64));
+  if (problems.length === 0) {
+    console.log("PASS: no page overflows, clips content, or lets navigation dominate");
+  } else {
+    console.log(`${problems.length} problem(s):\n`);
+    for (const p of problems) console.log(`  - ${p}`);
+  }
+  console.log("=".repeat(64));
+  console.log(`screenshots: ${OUT}`);
+  process.exit(problems.length ? 1 : 0);
+};
+
+run().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});

@@ -1,4 +1,5 @@
-import { NavLink, Navigate, Route, Routes } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { NavLink, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "./lib/auth";
 import Login from "./pages/Login";
 import MapPage from "./pages/MapPage";
@@ -21,11 +22,57 @@ const NAV = [
 
 function Shell() {
   const { authenticated, username, role, signOut } = useAuth();
+  // Drawer state lives here rather than in the sidebar so the backdrop, the toggle and
+  // the route change can all close it.
+  const [navOpen, setNavOpen] = useState(false);
+  const location = useLocation();
+
+  // Close on navigation. A drawer left open over the page the operator just chose is
+  // the single most irritating thing a mobile menu can do.
+  useEffect(() => setNavOpen(false), [location.pathname]);
+
   if (!authenticated) return <Login />;
 
   return (
-    <div className="h-full flex">
-      <aside className="w-52 shrink-0 bg-ink-800 border-r border-edge flex flex-col">
+    <div className="h-full flex flex-col md:flex-row">
+      {/*
+        Below md the sidebar is 208px of a 375px screen -- 55% of the viewport spent on
+        navigation, with the map squeezed out of what remains entirely. `main` carries
+        overflow-hidden, so the content did not overflow, it was simply *clipped*, which
+        is why a scrollWidth check reported the layout as fine while half of it was
+        off-screen. It becomes a drawer instead.
+      */}
+      <header className="md:hidden flex items-center gap-2 px-3 py-2 bg-ink-800 border-b border-edge shrink-0">
+        <button
+          aria-label="Open navigation"
+          aria-expanded={navOpen}
+          className="btn px-2.5 py-1.5"
+          onClick={() => setNavOpen((v) => !v)}
+        >
+          <span aria-hidden="true">{navOpen ? "\u2715" : "\u2630"}</span>
+        </button>
+        <div className="font-semibold tracking-tight">SETU</div>
+        <div className="text-[10px] text-muted truncate">Gujarat CCTV Integration</div>
+        <div className="flex-1" />
+        <div className="text-[10px] text-muted truncate max-w-[9rem]">{username}</div>
+      </header>
+
+      {navOpen && (
+        <button
+          aria-label="Close navigation"
+          className="md:hidden fixed inset-0 z-30 bg-black/60"
+          onClick={() => setNavOpen(false)}
+        />
+      )}
+
+      <aside
+        className={`bg-ink-800 border-edge flex flex-col shrink-0
+          md:w-52 md:border-r md:static md:translate-x-0
+          fixed inset-y-0 left-0 z-40 w-64 border-r
+          transition-transform duration-200 ease-out
+          motion-reduce:transition-none
+          ${navOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}`}
+      >
         <div className="px-4 py-4 border-b border-edge">
           <div className="text-lg font-semibold tracking-tight">SETU</div>
           <div className="text-[11px] text-muted leading-tight mt-0.5">
@@ -38,7 +85,7 @@ function Shell() {
               key={item.to}
               to={item.to}
               className={({ isActive }) =>
-                `block px-3 py-2 rounded text-sm transition-colors ${
+                `block px-3 py-2.5 rounded text-sm transition-colors min-h-[44px] ${
                   isActive
                     ? "bg-accent/15 text-accent border border-accent/40"
                     : "text-slate-300 hover:bg-ink-700 border border-transparent"

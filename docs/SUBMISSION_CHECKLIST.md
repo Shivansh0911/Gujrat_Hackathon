@@ -66,7 +66,7 @@ Script for both, screen by screen with timings and what to say:
 - [ ] Record both demonstration videos
 - [ ] Deploy and record the live URL with credentials
 - [ ] Send `docs/SUPPORT_QUERY.md`
-- [ ] Re-run `gitleaks detect` over full history — **still outstanding**, the binary could not be downloaded on this connection and Docker was unavailable; last clean run was 2026-08-27
+- [x] Secret scan — **done 2026-08-31**. CI's `gitleaks` full-history step is green on `42700d8`; `detect-secrets` also run locally over tracked files with all 18 findings verified as false positives and committed as `.secrets.baseline`. See `SECURITY.md`
 - [ ] Confirm the four limitations in `README.md` still read accurately
 
 ## Four limitations to state up front
