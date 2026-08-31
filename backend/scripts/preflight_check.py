@@ -381,6 +381,13 @@ def check_4_reconnect(cam: CameraDescriptor | None, seconds: float) -> Check:
     torn down, jittered backoff waited out, HLS variant re-resolved, stream rejoined --
     against the live gateway.
     """
+    if cam is None:
+        # The signature already admits None, and this is what None means: nothing on
+        # the gateway delivered a frame, so there was no session to interrupt. Falling
+        # through raised an AttributeError that `run` recorded as FAIL -- reporting a
+        # reconnect defect on a run where no connection was ever made.
+        return _not_exercised(4, NAME_4, "no camera delivered frames, so none could be cut")
+
     source = select_transport(cam, get_settings(), rtsp_available=RTSP_AVAILABLE)
     session = StreamSession(
         source.url,

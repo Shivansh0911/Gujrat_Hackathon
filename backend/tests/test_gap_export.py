@@ -33,9 +33,7 @@ ANALYSIS = {
             "name": "Paldi junction",
         }
     ],
-    "journey_gaps": [
-        {"camera_ref": "GJ-CAM-0019", "name": "Visat circle", "times_implied": 3}
-    ],
+    "journey_gaps": [{"camera_ref": "GJ-CAM-0019", "name": "Visat circle", "times_implied": 3}],
 }
 
 
