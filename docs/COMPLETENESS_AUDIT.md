@@ -186,3 +186,112 @@ Deployed database queried directly; `verify_deployment.py` with `--api-origin`;
 `ground_truth.py score` re-run; `responsive_audit.mjs` at 375/390/768/1024 against the
 live site; gateway probed once; `detect-secrets` over tracked files; CI job status read
 from the Actions API.
+
+
+---
+
+# Close-out — 2026-08-31
+
+Final engineering pass. The two entries above stand; this is the definitive statement
+of what this submission is and is not, written to be read by someone who was not here.
+
+## What SETU is
+
+One web platform that federates a heterogeneous camera estate. A judge supplies a
+registration number and sees that vehicle's route across the network on a map, with
+timestamps, evidence photographs and honest gaps where it was not seen. A watchlisted
+vehicle appearing on a feed raises an alert within seconds.
+
+Live at **https://setu-gujrat.netlify.app** (Render API, Netlify console, Render
+Postgres in Singapore), passing **10 of 10** deployment checks at close-out.
+
+| | |
+|---|---:|
+| Backend tests | **209 passing**, 42 skipped without Postgres |
+| `mypy --strict` | clean, 51 source files |
+| `ruff` / `ruff format` | clean, 101 files |
+| Console screens | **9**, all on real endpoints |
+| Responsive | 9 pages × 375/390/768/1024 px, no overflow, clipping or nav dominance |
+| Deployment checks | **10 / 10** |
+| Secret scan | CI `gitleaks` full history green; `detect-secrets` baseline committed |
+
+## What is genuinely real
+
+Every detection is actual ONNX inference over real road footage — YOLOv9-t detection,
+CCT recognition, both MIT. No fixtures, no seeded rows pretending to be output. The
+evidence crops are the pixels the recogniser actually read, which is why some are
+visibly wrong.
+
+Row-level security is enforced in Postgres, not just in the application: nine tests
+issue raw SQL that bypasses the application entirely, and `setu_app` is verified
+`rolsuper=false, rolbypassrls=false` **on the deployed database**. The audit ledger is
+hash-chained and append-only — the application holds no UPDATE grant on it. Evidence
+exports carry Ed25519 detached signatures verifiable without SETU. Evidence images are
+served only through short-lived signed URLs.
+
+`detection` is a real TimescaleDB hypertable on the deployed instance.
+
+## What is not
+
+**The government gateway is down and has been all day.** Cloudflare 502 on every
+endpoint — the organiser's origin, not their edge. Measured across four days:
+
+| Date | Cameras producing frames | Valid registrations |
+|---|---:|---:|
+| 2026-08-27 | 25 of 30 | 2 |
+| 2026-08-30 | 18 of 30 | 0 |
+| 2026-08-31 | **0 of 30** | — |
+
+`SETU_GATEWAY_HOST` **is** now set on Render — confirmed today, the watcher's error
+changed from "no gateway configured" to a real 502, which means the deployed API is
+actively reaching for the feed and being refused. The configuration problem is fixed;
+the dependency is not, and cannot be from here.
+
+**The deployed database therefore holds own-feed detections only.** Twenty detections,
+all from the bundled clip via the four REPLAY cameras. Zero from the gateway. The
+console labels the source of every hop, alert and camera, and draws cameras with no
+detections hollow, so this is visible rather than inferred.
+
+**ANPR accuracy is 29.6%** precision and recall, 26.9% character error rate, over 27
+hand-annotated crops. It was 0.0% until three defects were found by measurement: a
+recogniser with nine classification heads against ten-character Indian plates, a
+tracker that never associated anything so multi-frame fusion never ran, and fusion
+voting misaligned characters against each other. The ceiling is what the estate
+publishes — 9,158 frames across 25 live cameras yielded three human-legible plates.
+
+**Four REPLAY cameras are a replay harness.** Real inference, real evidence photos;
+only *which camera saw it* is simulated. The prefix is visible in the console.
+
+**Speed-based flagging is not built.** It needs genuine cross-camera timestamps, and
+the only multi-camera data available is that harness. A speed alert computed from
+simulated attribution would be a fabricated capability presented as a real one.
+
+**The own-feed clip is third-party** — CC BY 3.0 Wikimedia, Hubli–Dharwad, so plates
+read `KA…` not `GJ…`. Decided today: it stays. Replacing it seven days out would
+invalidate the 27-crop annotation set the 29.6% figure is scored against, trading a
+measured number for an unmeasured one. The confusion it caused was never about the
+clip's origin but about nothing on screen naming the feed, and that is fixed.
+
+## Human tasks, genuinely outstanding
+
+Neither is startable by tooling, and neither is ticked.
+
+- **Both demonstration videos.** `DEMO_RUNBOOK.md` has the screen-by-screen script;
+  §3 covers what to say if the gateway is dark, which today it would be.
+- **Send `docs/SUPPORT_QUERY.md`.** More warranted than when it was written.
+
+Also worth a human: spot-check the ANPR annotations, since one person read all 27
+crops.
+
+## The thing this project got right
+
+Every headline number here was produced by running something, and three of them got
+*worse* when measured properly. The sub-stream throughput figure was withdrawn because
+the recogniser reads nothing at that resolution. The 8/8 feed-contract pass was found
+to be conditional on which camera the harness happened to pick. A responsive audit
+written this week passed every page while the GIS screen had no map on it at all.
+
+Each of those was caught by measurement and each is written down, here and in
+`DISCOVERY.md` and `HLD_RECONCILIATION.md`, with the date and the number. A reviewer
+who goes looking for the weak points will find them already documented — which is the
+only reason to trust the parts that are strong.

@@ -448,18 +448,26 @@ function GatewayCard({ status }: { status: GatewayStatus | undefined }) {
 
       <span className="text-muted">
         {status.last_checked_at
-          ? `checked ${since(status.last_checked_at)} ago`
+          ? // `since` already returns "just now" for anything under a minute, and
+            // "just now ago" is not a phrase. Only the durations take the suffix.
+            since(status.last_checked_at) === "just now"
+            ? "checked just now"
+            : `checked ${since(status.last_checked_at)} ago`
           : "awaiting first check"}
       </span>
 
       {status.last_success_at && !up && (
-        <span className="text-muted">last reached {since(status.last_success_at)} ago</span>
+        <span className="text-muted">
+          {since(status.last_success_at) === "just now"
+            ? "last reached moments ago"
+            : `last reached ${since(status.last_success_at)} ago`}
+        </span>
       )}
 
       <div className="flex-1" />
 
       {!up && !notYetChecked && (
-        <span className="text-muted max-w-md truncate" title={status.last_error ?? ""}>
+        <span className="text-muted max-w-md leading-snug" title={status.last_error ?? ""}>
           This is the organiser's feed, not this platform. Everything below is from our
           own records and is unaffected.
         </span>

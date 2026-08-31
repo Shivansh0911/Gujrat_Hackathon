@@ -20,8 +20,8 @@ at upload time.
 
 | # | Deliverable | Artefact | State |
 |---|---|---|---|
-| 5 | Own-feed screen recording | — | ⏳ **Harshit** |
-| 6 | Government-feed screen recording | — | ⏳ **Harshit** — availability swings: 18 of 30 cameras on 2026-08-30, 25 of 30 on 2026-08-27. Camera 7 is the only one that has ever produced a legible plate; **check it is up before recording** |
+| 5 | Own-feed screen recording | — | ⏳ **Harshit** — record against the deployed console; the own-feed detections are the ones already in it |
+| 6 | Government-feed screen recording | — | ⏳ **Harshit** — availability swings: 25 of 30 cameras on 27 Aug, 18 of 30 on 30 Aug, **a total 502 on 31 Aug and still down at close-out**. Camera 7 is the only one that has ever produced a legible plate. **Check the Health page's gateway card before recording**; if the feed is dark, record the outage handling instead — `DEMO_RUNBOOK.md` §3 has the wording |
 
 Script for both, screen by screen with timings and what to say:
 `docs/DEMO_RUNBOOK.md`.
@@ -45,7 +45,7 @@ Script for both, screen by screen with timings and what to say:
 | 11 | Screenshots, all screens, real data | `docs/screenshots/` | ✅ 11 images covering all eight screens |
 | 12 | Screenshots of the deployed instance | `docs/screenshots/deployed/` | ✅ 8 images, captured against the container stack |
 | 13 | Hosted URL + test credentials | **Console: https://setu-gujrat.netlify.app** · API: https://setu-api-ai7z.onrender.com | ✅ **live**, verified 10/10 by `verify_deployment.py`. Deployed on Render + Netlify, not Railway — see `docs/adr/0004` addendum. Credentials in `deploy-secrets.env` (gitignored) |
-| 14 | Test accounts for the screening committee | `admin` (System Administrator) and `operator` (Control Room Operator) | ⚠️ live values are in the gitignored `deploy-secrets.env`; copy them into `DEMO_RUNBOOK.md` §1 before submitting |
+| 14 | Test accounts for the screening committee | `admin` (System Administrator) and `operator` (Control Room Operator) | ✅ **live and verified.** Values are in the gitignored `deploy-secrets.env` and go on the **submission form**. They are deliberately *not* written into `DEMO_RUNBOOK.md` — that file is committed, and a working credential in a public repository is a secret leak whatever the reason for putting it there. `DEMO_RUNBOOK.md` §0 says where to find them |
 
 ## Evidence
 
@@ -64,25 +64,70 @@ Script for both, screen by screen with timings and what to say:
 ## Before upload
 
 - [x] ~~Annotate the crops and run `make accuracy`~~ — done; **spot-check the annotations**
-- [ ] Replace the third-party own-feed clip with our own stationary footage, then
-      `make demo-reset` and recapture screenshots
-- [ ] Record both demonstration videos
-- [ ] Deploy and record the live URL with credentials
-- [ ] Send `docs/SUPPORT_QUERY.md`
+- [x] **Own-feed clip — decided 2026-08-31: keep it.** See the decision below
+- [ ] **Record both demonstration videos** — human task, not startable by tooling
+- [x] ~~Deploy and record the live URL with credentials~~ — live at
+      https://setu-gujrat.netlify.app, verified 10/10. Credentials go on the submission
+      form, never into a committed file
+- [ ] **Send `docs/SUPPORT_QUERY.md`** — human task. More warranted than ever: the
+      gateway has been 502 on every endpoint since 31 Aug
 - [x] Secret scan — **done 2026-08-31**. CI's `gitleaks` full-history step is green on `42700d8`; `detect-secrets` also run locally over tracked files with all 18 findings verified as false positives and committed as `.secrets.baseline`. See `SECURITY.md`
-- [ ] Confirm the four limitations in `README.md` still read accurately
+- [x] ~~Confirm the limitations in `README.md` still read accurately~~ — re-checked
+      2026-08-31 against this session's measurements; see below
 
-## Four limitations to state up front
+---
 
-Stating them before a judge finds them is what makes the rest credible.
+## Decision — the own-feed clip stays (2026-08-31)
 
-1. The own-feed clip is third-party (CC BY 3.0, Karnataka) — plates read `KA…` not `GJ…`
-2. The four `REPLAY-` cameras are a replay harness: real inference and real evidence
-   photos, only the attributing camera is simulated
-3. **ANPR plate-level accuracy is 29.6%** (26.9% character error rate), up from 0.0%
-   once three measured defects were fixed. State the number and the story before a
-   judge tests it — finding them by measurement is the strongest evidence of rigour
-   in the submission. Resolution still bounds what is achievable
-4. The gateway media plane was down for most of the build; it recovered on
-   2026-08-27 with 25 of 30 cameras producing frames, and the estate publishes below
-   the resolution at which plates are legible — 3 legible plates in 9,158 frames
+This has been left open across several sessions. Closing it: **the Hubli–Dharwad
+Wikimedia clip is what ships**, unless someone films replacement footage before
+upload, in which case reopen this deliberately rather than by drift.
+
+**Why keep it.** It is CC BY 3.0 and correctly attributed in
+`data/own_feed/SOURCE.md`, so the licensing is clean. The confusion it caused — a
+reviewer reading own-feed detections as government-feed ones — was never really about
+the clip's origin; it was that nothing on screen said which feed a detection came
+from. That is now fixed at the source: every journey hop, alert card and camera panel
+carries a "Government feed" or "Own feed" badge, and cameras with no detections behind
+them are drawn hollow on the map.
+
+**What replacing it would cost, seven days out.** The 29.6% accuracy figure is scored
+against 27 hand-annotated crops from *this* clip. New footage invalidates that
+annotation set, so the headline accuracy number would have to be withdrawn and
+re-measured, or quoted against footage no longer in the repository. Trading a measured
+number for an unmeasured one this close to submission is the wrong direction.
+
+**What is honestly lost by keeping it.** Plates read `KA…`/`KL…` rather than `GJ…`,
+which a judge will notice immediately. That is limitation 1 in the README and should
+be said out loud in the demonstration rather than waited for.
+
+**If footage is filmed anyway:** `make demo-reset`, re-run `make ground-truth`,
+re-annotate, `make accuracy`, recapture screenshots — and update the accuracy figure
+everywhere it appears. Budget an afternoon, not an hour.
+
+## Limitations to state up front
+
+Six, not four — the list grew as measurement found more. They match `README.md`
+exactly; a judge who reads both and sees two different numbers trusts neither.
+Re-checked **2026-08-31**.
+
+1. **The own-feed clip is third-party** (CC BY 3.0 Wikimedia, Karnataka) — plates read
+   `KA…`/`KL…`, not `GJ…`. Kept deliberately; see the decision above
+2. **The four `REPLAY-` cameras are a replay harness** — real inference and real
+   evidence photos, only the attributing camera is simulated, and the prefix is visible
+   in the console
+3. **ANPR plate-level accuracy is 29.6%** precision and recall, 26.9% character error
+   rate, over 27 annotated crops. It was 0.0% until three defects were found *by
+   measurement*. Say the number and the story before a judge tests it
+4. **The government estate publishes below the resolution ANPR needs** — 9,158 frames
+   across 25 live cameras yielded three human-legible plates. This bounds what any
+   recogniser could achieve here, and is the empirical case for processing at the edge
+5. **The gateway is intermittent, and getting worse.** 25 of 30 cameras on 27 Aug,
+   18 of 30 on 30 Aug, **a Cloudflare 502 on every endpoint on 31 Aug and still down**.
+   Valid registrations across those sweeps: 2, then 0. The pipeline was identical; the
+   feed was not. The Health page now shows a live gateway card with the outage start
+   time, so this is visible rather than mistaken for our own failure
+6. **The deployed instance carries own-feed detections only.** Live, 10/10 verified,
+   but every detection in it came from our own footage — the gateway has never yielded
+   a legible plate during a run against the deployed database. The console labels the
+   source of every hop and alert, so this is stated rather than left to be assumed

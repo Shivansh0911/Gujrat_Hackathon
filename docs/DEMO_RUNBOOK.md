@@ -5,6 +5,36 @@ has been in for most of development and the state to plan for on the day.
 
 ---
 
+## 0. The live deployment
+
+Everything below describes running SETU locally. If you only need to *show* it, the
+deployed instance is already running and already seeded.
+
+| | |
+|---|---|
+| **Console** | https://setu-gujrat.netlify.app |
+| **API docs** | https://setu-api-ai7z.onrender.com/docs |
+| **Accounts** | `admin` (System Administrator) · `operator` (Control Room Operator) |
+| **Passwords** | in the gitignored `deploy-secrets.env` at the repository root |
+
+**The passwords are deliberately not written into this file.** This document is
+committed and pushed; a working credential in a public repository is a secret leak
+regardless of why it was put there. They belong in two places only: the submission
+form, and `deploy-secrets.env` on a team machine. `cat deploy-secrets.env` when you
+need them.
+
+Two things to know before clicking:
+
+- **The first request after a quiet spell takes about a minute.** Render's free tier
+  sleeps after 15 minutes idle. An UptimeRobot monitor pings `/healthz` every 5
+  minutes to prevent it, but open the link yourself once before a demonstration
+  rather than discovering it in front of an audience.
+- **Use `operator` for at least one screen.** It cannot add watchlist entries,
+  onboard cameras or run catalogue reconciliation, and showing that refusal is worth
+  more than describing the role model.
+
+---
+
 ## 1. Start from a clean checkout
 
 ```bash
