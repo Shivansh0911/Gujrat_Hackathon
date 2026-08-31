@@ -102,6 +102,20 @@ async function measure(page, pageName, vp) {
     // never grows and a naive check reports the layout as fine while half of it is
     // off-screen. That exact false pass is why this looks at element geometry too.
     const clipped = [];
+
+    // Content extending past the viewport is only a defect if it cannot be reached.
+    // A ten-column table inside `overflow-x-auto` is *supposed* to be wider than the
+    // screen -- that is the fix, not the bug -- so anything with a horizontally
+    // scrollable ancestor is reachable and therefore fine. Without this the audit
+    // flags the remedy as the fault, which it did on the first two runs.
+    const reachableByScrolling = (el) => {
+      for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
+        const ox = getComputedStyle(p).overflowX;
+        if (ox === "auto" || ox === "scroll") return true;
+      }
+      return false;
+    };
+
     for (const el of document.querySelectorAll("main *")) {
       const r = el.getBoundingClientRect();
       if (r.width <= 0 || r.height <= 0) continue;
@@ -109,9 +123,11 @@ async function measure(page, pageName, vp) {
         const cls = typeof el.className === "string" ? el.className.slice(0, 50) : "";
         const desc = `${el.tagName.toLowerCase()}.${cls}`.slice(0, 70);
         overflowing.push(desc);
-        // More than a quarter of the element beyond the right edge is content the
-        // operator simply cannot read.
-        if (r.right - window.innerWidth > r.width * 0.25) clipped.push(desc);
+        // More than a quarter of the element beyond the right edge, and no way to
+        // scroll to it, is content the operator simply cannot read.
+        if (r.right - window.innerWidth > r.width * 0.25 && !reachableByScrolling(el)) {
+          clipped.push(desc);
+        }
       }
     }
     // How much of the width the navigation is consuming.
