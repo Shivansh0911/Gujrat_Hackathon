@@ -155,24 +155,48 @@ else
   log "registry already holds ${CAMERA_COUNT} camera(s); skipping registry seed"
 fi
 
-# ── 4b. Demo detections, gated independently ────────────────────────────────────
-DETECTION_COUNT="$(count_rows detection)"
-if [ "${SETU_SEED_DEMO:-1}" = "1" ] && [ "$DETECTION_COUNT" = "0" ]; then
-  if compgen -G "/srv/setu/data/own_feed/*.mp4" > /dev/null; then
-    log "no detections yet; running ANPR over the bundled demo clip..."
-    # Retried: the first attempt can fail on a transient model download if the
-    # build-time cache is incomplete, and a deployed instance with an empty journey
-    # view is the worst possible outcome for a judge clicking the hosted URL.
-    for attempt in 1 2 3; do
-      if python scripts/seed_demo.py --frames "${SETU_DEMO_FRAMES:-900}"; then
-        break
-      fi
-      log "demo ingest attempt ${attempt} failed; retrying in 10s"
-      sleep 10
-    done
-    python scripts/seed_watchlist.py --reset \
-      || log "watchlist seed failed; continuing"
-    python -c "
+# ── 4b. Demo detections, in the BACKGROUND ──────────────────────────────────────
+# This must never delay the port bind, and it used to.
+#
+# A platform decides a web service is dead if it has not bound its port within a scan
+# window. Running ANPR over the bundled clip takes minutes on a shared CPU, and it sat
+# here in the foreground ahead of `exec uvicorn` -- so the moment the clip was actually
+# shipped in the image, the branch that had always been skipped started running, the
+# port was never bound, the platform killed the container, and the restart seeded from
+# the beginning again. A crash loop whose visible symptom was "No open ports detected".
+#
+# Migrations and the application role stay in the foreground above: they are fast, and
+# they are correctness and security preconditions for serving any request at all.
+# Seeding demonstration data is neither. It is opportunistic, it is idempotent, and it
+# belongs behind the port bind.
+seed_demo_data() {
+  DETECTION_COUNT="$(count_rows detection || echo unknown)"
+  if [ "${SETU_SEED_DEMO:-1}" != "1" ]; then
+    log "demo seeding disabled; skipping ingest"
+    return 0
+  fi
+  if [ "$DETECTION_COUNT" != "0" ]; then
+    log "detections present (${DETECTION_COUNT}); skipping ingest"
+    return 0
+  fi
+  if ! compgen -G "/srv/setu/data/own_feed/*.mp4" > /dev/null; then
+    log "no own-feed footage in the image; skipping demo ingest"
+    return 0
+  fi
+
+  log "no detections yet; running ANPR over the bundled demo clip in the background..."
+  # Retried: the first attempt can fail on a transient model download if the build-time
+  # cache is incomplete, and a deployed instance with an empty journey view is the worst
+  # possible outcome for a judge clicking the hosted URL.
+  for attempt in 1 2 3; do
+    if python scripts/seed_demo.py --frames "${SETU_DEMO_FRAMES:-900}"; then
+      break
+    fi
+    log "demo ingest attempt ${attempt} failed; retrying in 10s"
+    sleep 10
+  done
+  python scripts/seed_watchlist.py --reset || log "watchlist seed failed; continuing"
+  python -c "
 import sys
 sys.path.insert(0, '.')
 from services.analytics.matcher import scan_detections
@@ -186,12 +210,12 @@ s.commit()
 s.close()
 print(f'[entrypoint] {stats.alerts_created} alert(s) raised', file=sys.stderr)
 " || true
-  else
-    log "no own-feed footage in the image; skipping demo ingest"
-  fi
-else
-  log "detections present (${DETECTION_COUNT}) or demo seeding disabled; skipping ingest"
-fi
+  log "background demo seeding finished"
+}
+
+# `set -e` does not apply inside a backgrounded job, so a seeding failure degrades the
+# demonstration data without ever taking down a service that is already serving.
+seed_demo_data &
 
 log "starting API on port ${PORT:-8000}"
 exec uvicorn services.api.main:app \

@@ -346,6 +346,36 @@ role creation step did not run.
 
 ## Troubleshooting, by symptom
 
+### "No open ports detected" and the deploy is killed and retried
+
+```
+==> No open ports detected, continuing to scan...
+==> Port scan timeout reached, no open ports detected. Bind your service to
+    at least one port.
+[app] services.ingest.file_source: SCENE_DISCONTINUITY camera=REPLAY-01
+```
+
+Those two lines together are the whole diagnosis: the container is busy running the
+ANPR demo seed, and has not reached `exec uvicorn` yet. Render decides a web service
+that has not bound its port within the scan window is dead, kills it, and restarts —
+and the restart begins seeding again from the top. A loop that never serves a request.
+
+**Fixed in the entrypoint**: demo seeding now runs in the background, after the port is
+bound. Migrations and the unprivileged application role still run in the foreground —
+they are fast, and they are preconditions for serving any request safely. Seeding
+demonstration data is neither, so it belongs behind the bind.
+
+If you are running an older image, the workaround is `SETU_SEED_DEMO=0` and seeding the
+database from a laptop instead.
+
+**Two knobs worth knowing on a free instance** (0.1 CPU, 512 MB):
+
+| Variable | Why you might change it |
+|---|---|
+| `SETU_DEMO_FRAMES` | Lower than 900 makes background seeding finish sooner. Fewer frames means fewer detections, so do not go so low the journey demo has nothing to show |
+| `SETU_WORKERS` | Set to `1` if the instance runs out of memory while seeding. Two uvicorn workers plus two ONNX models in 512 MB is tight, and a shared 0.1 CPU gains nothing from the second worker |
+
+
 | Symptom | Cause | Fix |
 |---|---|---|
 | First click after a quiet period takes ~1 minute | The free service spun down after 15 minutes idle | Expected. C5 prevents it — but the **very first** request, before UptimeRobot has run once, can still be slow. Open the link yourself once after setting the monitor up |
