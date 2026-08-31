@@ -142,7 +142,26 @@ def main() -> int:
     redact.install(level=logging.WARNING)
     settings = get_settings()
 
-    descriptors = fetch_catalogue(settings)
+    # The catalogue is the organiser's server, and it has answered with a Cloudflare
+    # 502 for days at a time. Letting that propagate produced a bare traceback, which
+    # reads as "SETU is broken" when the finding is "the feed did not answer" -- and
+    # this is the script somebody will run the moment the gateway looks healthy again,
+    # so it is the worst possible place for a misleading failure. Exit code 3 matches
+    # preflight_check.py: not a success, not a defect in this pipeline, an outage
+    # upstream.
+    try:
+        descriptors = fetch_catalogue(settings)
+    except Exception as exc:  # noqa: BLE001
+        print(f"\nCATALOGUE UNAVAILABLE - {type(exc).__name__}: {exc}")
+        print(
+            f"The gateway at {settings.gateway_host} did not answer, so there is\n"
+            "nothing to ingest. Nothing in this repository can change that: the\n"
+            "endpoint is the organiser's. The ingest path itself is unchanged and\n"
+            "runs as soon as the feed returns -- re-run this command then.\n"
+            "The Health page's gateway card tracks the live state."
+        )
+        return 3
+
     if args.cameras:
         wanted = {c.strip() for c in args.cameras.split(",") if c.strip()}
         descriptors = [d for d in descriptors if d.external_id in wanted]
