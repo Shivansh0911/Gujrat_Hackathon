@@ -379,11 +379,28 @@ specific cameras as defective gets forwarded to people who were not in the room;
 should be able to check the figures were not edited on the way. Four tests, including
 one that requires an altered manifest to fail verification.
 
-## Not verified on this run
+## Verified on the deployed site — 2026-09-01
 
-The layout fix was measured against a reconstruction, not against the deployed site:
-the push to GitHub could not complete from this session — the credential helper falls
-back to an interactive prompt — so Netlify and Render are still serving the previous
-build. **Re-run `responsive_audit.mjs` against the live console once the deploy
-lands.** Backend: 213 tests pass, `ruff` clean, and the frontend builds and
-typechecks.
+Everything above is now confirmed against the live deployment, not a reconstruction.
+
+| Check | Result |
+|---|---|
+| CI on `73d8d5b` | success — run 33419686501, all three jobs |
+| Responsive audit vs `setu-gujrat.netlify.app` | **32/32 pass**, 8 pages × 375/390/768/1024 px |
+| Coverage @ 375 px, screenshot read | map renders with gap circles, panel below it full-width, stat cards in two columns, nothing clipped |
+| Journey @ 375 px, screenshot read | form stacks, all five purpose presets fit, map fully visible, no overlapping cards |
+| Gap-analysis PDF, live end to end | HTTP 200, `application/pdf`, 3 pages, 8,093 bytes, 34 cameras / 10 districts / 28 gaps matching the console |
+| Its signature and audit trail | 128-hex Ed25519 signature, 64-hex public key, **audit ledger entry 107** |
+
+The screenshots were opened and read, not merely produced. That step is not optional
+here: on 30 Aug this same audit reported every page green while the GIS screen had no
+map on it, and the only thing that caught it was looking at the picture.
+
+Backend at the same commit: 213 tests pass, `ruff` clean, `mypy --strict` clean under
+the pinned numpy.
+
+One correction to the record: during this session the Render API was read as down for
+~28 minutes. It was not. `/health` is not a route — the health endpoints are
+`/health/cameras` and `/health/gateway` — so a 404 was misread as a continuing 502
+after a genuine cold-start window. The service recovered on its own and the deployed
+OpenAPI carries `/cameras/gap-analysis/export`.
