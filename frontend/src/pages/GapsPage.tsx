@@ -34,6 +34,8 @@ export default function GapsPage() {
   const { ref: mapContainerRef, mapRef } = useMapLibre();
   const [kindFilter, setKindFilter] = useState("");
   const [showJourneyGaps, setShowJourneyGaps] = useState(true);
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["gap-analysis"],
@@ -116,12 +118,46 @@ export default function GapsPage() {
 
   const summary = data?.summary as Record<string, number> | undefined;
 
+  /**
+   * Take the report away as a document.
+   *
+   * The same blob-URL route the evidence export uses, and for the same reason: the
+   * endpoint needs the bearer token, so a plain link would issue an unauthenticated
+   * GET and download a 401 page named like a report.
+   */
+  async function download() {
+    setDownloading(true);
+    setDownloadError(null);
+    try {
+      const { blob, filename } = await api.exportGapAnalysis();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setDownloadError(e instanceof Error ? e.message : "Download failed");
+    } finally {
+      setDownloading(false);
+    }
+  }
+
   return (
-    <div className="h-full flex">
-      <div className="flex-1 relative min-w-0">
+    // Column on phones and tablets, row from `lg` up. Both children were previously flex items in
+    // a row: at 375px the 27rem panel took the whole viewport, the map's flex-1
+    // resolved to nothing, and the panel itself was clipped by `main`'s overflow-hidden
+    // with no way to scroll to the half hanging off the right edge.
+    <div className="h-full flex flex-col lg:flex-row">
+      <div className="relative min-w-0 h-[42vh] shrink-0 lg:h-auto lg:flex-1">
         <div ref={mapContainerRef} className="absolute inset-0" />
 
-        <div className="absolute bottom-4 right-4 panel p-3 text-xs w-80 bg-ink-800/95 space-y-2">
+        {/* The floating legend is desktop-only (`lg` and up). On a phone it would cover a third of a
+            map that is already only 42vh tall; the same content is rendered inline in
+            the panel below instead, so nothing is lost. */}
+        <div className="hidden lg:block absolute bottom-4 right-4 panel p-3 text-xs w-80 bg-ink-800/95 space-y-2">
           <div className="font-medium text-slate-200">Coverage overlay</div>
           <div className="flex items-center gap-2">
             <span className="w-3.5 h-3.5 rounded-full border border-dashed border-warn/70 bg-warn/15" />
@@ -142,16 +178,42 @@ export default function GapsPage() {
         </div>
       </div>
 
-      <div className="w-[27rem] shrink-0 border-l border-edge bg-ink-800 overflow-y-auto">
+      <div
+        className="w-full lg:w-[27rem] shrink-0 border-t lg:border-t-0 lg:border-l
+                   border-edge bg-ink-800 overflow-y-auto flex-1 lg:flex-none"
+      >
         <div className="p-3 border-b border-edge">
-          <div className="font-medium">Coverage gap analysis</div>
+          <div className="flex items-start justify-between gap-2">
+            <div className="font-medium">Coverage gap analysis</div>
+            <button
+              type="button"
+              className="btn text-[11px] py-1 px-2 shrink-0"
+              onClick={download}
+              disabled={!data || downloading}
+            >
+              {downloading ? "Preparing…" : "Download report (PDF)"}
+            </button>
+          </div>
           <p className="text-[11px] text-muted mt-1 leading-snug">
             Where this network cannot see, and why. Gaps are separated by remedy because
             the cost of each differs enormously — a missing coordinate is a pin drop, an
             approximate one needs a survey, a degraded camera needs maintenance on
             capital already spent, and uncovered ground needs procurement.
           </p>
+          {downloadError && (
+            <p className="text-[11px] text-bad mt-1.5">{downloadError}</p>
+          )}
         </div>
+
+        {/* Mobile stand-in for the map legend hidden above. */}
+        <label className="lg:hidden flex items-center gap-2 p-3 border-b border-edge text-[11px] text-muted">
+          <input
+            type="checkbox"
+            checked={showJourneyGaps}
+            onChange={(e) => setShowJourneyGaps(e.target.checked)}
+          />
+          show investigation-derived gaps on the map
+        </label>
 
         {isLoading && <Spinner label="Analysing coverage…" />}
         {error && <div className="p-3"><ErrorBox error={error} /></div>}

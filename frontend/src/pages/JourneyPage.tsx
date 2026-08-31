@@ -300,12 +300,19 @@ export default function JourneyPage() {
         </button>
       </form>
 
-      <div className="flex-1 flex min-h-0">
-        <div className="flex-1 relative min-w-0">
+      {/* Column on phones and tablets, row from `lg` up. As a row at 375px the 26rem results
+          panel consumed the whole viewport and the map's flex-1 resolved to zero --
+          the same defect the GIS page had, and the reason two floating cards appeared
+          to be sitting on nothing. */}
+      <div className="flex-1 flex flex-col lg:flex-row min-h-0">
+        <div className="relative min-w-0 h-[38vh] shrink-0 lg:h-auto lg:flex-1">
           <div ref={mapContainerRef} className="absolute inset-0" />
 
+          {/* Both cards are desktop-only. Overlaid on a 38vh map they covered most of
+              it and each other; the same facts are rendered inline at the top of the
+              results panel below, where they can wrap. */}
           {result && (
-            <div className="absolute top-3 left-3 panel px-3 py-2 text-xs bg-ink-800/95 space-y-1">
+            <div className="hidden lg:block absolute top-3 left-3 panel px-3 py-2 text-xs bg-ink-800/95 space-y-1">
               <div className="flex items-center gap-2">
                 <span className="mono text-slate-100 text-sm">{result.plate}</span>
                 <Badge tone={result.confidence > 0.7 ? "ok" : "warn"}>
@@ -322,7 +329,7 @@ export default function JourneyPage() {
           )}
 
           {result && (result.coverage_gaps.length > 0 || result.rejected.length > 0) && (
-            <div className="absolute bottom-3 left-3 panel px-3 py-2 text-[11px] bg-ink-800/95 space-y-1 max-w-sm">
+            <div className="hidden lg:block absolute bottom-3 left-3 panel px-3 py-2 text-[11px] bg-ink-800/95 space-y-1 max-w-sm">
               {result.coverage_gaps.length > 0 && (
                 <div className="flex items-start gap-2">
                   <span className="w-4 border-t-2 border-dashed border-warn mt-1.5 shrink-0" />
@@ -343,7 +350,43 @@ export default function JourneyPage() {
         </div>
 
         {/* ---- results ---- */}
-        <div className="w-[26rem] shrink-0 border-l border-edge bg-ink-800 overflow-y-auto">
+        <div
+          className="w-full lg:w-[26rem] shrink-0 border-t lg:border-t-0 lg:border-l
+                     border-edge bg-ink-800 overflow-y-auto flex-1 lg:flex-none"
+        >
+          {/* Mobile stand-in for the two map overlays hidden above. */}
+          {result && (
+            <div className="lg:hidden p-3 border-b border-edge text-[11px] space-y-1.5">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="mono text-slate-100 text-sm">{result.plate}</span>
+                <Badge tone={result.confidence > 0.7 ? "ok" : "warn"}>
+                  confidence {result.confidence.toFixed(2)}
+                </Badge>
+              </div>
+              <div className="text-muted">
+                {result.hops.length} hop{result.hops.length !== 1 ? "s" : ""} ·{" "}
+                {(result.total_distance_m / 1000).toFixed(1)} km ·{" "}
+                {result.duration_s > 0
+                  ? `${(result.duration_s / 60).toFixed(1)} min`
+                  : "single sighting"}{" "}
+                · query {result.query_ms.toFixed(0)} ms
+              </div>
+              {result.coverage_gaps.length > 0 && (
+                <div className="text-muted">
+                  Dashed on the map: {result.coverage_gaps.length} camera(s) on this
+                  route produced no detection — a coverage gap, not an absence of the
+                  vehicle.
+                </div>
+              )}
+              {result.rejected.length > 0 && (
+                <div className="text-muted">
+                  {result.rejected.length} candidate sighting(s) rejected as physically
+                  implausible — listed in the timeline.
+                </div>
+              )}
+            </div>
+          )}
+
           {run.isError && <div className="p-3"><ErrorBox error={run.error} /></div>}
 
           {!result && !run.isPending && (

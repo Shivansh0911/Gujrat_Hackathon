@@ -7,7 +7,9 @@ strength of a code comment. Two items are additionally enforced by static analys
 this repository, because "we force TCP" and "we never use declared FPS for timing" are
 properties of the whole codebase, not of one lucky run.
 
-Exit code 0 only when all eight pass, so this doubles as a CI gate.
+Exit codes: 0 when every check that ran passed, 1 when a check ran and failed,
+3 when the organiser's catalogue could not be read at all -- an upstream outage is
+not a pass and not a pipeline defect, and must not be reported as either.
 
 Usage:
     python scripts/preflight_check.py [--seconds 10]
@@ -432,6 +434,11 @@ def check_4_reconnect(cam: CameraDescriptor | None, seconds: float) -> Check:
 
 def check_5_join_warnings_nonfatal(cameras: list[CameraDescriptor], seconds: float) -> Check:
     """Live: attach mid-stream to an HEVC feed; warnings must not abort the session."""
+    if not cameras:
+        return _not_exercised(
+            5, "Decoder warnings on join are logged, not fatal", "no camera delivered frames"
+        )
+
     # Prefer HEVC: attaching mid-GOP to H.265 is what produces the RPS/POC messages.
     hevc = next((c for c in cameras if (c.declared_codec or "").lower() in ("hevc", "h265")), None)
     cam = hevc or cameras[0]
@@ -450,6 +457,15 @@ def check_5_join_warnings_nonfatal(cameras: list[CameraDescriptor], seconds: flo
 
 def check_6_catalogue_driven(cameras: list[CameraDescriptor], catalogue_url: str) -> Check:
     """Live: the camera set and every URL used came from /api/ingest."""
+    if not cameras:
+        # An empty catalogue is the gateway declining to answer, not this pipeline
+        # sourcing its cameras from somewhere it should not. Reporting FAIL here said
+        # the opposite of what happened.
+        return _not_exercised(
+            6,
+            "Camera list and properties are read from /api/ingest",
+            f"the catalogue at {catalogue_url} returned no cameras",
+        )
     with_props = [c for c in cameras if c.properties_known]
     without = [c.external_id for c in cameras if not c.properties_known]
     passed = len(cameras) > 0 and all(c.rtsp_url for c in cameras)
@@ -611,24 +627,40 @@ def main() -> int:
         f"transport: {'RTSP/TCP' if RTSP_AVAILABLE else 'HLS (RTSP :%d unreachable)' % settings.gateway_rtsp_port}\n"
     )
 
-    cameras = fetch_catalogue(settings)
+    # The catalogue is the organiser's server, and it has been returning a Cloudflare
+    # 502 for days at a time. Letting that propagate produced a bare traceback, which
+    # reads as "SETU is broken" when the accurate finding is "the feed did not answer" --
+    # and it aborted the two checks that need no network at all. Neither of those is
+    # acceptable in a tool whose job is to report honestly on what could be verified.
+    catalogue_error: str | None = None
+    try:
+        cameras = fetch_catalogue(settings)
+    except Exception as exc:  # noqa: BLE001
+        catalogue_error = f"{type(exc).__name__}: {exc}"
+        cameras = []
+        print(f"  CATALOGUE UNAVAILABLE — {catalogue_error}")
+        print(
+            "  This is the gateway at "
+            f"{settings.gateway_host}, not this codebase. The static checks below still\n"
+            "  run; every check needing a live feed reports NOT EXERCISED.\n"
+        )
+
     live = [c for c in cameras if c.live]
-    if not live:
-        print("FAIL: no live cameras in the catalogue")
-        return 2
 
     # The catalogue's `live` flag is a claim (DISCOVERY finding 9). Establish which
     # cameras actually deliver frames before handing any of them to a check, so a
     # check's result describes the pipeline rather than which camera happened to be
     # first in the catalogue.
-    print("  discovering cameras that actually deliver frames ...", flush=True)
-    verified = discover_live_cameras(live, want=3, budget_s=min(args.seconds, 8.0))
+    verified: list[CameraDescriptor] = []
+    if live:
+        print("  discovering cameras that actually deliver frames ...", flush=True)
+        verified = discover_live_cameras(live, want=3, budget_s=min(args.seconds, 8.0))
     if verified:
         print(
             f"  {len(verified)} verified live: " f"{', '.join(c.external_id for c in verified)}\n",
             flush=True,
         )
-    else:
+    elif not catalogue_error:
         print("  NO camera delivered a frame; live checks will report NOT EXERCISED\n", flush=True)
 
     checks_run: list[str] = []
@@ -694,6 +726,15 @@ def main() -> int:
             "It is not a pipeline defect, and it is not a pass either. Re-run when\n"
             "the feed is healthier to convert them."
         )
+    if catalogue_error:
+        print(
+            f"\nThe catalogue at {settings.catalogue_url} could not be read:\n"
+            f"  {catalogue_error}\n"
+            "Everything above that needed a live feed was therefore not exercised on\n"
+            "this run. Nothing in this repository can change that outcome -- the\n"
+            "endpoint is the organiser's. Exit code 3 says exactly this: not a pass,\n"
+            "not a failure of the pipeline, an outage upstream."
+        )
     print()
 
     if args.emit_evidence:
@@ -704,6 +745,7 @@ def main() -> int:
                 "catalogue_url": settings.catalogue_url,
                 "rtsp_port_reachable": RTSP_AVAILABLE,
                 "transport_used": "rtsp" if RTSP_AVAILABLE else "hls",
+                "catalogue_error": catalogue_error,
                 "cameras_catalogued": len(cameras),
                 "cameras_live_flagged": len(live),
                 "checks": [c.__dict__ for c in checks],
@@ -723,6 +765,7 @@ def main() -> int:
                 "generated_at": datetime.now(timezone.utc).isoformat(),
                 "gateway_host": settings.gateway_host,
                 "transport": settings.rtsp_transport,
+                "catalogue_error": catalogue_error,
                 "cameras_catalogued": len(cameras),
                 "cameras_live": len(live),
                 "checks": [c.__dict__ for c in checks],
@@ -737,8 +780,14 @@ def main() -> int:
     )
     print(f"evidence written: {args.out}\n")
     # A check we could not exercise is not a failure of this system. A check that
-    # ran and went wrong is.
-    return 1 if failed else 0
+    # ran and went wrong is. And a run where the feed never answered at all is neither
+    # -- returning 0 for it would let "the gateway was down" be read as "8/8 passed",
+    # which is the one misreport this script exists to prevent.
+    if failed:
+        return 1
+    if catalogue_error:
+        return 3
+    return 0
 
 
 if __name__ == "__main__":

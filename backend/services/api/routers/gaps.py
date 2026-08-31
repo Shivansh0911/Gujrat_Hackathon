@@ -24,15 +24,17 @@ for where the next camera should go rather than an opinion about it.
 
 from __future__ import annotations
 
+import hashlib
 import logging
 from datetime import datetime, timedelta, timezone
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Response
 from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from services.api import audit
 from services.api.db import get_session
 from services.api.security import CurrentActor
 from services.registry.enums import CameraStatus, GeomSource
@@ -301,6 +303,63 @@ def gap_analysis(
         journey_gaps=journey_gaps,
         summary=summary,
         interpretation=interpretation,
+    )
+
+
+@router.get("/cameras/gap-analysis/export", response_class=Response)
+def export_gap_analysis_pdf(
+    session: SessionDep,
+    actor: CurrentActor,
+    journey_window_days: int = Query(default=7, ge=1, le=90),
+) -> Response:
+    """The gap analysis as a signed PDF a planner can forward.
+
+    Recomputes the analysis rather than accepting one from the caller, for the same
+    reason the evidence export does: a document signed over whatever the client posted
+    would attest to nothing.
+
+    Audited separately from viewing the screen. Producing a distributable document that
+    names specific cameras as defective is a more consequential act than looking at the
+    same list on a monitor, and the ledger should be able to tell the two apart.
+    """
+    from services.api.gap_export import export_gap_analysis
+
+    result = gap_analysis(session=session, actor=actor, journey_window_days=journey_window_days)
+    data = result.model_dump(mode="json")
+
+    entry = audit.append(
+        session,
+        action="EXPORT_GAP_ANALYSIS",
+        subject_type="estate",
+        subject_id="coverage",
+        actor_id=actor.subject,
+        actor_role=actor.role,
+        purpose="Coverage gap analysis export",
+        detail={
+            "cameras_total": result.summary.get("cameras_total", 0),
+            "camera_gaps": len(result.camera_gaps),
+            "journey_gaps": len(result.journey_gaps),
+            "journey_window_days": journey_window_days,
+        },
+    )
+    session.flush()
+
+    pdf, manifest, signature, public_key = export_gap_analysis(
+        data, audit_seq=entry.seq, requested_by=actor.subject
+    )
+
+    stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    filename = f"setu-gap-analysis-{stamp}-{entry.seq}.pdf"
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "X-SETU-Manifest-SHA256": hashlib.sha256(manifest).hexdigest(),
+            "X-SETU-Signature": signature,
+            "X-SETU-Public-Key": public_key,
+            "X-SETU-Audit-Seq": str(entry.seq),
+        },
     )
 
 

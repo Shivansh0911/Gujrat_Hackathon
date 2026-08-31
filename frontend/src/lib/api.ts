@@ -204,4 +204,28 @@ export const api = {
       manifestSha256: res.headers.get("X-SETU-Manifest-SHA256"),
     };
   },
+
+  /**
+   * The coverage gap analysis as a signed PDF.
+   *
+   * Same shape as the evidence export and for the same reasons — the endpoint needs
+   * the bearer token, so it cannot be an ordinary link, and the signature headers ride
+   * along with the document rather than needing a second request that might recompute
+   * a different analysis.
+   */
+  async exportGapAnalysis() {
+    const headers = new Headers();
+    if (accessToken) headers.set("Authorization", `Bearer ${accessToken}`);
+    const res = await fetch(`${BASE}/cameras/gap-analysis/export`, { headers });
+    if (!res.ok) throw new ApiError(res.status, await res.text());
+    const disposition = res.headers.get("Content-Disposition") ?? "";
+    const match = /filename="([^"]+)"/.exec(disposition);
+    return {
+      blob: await res.blob(),
+      filename: match?.[1] ?? "setu-gap-analysis.pdf",
+      auditSeq: res.headers.get("X-SETU-Audit-Seq"),
+      signature: res.headers.get("X-SETU-Signature"),
+      manifestSha256: res.headers.get("X-SETU-Manifest-SHA256"),
+    };
+  },
 };

@@ -202,12 +202,12 @@ export default function MapPage() {
     // map's flex-1 resolved to zero and the GIS page rendered with no map on it at
     // all. The map keeps a fixed share of the height on mobile so it is actually
     // present, and the list scrolls beneath it.
-    <div className="h-full flex flex-col md:flex-row">
-      <div className="relative min-w-0 h-[42vh] shrink-0 md:h-auto md:flex-1">
+    <div className="h-full flex flex-col lg:flex-row">
+      <div className="relative min-w-0 h-[42vh] shrink-0 lg:h-auto lg:flex-1">
         <div ref={mapContainerRef} className="absolute inset-0" />
 
         {/* Legend. The provenance explanation is the point of this panel. */}
-        <div className="hidden md:block absolute bottom-4 right-4 panel p-3 text-xs space-y-2 w-72 bg-ink-800/95">
+        <div className="hidden lg:block absolute bottom-4 right-4 panel p-3 text-xs space-y-2 w-72 bg-ink-800/95">
           <div className="font-medium text-slate-200">Legend</div>
           <div className="flex items-center gap-2"><StatusDot status="ACTIVE" /> Active</div>
           <div className="flex items-center gap-2"><StatusDot status="DEGRADED" /> Degraded</div>
@@ -237,7 +237,7 @@ export default function MapPage() {
       </div>
 
       {/* ---- side panel ---- */}
-      <div className="w-full md:w-96 shrink-0 border-t md:border-t-0 md:border-l border-edge bg-ink-800 overflow-y-auto flex-1 md:flex-none">
+      <div className="w-full lg:w-96 shrink-0 border-t lg:border-t-0 lg:border-l border-edge bg-ink-800 overflow-y-auto flex-1 lg:flex-none">
         <div className="p-3 border-b border-edge space-y-2">
           <div className="flex items-center justify-between">
             <div className="font-medium">Camera registry</div>

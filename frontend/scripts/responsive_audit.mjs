@@ -137,12 +137,28 @@ async function measure(page, pageName, vp) {
       asideRect && asideRect.width > 0 && asideRect.left >= -1
         ? asideRect.width / window.innerWidth
         : 0;
+    // A map squeezed to nothing is the defect this audit twice failed to catch, and
+    // it is invisible to every metric above: the offending sibling panel hangs only
+    // ~15% past the right edge, under the clipping threshold, while the map beside it
+    // resolves to zero width and simply is not there. Measure the map directly.
+    // `null` means the page has no map and the check does not apply.
+    // Measured against `main`, not the viewport: a healthy desktop layout legitimately
+    // gives the map only half the screen once the nav rail and a results panel have
+    // taken their share, so a viewport-relative threshold would flag the good layout.
+    // Against `main` the broken case is unmistakable -- the map is at zero.
+    const canvas = document.querySelector(".maplibregl-map");
+    const mainEl = document.querySelector("main");
+    const mainWidth = mainEl ? mainEl.getBoundingClientRect().width : window.innerWidth;
+    const mapShare =
+      canvas && mainWidth > 0 ? canvas.getBoundingClientRect().width / mainWidth : null;
+
     return {
       scrollWidth: doc.scrollWidth,
       innerWidth: window.innerWidth,
       overflowing: [...new Set(overflowing)].slice(0, 4),
       clipped: [...new Set(clipped)].slice(0, 4),
       navShare,
+      mapShare,
     };
   });
 
@@ -152,6 +168,11 @@ async function measure(page, pageName, vp) {
   // Navigation eating more than a third of a phone screen is a layout failure even
   // when nothing overflows: it is what pushed the map off the GIS page entirely.
   const navTooWide = vp.width < 768 && metrics.navShare > 0.34;
+  // A map given less than a third of the content area has been crushed by a sibling
+  // panel. It is a failure at every width, not only on phones -- the GIS, Coverage and
+  // Journey pages all put a fixed-width panel beside a flex-1 map, and each collapsed
+  // the same way once the panel alone exceeded the screen.
+  const mapCrushed = metrics.mapShare !== null && metrics.mapShare < 0.35;
   const tag = `${pageName} @ ${vp.name}px`;
 
   if (overflows) {
@@ -169,14 +190,22 @@ async function measure(page, pageName, vp) {
     );
   }
 
-  const ok = !overflows && !clipped && !navTooWide;
+  if (mapCrushed) {
+    problems.push(
+      `${tag}: the map occupies ${(metrics.mapShare * 100).toFixed(0)}% of the content area ` +
+        `— a side panel has squeezed it out`,
+    );
+  }
+
+  const ok = !overflows && !clipped && !navTooWide && !mapCrushed;
   console.log(
     ok
       ? `  ok   ${tag}`
       : `  FAIL ${tag}` +
           (overflows ? " overflow" : "") +
           (clipped ? ` clipped:${metrics.clipped.length}` : "") +
-          (navTooWide ? ` nav:${(metrics.navShare * 100).toFixed(0)}%` : ""),
+          (navTooWide ? ` nav:${(metrics.navShare * 100).toFixed(0)}%` : "") +
+          (mapCrushed ? ` map:${(metrics.mapShare * 100).toFixed(0)}%` : ""),
   );
   return ok;
 }
