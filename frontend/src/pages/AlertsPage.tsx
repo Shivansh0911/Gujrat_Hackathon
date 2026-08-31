@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { api, getToken, type Alert, websocketUrl } from "../lib/api";
+import { api, getToken, mediaUrl, type Alert, websocketUrl } from "../lib/api";
 import { Badge, Empty, ErrorBox, SourceBadge, Spinner } from "../components/ui";
 
 export default function AlertsPage() {
@@ -114,7 +114,7 @@ function AlertCard({
       <div className="flex items-start gap-3">
         {alert.crop_url ? (
           <img
-            src={alert.crop_url}
+            src={mediaUrl(alert.crop_url)}
             alt={`Evidence crop for ${alert.matched_value}`}
             className="w-32 rounded border border-edge bg-black object-contain shrink-0"
           />

@@ -3,7 +3,7 @@ import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useMutation } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
-import { api, type JourneyResult } from "../lib/api";
+import { api, mediaUrl, type JourneyResult } from "../lib/api";
 import { circlePolygon } from "../lib/map";
 import { useMapLibre } from "../lib/useMap";
 import { Badge, Empty, ErrorBox, ProvenanceBadge, SourceBadge } from "../components/ui";
@@ -528,7 +528,7 @@ function Results({
 
           {hop.crop_url && (
             <img
-              src={hop.crop_url}
+              src={mediaUrl(hop.crop_url)}
               alt={`Evidence crop for ${hop.plate_read}`}
               className="rounded border border-edge bg-black max-h-24 object-contain"
             />

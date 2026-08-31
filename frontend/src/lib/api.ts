@@ -50,6 +50,26 @@ export type JourneyGap = components["schemas"]["JourneyGap"];
 const API_ORIGIN = (import.meta.env.VITE_API_ORIGIN ?? "").replace(/\/+$/, "");
 const BASE = API_ORIGIN || import.meta.env.VITE_API_BASE_URL || "/api";
 
+/**
+ * Absolute URL for a media path the API serves, such as an evidence crop.
+ *
+ * The API returns these as root-relative paths (`/media/crops/x.jpg?exp=...&sig=...`),
+ * which is correct behind nginx and correct in dev, where Vite proxies `/media`. On the
+ * split-origin deployment it is not: the browser resolves it against the *console's*
+ * origin, where Netlify's SPA catch-all answers every unmatched path with `index.html`
+ * — **200 OK, `text/html`**. So every evidence photograph in the deployed console was a
+ * broken image icon, and nothing detected it, because nothing 404s. A check looking for
+ * a failed request would have found a successful one.
+ *
+ * The signature travels in the query string and is preserved untouched; this only
+ * decides which host the request goes to.
+ */
+export function mediaUrl(path: string | null | undefined): string | undefined {
+  if (!path) return undefined;
+  if (/^https?:\/\//i.test(path)) return path;
+  return API_ORIGIN ? API_ORIGIN + path : path;
+}
+
 /** Absolute `ws(s)://` URL for a backend WebSocket path such as `/ws/alerts`. */
 export function websocketUrl(path: string): string {
   if (API_ORIGIN) {

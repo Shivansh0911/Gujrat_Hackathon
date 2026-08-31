@@ -271,7 +271,15 @@ def main() -> int:
                 # the API, not by whatever is hosting the console bundle.
                 url = u if str(u).startswith("http") else f"{API_ROOT}{u}"
                 try:
-                    if requests.get(url, timeout=TIMEOUT).ok:
+                    resp = requests.get(url, timeout=TIMEOUT)
+                    # `.ok` alone is not enough, and the difference is not academic.
+                    # Netlify's SPA catch-all answers *every* unmatched path with
+                    # index.html and HTTP 200, so a crop URL aimed at the console origin
+                    # returns a successful response containing HTML. That is exactly what
+                    # happened in the browser while this check passed, because this check
+                    # resolves the URL against API_ROOT and the console did not. Requiring
+                    # an image content-type is what makes the two agree.
+                    if resp.ok and resp.headers.get("Content-Type", "").startswith("image/"):
                         fetched += 1
                 except requests.RequestException:
                     pass

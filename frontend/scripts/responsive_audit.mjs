@@ -152,6 +152,18 @@ async function measure(page, pageName, vp) {
     const mapShare =
       canvas && mainWidth > 0 ? canvas.getBoundingClientRect().width / mainWidth : null;
 
+    // Images that loaded nothing. An evidence photograph is a scored capability, and
+    // a broken one is invisible to every geometry metric here -- the element has a
+    // size, it just has no picture in it. It happened on the deployed console for
+    // days: crop URLs come back root-relative, so the browser resolved them against
+    // the *console* origin, where Netlify's SPA catch-all returns index.html with
+    // HTTP 200. Nothing 404s, so nothing looking for failures could find it.
+    // `naturalWidth === 0` on a complete image is the one signal that does not care
+    // why the bytes were not an image.
+    const brokenImages = [...document.querySelectorAll("main img")]
+      .filter((img) => img.complete && img.naturalWidth === 0)
+      .map((img) => (img.getAttribute("src") ?? "(no src)").slice(0, 80));
+
     return {
       scrollWidth: doc.scrollWidth,
       innerWidth: window.innerWidth,
@@ -159,6 +171,7 @@ async function measure(page, pageName, vp) {
       clipped: [...new Set(clipped)].slice(0, 4),
       navShare,
       mapShare,
+      brokenImages: [...new Set(brokenImages)].slice(0, 4),
     };
   });
 
@@ -190,6 +203,13 @@ async function measure(page, pageName, vp) {
     );
   }
 
+  const imagesBroken = metrics.brokenImages.length > 0;
+  if (imagesBroken) {
+    problems.push(
+      `${tag}: ${metrics.brokenImages.length} image(s) loaded nothing — ` +
+        metrics.brokenImages.join(", "),
+    );
+  }
   if (mapCrushed) {
     problems.push(
       `${tag}: the map occupies ${(metrics.mapShare * 100).toFixed(0)}% of the content area ` +
@@ -197,7 +217,7 @@ async function measure(page, pageName, vp) {
     );
   }
 
-  const ok = !overflows && !clipped && !navTooWide && !mapCrushed;
+  const ok = !overflows && !clipped && !navTooWide && !mapCrushed && !imagesBroken;
   console.log(
     ok
       ? `  ok   ${tag}`
@@ -205,7 +225,8 @@ async function measure(page, pageName, vp) {
           (overflows ? " overflow" : "") +
           (clipped ? ` clipped:${metrics.clipped.length}` : "") +
           (navTooWide ? ` nav:${(metrics.navShare * 100).toFixed(0)}%` : "") +
-          (mapCrushed ? ` map:${(metrics.mapShare * 100).toFixed(0)}%` : ""),
+          (mapCrushed ? ` map:${(metrics.mapShare * 100).toFixed(0)}%` : "") +
+          (imagesBroken ? ` brokenimg:${metrics.brokenImages.length}` : ""),
   );
   return ok;
 }
