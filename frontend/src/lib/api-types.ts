@@ -58,6 +58,34 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/cameras/gap-analysis/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export Gap Analysis Pdf
+         * @description The gap analysis as a signed PDF a planner can forward.
+         *
+         *     Recomputes the analysis rather than accepting one from the caller, for the same
+         *     reason the evidence export does: a document signed over whatever the client posted
+         *     would attest to nothing.
+         *
+         *     Audited separately from viewing the screen. Producing a distributable document that
+         *     names specific cameras as defective is a more consequential act than looking at the
+         *     same list on a monitor, and the ledger should be able to tell the two apart.
+         */
+        get: operations["export_gap_analysis_pdf_cameras_gap_analysis_export_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/cameras": {
         parameters: {
             query?: never;
@@ -483,6 +511,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/demo/own-feed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Demo Own Feed
+         * @description The demonstration clip, and every plate read taken from it.
+         */
+        get: operations["demo_own_feed_demo_own_feed_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -829,6 +877,53 @@ export interface components {
             lon: number;
             /** Reason */
             reason: string;
+        };
+        /** DemoFeed */
+        DemoFeed: {
+            /** Clip Available */
+            clip_available: boolean;
+            /** Clip Url */
+            clip_url: string | null;
+            /** Clip Name */
+            clip_name: string;
+            /** Source Title */
+            source_title: string;
+            /** Source Url */
+            source_url: string;
+            /** Licence */
+            licence: string;
+            /** Attribution */
+            attribution: string;
+            /** Reads */
+            reads: components["schemas"]["DemoRead"][];
+            /** Own Feed Detections */
+            own_feed_detections: number;
+            /** Gateway Detections */
+            gateway_detections: number;
+            /** Note */
+            note: string;
+        };
+        /**
+         * DemoRead
+         * @description One plate read, positioned in the clip that produced it.
+         */
+        DemoRead: {
+            /** Plate */
+            plate: string;
+            /** Confidence */
+            confidence: number;
+            /** At Seconds */
+            at_seconds: number;
+            /** Camera Ref */
+            camera_ref: string;
+            /** Camera Name */
+            camera_name: string;
+            /** Observed At Utc */
+            observed_at_utc: string;
+            /** Crop Url */
+            crop_url: string | null;
+            /** Corrections */
+            corrections: Record<string, never>[];
         };
         /** DistrictCoverage */
         DistrictCoverage: {
@@ -1377,6 +1472,35 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["GapAnalysis"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_gap_analysis_pdf_cameras_gap_analysis_export_get: {
+        parameters: {
+            query?: {
+                journey_window_days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -1959,6 +2083,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    demo_own_feed_demo_own_feed_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DemoFeed"];
                 };
             };
         };

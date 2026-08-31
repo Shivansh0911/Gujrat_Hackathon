@@ -164,6 +164,9 @@ Two implementations ship: `GatewaySource` (the challenge gateway, HLS with RTSP
 preferred where reachable) and `FileSource` (recorded footage). Adding ONVIF, a vendor
 SDK, or direct RTSP is a new class, not a change to anything above it.
 
+What that would take in practice, what would not change, and what departments would
+have to provide, is set out in [`REAL_TIME_INTEGRATION.md`](REAL_TIME_INTEGRATION.md).
+
 **Onboarding is a platform capability, not a script.** `POST /cameras/bulk-import`
 accepts a departmental CSV and validates row by row, so a spreadsheet with two bad
 lines imports the rest and reports those two with line numbers. The seed script and

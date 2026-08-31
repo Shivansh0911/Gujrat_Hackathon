@@ -28,6 +28,8 @@ export type GapAnalysis = components["schemas"]["GapAnalysis"];
 export type DistrictCoverage = components["schemas"]["DistrictCoverage"];
 export type CameraGap = components["schemas"]["CameraGap"];
 export type JourneyGap = components["schemas"]["JourneyGap"];
+export type DemoFeed = components["schemas"]["DemoFeed"];
+export type DemoRead = components["schemas"]["DemoRead"];
 
 /**
  * Where the API lives.
@@ -205,6 +207,7 @@ export const api = {
   auditVerify: () => request<AuditVerify>("/audit/verify"),
   gatewayStatus: () => request<GatewayStatus>("/health/gateway"),
   gapAnalysis: () => request<GapAnalysis>("/cameras/gap-analysis"),
+  demoFeed: () => request<DemoFeed>("/demo/own-feed"),
 
   /**
    * Signed evidence PDF. Returned as a Blob rather than JSON, and the signature

@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, type BulkImportResult, type CameraCreate } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { Badge, ErrorBox, Spinner } from "../components/ui";
+import CsvGuide from "../components/CsvGuide";
 
 /**
  * Administrative capabilities that had no console surface.
@@ -254,15 +255,7 @@ export default function SystemPage() {
                 {bulkImport.isPending ? "Importing…" : "Import cameras"}
               </button>
             </div>
-            <p className="text-[10px] text-muted mt-2">
-              Expected columns:{" "}
-              <span className="mono">
-                camera_ref, location_text, lat, lon, geom_source,
-                confidence_radius_m, resolved_by, resolved_at
-              </span>
-              . A camera already placed by manual survey keeps that coordinate — someone
-              stood at it, and a spreadsheet did not.
-            </p>
+            <CsvGuide />
 
             {bulkImport.error != null && (
               <div className="mt-3">

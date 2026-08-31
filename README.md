@@ -74,6 +74,10 @@ Finding the lowest resolution that preserves plate legibility is the single most
 valuable optimisation outstanding. See `reports/evidence/benchmarks-*.md` and
 [`docs/HLD_RECONCILIATION.md`](docs/HLD_RECONCILIATION.md).
 
+What it would take to point this at a real camera network — the adapter contract, what
+does *not* change, the network realities, and what departments would have to supply — is
+set out in [`docs/REAL_TIME_INTEGRATION.md`](docs/REAL_TIME_INTEGRATION.md).
+
 ### The government feed — the scored test case
 
 The estate was swept twice with the same pipeline, running against `GatewaySource`

@@ -16,7 +16,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from services.api.config import get_api_settings
-from services.api.routers import alerts, analytics, auth, cameras, gaps, journey, system
+from services.api.routers import alerts, analytics, auth, cameras, demo, gaps, journey, system
 from services.common import redact
 
 redact.install(level=logging.INFO)
@@ -89,6 +89,7 @@ app.include_router(system.router)
 app.include_router(alerts.router)
 app.include_router(journey.router)
 app.include_router(analytics.router)
+app.include_router(demo.router)
 
 
 from fastapi import HTTPException  # noqa: E402

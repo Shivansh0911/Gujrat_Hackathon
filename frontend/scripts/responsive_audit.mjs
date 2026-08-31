@@ -41,6 +41,7 @@ const PAGES = [
   { name: "watchlist", nav: "Watchlist" },
   { name: "system", nav: "System" },
   { name: "controlroom", nav: "Control Room", optional: true },
+  { name: "demo", nav: "Demo", optional: true },
 ];
 
 function secret(key) {

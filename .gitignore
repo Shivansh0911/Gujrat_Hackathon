@@ -42,6 +42,11 @@ Thumbs.db
 data/own_feed/*
 !data/own_feed/README.md
 !data/own_feed/SOURCE.md
+# The short demo clip ships: the Demo page plays it beside the detections it
+# produced, which is the difference between claiming the pipeline works and showing
+# it. CC BY 3.0 permits redistribution with attribution, and SOURCE.md carries it.
+# The 100 MB original stays out -- the 22 MB cut is what the container needs.
+!data/own_feed/demo_clip.mp4
 
 # Test fixtures are generated, not authored.
 tests/fixtures/*.mp4
