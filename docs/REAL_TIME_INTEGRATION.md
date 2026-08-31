@@ -132,6 +132,12 @@ engineering task. It would need a resolution sweep against annotated ground trut
 which is roughly a day of work and would change the hardware budget by an order of
 magnitude in either direction.
 
+Independent footage supports the same conclusion. A second Creative Commons clip — a
+real, traffic-filled junction in Cuttack, Odisha at 1080×606 from an elevated position —
+ran through the unmodified pipeline and produced **zero** plate boxes across 2,250
+frames. Camera placement and resolution bound this problem far more tightly than model
+choice does. See Finding 16 in [`DISCOVERY.md`](DISCOVERY.md).
+
 ---
 
 ## 4. Network reality: this is the part people underestimate

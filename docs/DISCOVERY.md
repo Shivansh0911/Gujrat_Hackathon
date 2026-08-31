@@ -326,6 +326,48 @@ looked reasonable, and two were accompanied by a comment explaining why they wer
 right. They were found by annotating real output by hand and scoring against it. A
 pipeline that reports its own rates is not the same as a pipeline that is measured.
 
+## Finding 16 - independent footage reproduces the resolution ceiling
+
+**2026-09-01.** Looking for a second demonstration clip we could lawfully process, we
+took *Moving vehicles in Link road, Cuttack, Odisha* from Wikimedia Commons (CC BY-SA
+3.0, Subhashish Panigrahi) and ran the unmodified pipeline over 90 seconds of it.
+
+| | |
+|---|---:|
+| Source | 1080x606, 25 fps, elevated wide shot of a junction |
+| Frames decoded | 2,250 |
+| Frames passing the motion gate | **4** (0.2%) |
+| Plate boxes detected | **0** |
+| Grammar-valid registrations | **0** |
+
+Zero, from footage full of vehicles. Two things caused it, and both matter more than
+the failure itself.
+
+**The plates are a handful of pixels.** At 1080x606 from an elevated position, a car
+occupies perhaps 40 px across and its plate maybe 8. There is nothing there to read.
+This is Finding 12 reproduced on entirely independent footage, by a different camera,
+in a different state -- which makes it a property of the *viewing geometry*, not of one
+estate's encoder settings.
+
+**The motion gate barely fired**, and that is the more interesting half. A static camera
+watching distant traffic produces almost no inter-frame difference at the gate's
+downscaled working size, so 99.8% of frames were discarded as "nothing moved" while
+dozens of vehicles crossed the scene. The gate is behaving exactly as designed and is
+exactly wrong for this geometry. It is tuned for subjects large enough in frame to be
+worth recognising -- which is the same condition ANPR itself needs, so the two failure
+modes coincide rather than compounding, but a deployment at this camera height would
+need the gate reconsidered, not just a better recogniser.
+
+**Why this is recorded rather than discarded.** It is the strongest independent support
+for the scaling argument in the HLD. The claim that centralised processing costs ~98,500
+CPU workers rests on needing full resolution, and the obvious objection is that we are
+being precious about image quality. Here is third-party footage, a real Indian junction,
+plainly full of traffic, that yields nothing at all. Camera placement and resolution
+bound this problem far more tightly than model choice does.
+
+The clip was therefore **not** shipped as a second demonstration feed: a demo that
+displays zero reads demonstrates nothing to a judge. It is cited here as a measurement.
+
 ## Local evaluation hardware
 
 Python 3.12.5, Docker 29.7.2, Node 20.14, **NVIDIA RTX 4050 Laptop, 6 GB VRAM**.
