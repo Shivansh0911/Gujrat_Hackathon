@@ -51,6 +51,14 @@ RTSP_AVAILABLE: bool = False
 # gateway back to back. Pacing our own load is §2.2's rule, and it applies to us too.
 _SETTLE_S = 2.0
 
+#: Pacing for discovery specifically, which opens more sockets than anything else here.
+_DISCOVERY_SETTLE_S = 1.0
+
+#: Stop looking after this many cameras. If a dozen in a row give nothing, the estate is
+#: having a bad minute and opening eighteen more captures will not change that -- it will
+#: only make us the reason. NOT EXERCISED on a partial sweep is an honest answer.
+_DISCOVERY_MAX_ATTEMPTS = 12
+
 log = logging.getLogger("preflight")
 
 
@@ -130,15 +138,27 @@ def discover_live_cameras(
     result shared by every check that needs it.
     """
     found: list[CameraDescriptor] = []
+    attempts = 0
     for cam in cameras:
-        if len(found) >= want:
+        if len(found) >= want or attempts >= _DISCOVERY_MAX_ATTEMPTS:
             break
+        if attempts:
+            # Breathe between connects. Thirty in a row is a load pattern the estate
+            # answers by refusing all of them, which reads as an estate-wide outage
+            # produced entirely by us.
+            time.sleep(_DISCOVERY_SETTLE_S)
+        attempts += 1
         frames, _ = _grab_frames(cam, 3, budget_s)
         if frames:
             found.append(cam)
             print(f"    camera {cam.external_id}: delivering frames", flush=True)
         else:
             print(f"    camera {cam.external_id}: no frames, skipping", flush=True)
+    if not found and attempts >= _DISCOVERY_MAX_ATTEMPTS:
+        print(
+            f"    stopped after {attempts} attempts rather than opening the whole estate",
+            flush=True,
+        )
     return found
 
 
@@ -465,7 +485,7 @@ def check_5_join_warnings_nonfatal(cameras: list[CameraDescriptor], seconds: flo
     # `discover_live_cameras` exists to prevent: the harness's luck, read as the
     # pipeline's behaviour.
     hevc = [c for c in cameras if (c.declared_codec or "").lower() in ("hevc", "h265")]
-    ordered = hevc + [c for c in cameras if c not in hevc]
+    ordered = (hevc + [c for c in cameras if c not in hevc])[:_DISCOVERY_MAX_ATTEMPTS]
     cam, frames, stats = _first_with_frames(ordered, 25, seconds)
 
     if not frames or cam is None or stats is None:

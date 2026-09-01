@@ -167,8 +167,27 @@ would rather not copy from a terminal.
    SETU_EVIDENCE_SIGNING_KEY=<generated hex>
    SETU_SEED_DEMO=1
    SETU_DEMO_FRAMES=900
-   SETU_GATEWAY_HOST=live.corp8.cloud
+   SETU_GATEWAY_HOST=cctv.corp8.cloud
+   SETU_GATEWAY_MEDIA_HOST=103.250.160.189
+   SETU_CATALOGUE_PATH=/cameras.json
+   SETU_HLS_PATH_TEMPLATE=/{id}/index.m3u8
+   SETU_GATEWAY_ACCESS_CODE=<the code from the feed-access form>
    ```
+
+   > **The gateway moved on 2 September 2026, and the shape of it changed.** Four of
+   > those five variables are new, and a deployment carrying only the old
+   > `SETU_GATEWAY_HOST=live.corp8.cloud` reaches a host that no longer serves the feed.
+   >
+   > | Variable | Why it exists |
+   > |---|---|
+   > | `SETU_GATEWAY_HOST` | The CDN host. Serves the catalogue and HLS, behind a login |
+   > | `SETU_GATEWAY_MEDIA_HOST` | RTSP and WebRTC, on a bare public IP. A CDN cannot proxy either, so the estate publishes them separately — and RTSP is the transport ANPR should use |
+   > | `SETU_CATALOGUE_PATH` | `/api/ingest` became `/cameras.json` |
+   > | `SETU_HLS_PATH_TEMPLATE` | `/live/stream/{id}/index.m3u8` became `/{id}/index.m3u8` |
+   > | `SETU_GATEWAY_ACCESS_CODE` | **Secret.** The catalogue and every playlist now sit behind a password. Without it, requests return the sign-in page with HTTP 200, and the client reports a format error rather than a missing credential |
+   >
+   > The access code is a credential: it belongs in Render's environment and in the
+   > gitignored `deploy-secrets.env`, never in a committed file.
 
    > **`SETU_GATEWAY_HOST` is not optional, and omitting it fails in a way that does
    > not look like a missing variable.** It has no default on purpose -- a deployment
@@ -417,7 +436,7 @@ database from a laptop instead.
 | Symptom | Cause | Fix |
 |---|---|---|
 | First click after a quiet period takes ~1 minute | The free service spun down after 15 minutes idle | Expected. C5 prevents it — but the **very first** request, before UptimeRobot has run once, can still be slow. Open the link yourself once after setting the monitor up |
-| **Compare with gateway** or live preview says "Load failed", other screens fine | `SETU_GATEWAY_HOST` is unset on the API | Set it to `live.corp8.cloud` and redeploy. Everything not touching the feed works without it, which is why this looks like a one-screen bug |
+| **Compare with gateway** or live preview says "Load failed", other screens fine | `SETU_GATEWAY_HOST` is unset on the API | Set it to `cctv.corp8.cloud`, along with the four companion variables above, and redeploy. Everything not touching the feed works without it, which is why this looks like a one-screen bug |
 | Console loads, every API call fails, browser console says CORS | `SETU_CORS_ORIGINS` does not exactly match the Netlify origin | Copy the origin from the browser address bar. No trailing slash. Redeploy the backend |
 | Console loads, alerts list works, **status dot never turns green** | The WebSocket is not reaching the API | `VITE_API_ORIGIN` is unset or wrong. It is read at build time, so redeploy Netlify after changing it. Netlify cannot proxy `wss://` |
 | Deploy cancelled after 15 minutes | The service never became healthy | Check the Health Check Path is `/healthz`. If migrations are still running, look for the real error above them in the log |
