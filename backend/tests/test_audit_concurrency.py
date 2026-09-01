@@ -71,19 +71,36 @@ pytestmark = pytest.mark.skipif(
 
 @pytest.fixture
 def schema():
-    """An isolated schema, shared by every thread in one test."""
-    engine = create_engine(_URL, future=True, pool_size=WRITERS + 2, max_overflow=4)
+    """An isolated schema, pinned on every pooled connection.
+
+    `SET search_path` on a session is not enough here and the first version of this test
+    proved it: a session returns its connection to the pool on commit, and the next
+    statement can be handed a different one with the default search_path. Four of
+    thirty-two appends landed outside the test schema, so the count came back 28. The
+    option goes on the connection string instead, where every connection the pool hands
+    out carries it.
+    """
     name = f"audit_conc_{uuid.uuid4().hex[:8]}"
-    with engine.begin() as conn:
+    admin = create_engine(_URL, future=True)
+    with admin.begin() as conn:
         conn.execute(text(f'CREATE SCHEMA "{name}"'))
-        conn.execute(text(f'SET search_path TO "{name}"'))
+
+    engine = create_engine(
+        _URL,
+        future=True,
+        pool_size=WRITERS + 2,
+        max_overflow=4,
+        connect_args={"options": f"-csearch_path={name}"},
+    )
+    with engine.begin() as conn:
         AuditEntry.__table__.create(conn)
     try:
         yield engine, name
     finally:
-        with engine.begin() as conn:
-            conn.execute(text(f'DROP SCHEMA "{name}" CASCADE'))
         engine.dispose()
+        with admin.begin() as conn:
+            conn.execute(text(f'DROP SCHEMA "{name}" CASCADE'))
+        admin.dispose()
 
 
 def test_concurrent_appends_leave_the_chain_verifiable(schema) -> None:
@@ -97,8 +114,6 @@ def test_concurrent_appends_leave_the_chain_verifiable(schema) -> None:
     def writer(n: int) -> None:
         try:
             sess = factory()
-            sess.execute(text(f'SET search_path TO "{name}"'))
-            sess.commit()
             barrier.wait(timeout=30)
             for i in range(PER_WRITER):
                 audit.append(
@@ -124,7 +139,6 @@ def test_concurrent_appends_leave_the_chain_verifiable(schema) -> None:
     assert not errors, f"a writer raised: {errors[0]!r}"
 
     sess = factory()
-    sess.execute(text(f'SET search_path TO "{name}"'))
     try:
         report = audit.verify_chain(sess)
     finally:
