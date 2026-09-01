@@ -346,6 +346,44 @@ role creation step did not run.
 
 ## Troubleshooting, by symptom
 
+### "Child process [N] died", over and over, and still no open port
+
+```
+INFO:  Waiting for child process [96]
+INFO:  Child process [96] died
+==>    Port scan timeout reached, no open ports detected.
+INFO:  Waiting for child process [97]
+INFO:  Child process [97] died
+```
+
+Different failure from the one below, and it means uvicorn *did* start — its worker
+children are dying as fast as they are spawned, so the port never opens.
+
+The cause was the demo seed running when it should not have been, taking memory the
+workers needed. And the reason it was running is worth stating plainly, because it is
+the same shape as several other defects in this project:
+
+> **A row-level-security policy made the seed gate lie.** `detection` carries
+> `FORCE ROW LEVEL SECURITY`, whose deliberate failure mode is *no rows* rather than an
+> error — forgetting to set the session context must never expose the whole estate.
+> `count_rows` opened a plain connection and set no context, so on a database holding
+> twenty detections it counted **zero**, and the gate whose entire job is to skip
+> seeding fired on every single boot. The security control was working exactly as
+> designed. The check was wrong.
+
+Fixed by having `count_rows` set `setu.is_admin` — the same session GUC every background
+job elevates with — before counting. The default worker count also dropped from 2 to 1:
+a shared 0.1-CPU instance gains nothing from a second worker and pays for it twice in
+memory, which is the constraint that actually bites here.
+
+**To unblock a running service immediately, without waiting for a rebuild**, set these
+in the Render dashboard's Environment tab:
+
+| Variable | Value | Effect |
+|---|---|---|
+| `SETU_SEED_DEMO` | `0` | Skip boot-time seeding entirely. Safe whenever the database already holds detections — check the Alert Desk |
+| `SETU_WORKERS` | `1` | One uvicorn worker instead of two |
+
 ### "No open ports detected" and the deploy is killed and retried
 
 ```

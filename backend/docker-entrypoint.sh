@@ -93,12 +93,23 @@ for key in ('SETU_DATABASE_URL', 'SETU_MIGRATION_DATABASE_URL'):
         print(\"export %s='%s'\" % (key, value.replace(\"'\", \"'\\\\''\")))
 ")"
 
+# Counting a table that is under row-level security requires saying who you are.
+#
+# `detection` and `alert` carry FORCE ROW LEVEL SECURITY, and its failure mode is
+# deliberately "no rows" rather than an error -- forgetting the context must never
+# expose the whole estate. This counted with no context set, so on a database holding
+# twenty detections it returned zero, and the gate whose entire job is to skip seeding
+# fired on every boot instead. The security control was working; the check was lying.
+#
+# `setu.is_admin` is the same session GUC every background job elevates with, set
+# SESSION-scoped so it survives the statement.
 count_rows() {
   python -c "
 import os, sys
 from sqlalchemy import create_engine, text
 engine = create_engine(os.environ['SETU_MIGRATION_DATABASE_URL'])
 with engine.connect() as conn:
+    conn.execute(text(\"SELECT set_config('setu.is_admin', 'on', false)\"))
     print(conn.execute(text('SELECT count(*) FROM ' + sys.argv[1])).scalar_one())
 engine.dispose()
 " "$1"
@@ -223,4 +234,4 @@ exec uvicorn services.api.main:app \
   --port "${PORT:-8000}" \
   --proxy-headers \
   --forwarded-allow-ips '*' \
-  --workers "${SETU_WORKERS:-2}"
+  --workers "${SETU_WORKERS:-1}"
