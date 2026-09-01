@@ -67,9 +67,7 @@ def test_variant_is_resolved_absolute_and_keeps_cookie_check(monkeypatch):
 
 def test_media_playlist_served_directly_is_returned_as_is(monkeypatch):
     media = "#EXTM3U\n#EXT-X-TARGETDURATION:1\n#EXTINF:1.04,\nseg1.mp4\n"
-    monkeypatch.setattr(
-        T.gateway_auth, "get", lambda settings, url, timeout=None: _Resp(media)
-    )
+    monkeypatch.setattr(T.gateway_auth, "get", lambda settings, url, timeout=None: _Resp(media))
     out = T.resolve_hls_variant("https://h/live/stream/6/index.m3u8?cookieCheck=1")
     assert out.endswith("index.m3u8?cookieCheck=1")
 
@@ -93,9 +91,7 @@ def test_rtsp_selected_when_port_is_reachable():
 def test_falls_back_to_hls_when_rtsp_port_is_blocked(monkeypatch):
     # The evaluation network resolves the gateway to a Cloudflare edge, which does not
     # proxy 8554 -- so this is the normal path, not an edge case. See DISCOVERY.md.
-    monkeypatch.setattr(
-        T.gateway_auth, "get", lambda settings, url, timeout=None: _Resp(MASTER)
-    )
+    monkeypatch.setattr(T.gateway_auth, "get", lambda settings, url, timeout=None: _Resp(MASTER))
     src = T.select_transport(_cam(), SETTINGS, rtsp_available=False)
     assert src.transport == "hls"
     assert "cookieCheck=1" in src.url()
