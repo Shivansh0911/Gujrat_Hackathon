@@ -5,7 +5,12 @@ from services.common.config import Settings
 
 
 def _s(**kw):
-    return Settings(gateway_host="example.test", **kw)
+    # `_env_file=None` so these assert the *defaults*, not whatever the developer's
+    # .env happens to hold. Without it these tests silently read local configuration:
+    # pointing a working copy at a gateway with a different catalogue path made
+    # `test_derived_endpoints_use_configured_host_and_ports` fail on a machine where
+    # nothing was wrong. A unit test of defaults must not depend on the environment.
+    return Settings(_env_file=None, gateway_host="example.test", **kw)
 
 
 def test_gateway_host_is_required():

@@ -35,10 +35,10 @@ from dataclasses import dataclass
 from typing import Literal
 from urllib.parse import urljoin, urlsplit
 
-import requests
 
+from services.common import gateway_auth
 from services.common.catalogue import CameraDescriptor
-from services.common.config import Settings
+from services.common.config import Settings, get_settings
 
 log = logging.getLogger(__name__)
 
@@ -75,7 +75,11 @@ def resolve_hls_variant(master_url: str, timeout: float = 20.0) -> str:
         sep = "&" if "?" in master_url else "?"
         master_url = f"{master_url}{sep}cookieCheck=1"
 
-    resp = requests.get(master_url, timeout=timeout)  # TLS verification always on
+    # Through the shared gateway session: the estate serves playlists behind a login,
+    # and an unauthenticated fetch returns the sign-in page with HTTP 200. Without this
+    # the resolver reported `not an HLS playlist`, which reads as the feed having
+    # changed format rather than as a missing credential.
+    resp = gateway_auth.get(get_settings(), master_url, timeout)  # TLS always verified
     resp.raise_for_status()
     body = resp.text
 
@@ -143,7 +147,7 @@ def select_transport(
     runs once for the whole estate instead of 30 times against the same host:port.
     """
     if rtsp_available is None:
-        rtsp_available = port_reachable(settings.gateway_host, settings.gateway_rtsp_port)
+        rtsp_available = port_reachable(settings.media_host, settings.gateway_rtsp_port)
 
     transport: Transport = "rtsp" if (rtsp_available and cam.rtsp_url) else "hls"
     if transport == "hls" and not cam.hls_url:

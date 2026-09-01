@@ -210,7 +210,7 @@ def main() -> int:
 
     # Probe the RTSP port once for the estate rather than 30 times against the same
     # host:port. On the evaluation network this is False and everything uses HLS.
-    rtsp_available = port_reachable(settings.gateway_host, settings.gateway_rtsp_port)
+    rtsp_available = port_reachable(settings.media_host, settings.gateway_rtsp_port)
     log.info(
         "probing %d cameras, %.0fs each, %d at a time, transport=%s",
         len(cameras),

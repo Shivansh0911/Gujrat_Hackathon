@@ -66,10 +66,31 @@ def test_relative_hls_path_is_resolved_against_the_configured_gateway():
 
 
 def test_malformed_rows_are_skipped_not_fatal():
-    payload = {"cameras": [{"id": "1"}, "garbage", {"rtsp_url": "rtsp://x/1"}] + PAYLOAD["cameras"]}
+    # Only two things make a row unusable now: not being an object, and having no id.
+    # A row carrying an id and nothing else is ordinary -- the current catalogue is
+    # made entirely of those -- and its URLs are derived from configuration.
+    payload = {"cameras": ["garbage", {"rtsp_url": "rtsp://x/1"}] + PAYLOAD["cameras"]}
     cams = parse_catalogue(payload, SETTINGS)
     # A single bad row must not cost us the other 29 cameras during a re-poll.
     assert {c.external_id for c in cams} == {"6", "2"}
+
+
+def test_a_row_with_only_an_id_gets_urls_from_configuration():
+    """The shape the estate publishes today: an id, a name, and nothing else."""
+    cams = parse_catalogue([{"id": "9", "name": "Nine"}], SETTINGS)
+    assert len(cams) == 1
+    cam = cams[0]
+    assert cam.rtsp_url == SETTINGS.rtsp_url("9")
+    assert cam.hls_url == SETTINGS.hls_url("9")
+    # Nothing was declared, so nothing may be trusted: the camera must be probed.
+    assert cam.properties_known is False
+    # And silence about liveness is a candidate to probe, not a camera to discard.
+    assert cam.live is True
+
+
+def test_a_bare_list_payload_is_accepted():
+    """`/cameras.json` returns a list; `/api/ingest` returned {"cameras": [...]}."""
+    assert len(parse_catalogue([{"id": "1"}, {"id": "2"}], SETTINGS)) == 2
 
 
 def test_missing_cameras_key_is_an_error():

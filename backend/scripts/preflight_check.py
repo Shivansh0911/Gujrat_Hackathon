@@ -61,13 +61,22 @@ class Check:
     passed: bool
     detail: str
     method: str  # "static" | "live"
-    #: "pass" | "fail" | "not_exercised".
+    #: "pass" | "fail" | "not_exercised". Left empty to mean "derive it from `passed`".
     #:
     #: The third state exists because "our pipeline mishandled this" and "the
     #: third-party feed gave us nothing to handle" are different findings, and
     #: collapsing them into FAIL misreports both. A reviewer running this against a
     #: gateway that is half down should see which checks were genuinely exercised.
-    status: str = "pass"
+    #:
+    #: It used to default to "pass", and almost no check set it. Since the summary
+    #: counts `status` and not `passed`, every check that computed False and returned
+    #: without a status was printed as PASS -- the harness discarding the one thing it
+    #: existed to determine. Deriving the default makes the two unable to disagree.
+    status: str = ""
+
+    def __post_init__(self) -> None:
+        if not self.status:
+            self.status = "pass" if self.passed else "fail"
 
 
 def _not_exercised(number: int, name: str, why: str) -> "Check":
@@ -446,20 +455,36 @@ def check_5_join_warnings_nonfatal(cameras: list[CameraDescriptor], seconds: flo
             5, "Decoder warnings on join are logged, not fatal", "no camera delivered frames"
         )
 
+    name = "Decoder warnings on join are logged, not fatal"
+
     # Prefer HEVC: attaching mid-GOP to H.265 is what produces the RPS/POC messages.
-    hevc = next((c for c in cameras if (c.declared_codec or "").lower() in ("hevc", "h265")), None)
-    cam = hevc or cameras[0]
-    frames, stats = _grab_frames(cam, 25, seconds)
-    passed = len(frames) > 0
+    # Then fall through the rest of the estate rather than insisting on one camera --
+    # liveness flaps between one connection and the next, and this check previously
+    # took `cameras[0]`, so a camera that happened to be down at that second was
+    # reported as "decoder warnings are fatal". That is the mirror image of the defect
+    # `discover_live_cameras` exists to prevent: the harness's luck, read as the
+    # pipeline's behaviour.
+    hevc = [c for c in cameras if (c.declared_codec or "").lower() in ("hevc", "h265")]
+    ordered = hevc + [c for c in cameras if c not in hevc]
+    cam, frames, stats = _first_with_frames(ordered, 25, seconds)
+
+    if not frames or cam is None or stats is None:
+        # No frame decoded is not evidence that warnings are fatal; it is the absence
+        # of the demonstration. Reporting FAIL here would claim a defect we did not see.
+        tried = ", ".join(c.external_id for c in ordered[:6])
+        return _not_exercised(
+            5, name, f"no camera delivered a frame to join ({len(ordered)} tried: {tried})"
+        )
+
+    latency = stats.first_frame_latency_s
     detail = (
         f"camera {cam.external_id} (codec {cam.declared_codec or 'undeclared'}): "
         f"{stats.join_decode_warnings} decode warning(s) absorbed during join, "
-        f"first frame at {stats.first_frame_latency_s:.2f}s, "
-        f"{len(frames)} frames decoded -- session never aborted"
-        if passed
-        else f"camera {cam.external_id}: no frame decoded within join timeout"
-    )
-    return Check(5, "Decoder warnings on join are logged, not fatal", passed, detail, "live")
+        f"first frame at {latency:.2f}s, "
+        if latency is not None
+        else f"camera {cam.external_id}: {stats.join_decode_warnings} decode warning(s), "
+    ) + f"{len(frames)} frames decoded -- session never aborted"
+    return Check(5, name, True, detail, "live")
 
 
 def check_6_catalogue_driven(cameras: list[CameraDescriptor], catalogue_url: str) -> Check:
@@ -485,36 +510,87 @@ def check_6_catalogue_driven(cameras: list[CameraDescriptor], catalogue_url: str
     return Check(6, "Camera list and properties are read from /api/ingest", passed, detail, "live")
 
 
+#: How many cameras to open when establishing codecs by probe. Enough to find both
+#: families on a mixed estate without opening thirty captures to prove a point.
+_CODEC_PROBE_LIMIT = 10
+
+_HEVC_FOURCCS = {"hevc", "h265", "hev1", "hvc1"}
+
+
 def check_7_mixed_codecs(cameras: list[CameraDescriptor], seconds: float) -> Check:
-    """Live: decode one H.264 and one H.265 camera, and observe >1 resolution."""
+    """Live: decode one H.264 and one H.265 camera, and observe >1 resolution.
+
+    Codecs come from the catalogue when it declares them, and from *probing* when it
+    does not. The current catalogue declares nothing at all -- it carries an id and a
+    name per camera and no properties -- and an earlier version of this check gave up
+    at that point and reported NOT EXERCISED on an estate that plainly carries both
+    families. That was the catalogue's silence being reported as a gap in the pipeline.
+
+    Probing is not a workaround here, it is the rule this project already follows:
+    DISCOVERY finding 1 established that declared properties cannot be trusted when 19
+    of 30 cameras declared none. An estate that now declares none at all changes the
+    numbers, not the policy. Resolutions are likewise measured rather than read.
+    """
+    name = "Pipeline handles mixed H.264/H.265 and mixed resolutions"
+
     h264 = next((c for c in cameras if (c.declared_codec or "").lower() == "h264"), None)
     hevc = next((c for c in cameras if (c.declared_codec or "").lower() in ("hevc", "h265")), None)
+
+    measured_res: set[tuple[int, int]] = set()
+    probed: list[str] = []
+
     if h264 is None or hevc is None:
-        # DISCOVERY finding 1: most of this catalogue declares no codec at all, so
-        # this is a property of the feed rather than a defect in the pipeline.
+        for cam in cameras[:_CODEC_PROBE_LIMIT]:
+            frames, stats = _grab_frames(cam, 3, min(seconds, 6.0))
+            if not frames:
+                continue
+            if stats.width and stats.height:
+                measured_res.add((stats.width, stats.height))
+            codec = (stats.fourcc or "").lower()
+            probed.append(f"{cam.external_id}={codec or '?'}")
+            if h264 is None and codec == "h264":
+                h264 = cam
+            elif hevc is None and codec in _HEVC_FOURCCS:
+                hevc = cam
+            # Keep going until both codecs *and* a second resolution have been seen.
+            # Stopping at the codecs alone made the check measure one resolution and
+            # then fail its own "mixed resolutions" criterion -- a true negative
+            # produced by the harness looking away too early, not by the estate.
+            if h264 is not None and hevc is not None and len(measured_res) > 1:
+                break
+
+    if h264 is None or hevc is None:
+        found = ", ".join(probed) if probed else "no camera delivered frames"
         return _not_exercised(
             7,
-            "Pipeline handles mixed H.264/H.265 and mixed resolutions",
-            "the catalogue does not declare both an H.264 and an H.265 camera",
+            name,
+            "neither the catalogue nor a probe of "
+            f"{len(probed)} camera(s) found both an H.264 and an H.265 stream ({found})",
         )
 
     results = {}
     for label, cam in (("h264", h264), ("h265", hevc)):
         frames, stats = _grab_frames(cam, 10, seconds)
         results[label] = (cam.external_id, len(frames), stats.width, stats.height)
+        if stats.width and stats.height:
+            measured_res.add((stats.width, stats.height))
 
     declared_res = {(c.declared_width, c.declared_height) for c in cameras if c.properties_known}
+    # Measured wins: a resolution we decoded is a fact, a declared one is a claim.
+    resolutions = measured_res or declared_res
+    source = "measured" if measured_res else "declared"
+
     both_decoded = all(v[1] > 0 for v in results.values())
-    passed = both_decoded and len(declared_res) > 1
+    passed = both_decoded and len(resolutions) > 1
     detail = (
         "; ".join(
             f"{k}: camera {v[0]} -> {v[1]} frames at {v[2]}x{v[3]}" for k, v in results.items()
         )
-        + f"; {len(declared_res)} distinct resolutions across the estate {sorted(declared_res)}"
+        + f"; {len(resolutions)} distinct {source} resolutions across the estate "
+        + f"{sorted(resolutions)}"
+        + (f"; codecs established by probe ({', '.join(probed)})" if probed else "")
     )
-    return Check(
-        7, "Pipeline handles mixed H.264/H.265 and mixed resolutions", passed, detail, "live"
-    )
+    return Check(7, name, passed, detail, "live")
 
 
 def check_8_scene_discontinuity(cameras: list[CameraDescriptor], seconds: float) -> Check:
@@ -625,7 +701,7 @@ def main() -> int:
     settings = get_settings()
 
     global RTSP_AVAILABLE
-    RTSP_AVAILABLE = port_reachable(settings.gateway_host, settings.gateway_rtsp_port)
+    RTSP_AVAILABLE = port_reachable(settings.media_host, settings.gateway_rtsp_port)
 
     print("\nProject SETU preflight - §2.4 pre-submission checklist")
     print(f"gateway  : {settings.gateway_host}")

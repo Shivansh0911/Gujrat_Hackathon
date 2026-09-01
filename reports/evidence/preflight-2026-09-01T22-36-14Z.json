@@ -1,0 +1,88 @@
+{
+  "kind": "preflight",
+  "generated_at": "2026-09-01T22-36-14Z",
+  "provenance": {
+    "git_sha": "4934b2962eb67f6ea5b883eea2a22cbbc3f112b7",
+    "git_tree_dirty": true,
+    "git_branch": "main",
+    "python": "3.12.5",
+    "platform": "Windows-11-10.0.26200-SP0"
+  },
+  "gateway_host": "cctv.corp8.cloud",
+  "catalogue_url": "https://cctv.corp8.cloud/cameras.json",
+  "rtsp_port_reachable": true,
+  "transport_used": "rtsp",
+  "catalogue_error": null,
+  "cameras_catalogued": 30,
+  "cameras_live_flagged": 30,
+  "checks": [
+    {
+      "number": 1,
+      "name": "Every client forces RTSP over TCP (HLS fallback when 8554 is blocked)",
+      "passed": true,
+      "detail": "rtsp_transport forced to 'tcp' in every capture (options='rtsp_transport;tcp|timeout;15000000|max_delay;500000|reorder_queue_size;0|rw_timeout;20000000|reconnect;1|reconnect_streamed;1|live_start_index;-1'); RTSP:8554 reachable, used directly; 5 frames decoded over RTSP from camera cam01 (join 0.11s); cv2 imported only via services.common.cv_env",
+      "method": "static+live",
+      "status": "pass"
+    },
+    {
+      "number": 2,
+      "name": "No timing logic depends on declared FPS",
+      "passed": true,
+      "detail": "2 reference-only use(s), all marked on the line (services\\common\\stream_client.py:200, services\\ingest\\file_source.py:111); 0 timing use(s). Expected count 2 \u2014 matches",
+      "method": "static",
+      "status": "pass"
+    },
+    {
+      "number": 3,
+      "name": "Inter-frame gaps do not crash or stall the pipeline",
+      "passed": true,
+      "detail": "147 intervals on camera cam01: median 80ms, max 84ms (1.0x median), 48 frames decoded after the largest gap",
+      "method": "live",
+      "status": "pass"
+    },
+    {
+      "number": 4,
+      "name": "Reconnect with backoff, tested by interrupting a feed",
+      "passed": true,
+      "detail": "28 frames, disconnect forced mid-stream, 1 reconnect(s), 31 frames after recovery (backoff envelope 2.0s-30.0s with full jitter, observed resume 0.0s); transport=rtsp",
+      "method": "live",
+      "status": "pass"
+    },
+    {
+      "number": 5,
+      "name": "Decoder warnings on join are logged, not fatal",
+      "passed": true,
+      "detail": "camera cam01 (codec undeclared): 0 decode warning(s) absorbed during join, first frame at 0.12s, 25 frames decoded -- session never aborted",
+      "method": "live",
+      "status": "pass"
+    },
+    {
+      "number": 6,
+      "name": "Camera list and properties are read from /api/ingest",
+      "passed": true,
+      "detail": "30 cameras from https://cctv.corp8.cloud/cameras.json; 0 declare codec+resolution, 30 report empty/zero properties and are resolved by probing (ids ['cam01', 'cam02', 'cam03', 'cam04', 'cam05', 'cam06', 'cam07', 'cam08']...)",
+      "method": "live",
+      "status": "pass"
+    },
+    {
+      "number": 7,
+      "name": "Pipeline handles mixed H.264/H.265 and mixed resolutions",
+      "passed": false,
+      "detail": "NOT EXERCISED: the catalogue does not declare both an H.264 and an H.265 camera",
+      "method": "live",
+      "status": "not_exercised"
+    },
+    {
+      "number": 8,
+      "name": "Behaviour is sane across a scene discontinuity",
+      "passed": true,
+      "detail": "40 consecutive frames from camera cam01: 0 false cut(s); hard cut to camera cam03 detected (hist_corr=0.43, mad=49.0); on detection trackers reset and a new session id is issued while written evidence is preserved",
+      "method": "live",
+      "status": "pass"
+    }
+  ],
+  "passed": 7,
+  "failed": 0,
+  "not_exercised": 1,
+  "total": 8
+}
