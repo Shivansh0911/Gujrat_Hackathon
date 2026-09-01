@@ -30,6 +30,11 @@ from services.registry.models import AuditEntry
 # written, so genesis is not a special case in the verification loop.
 GENESIS_HASH = b"\x00" * 32
 
+#: Advisory-lock key serialising ledger appends. Any fixed 64-bit constant works; what
+#: matters is that every appender uses the same one. Derived from "setu.audit_entry" so
+#: it is recognisable in pg_locks rather than being an unexplained magic number.
+_APPEND_LOCK_KEY = 0x5E70_AD17_0000_0001
+
 
 def _default(obj: Any) -> Any:
     if isinstance(obj, datetime):
@@ -95,6 +100,23 @@ def append(
     it records either both land or neither does -- an audit trail that can disagree
     with the data it describes is worse than none.
     """
+    # Serialise appends against every other appender, for the whole transaction.
+    #
+    # A hash chain has a read-modify-write at its heart: read the tail, hash it into the
+    # new entry, insert. Without a lock two concurrent transactions read the *same* tail
+    # and both write an entry claiming it as predecessor -- and the verifier reports
+    # exactly what it should, "an entry was inserted, removed or reordered", on a ledger
+    # nobody tampered with. It is not a hypothetical: it happened on the deployed
+    # instance when a restart loop ran the seeding job while the API was serving, and it
+    # broke seven links.
+    #
+    # An advisory lock rather than SELECT ... FOR UPDATE on the tail row, because there
+    # is no row to lock before the first entry exists, and locking "the newest row" is
+    # itself the race. `pg_advisory_xact_lock` needs no row, and Postgres releases it at
+    # commit or rollback, so no path can leak it. The constant is arbitrary but fixed --
+    # every appender must ask for the same one.
+    session.execute(text("SELECT pg_advisory_xact_lock(:key)"), {"key": _APPEND_LOCK_KEY})
+
     tail = session.execute(
         select(AuditEntry).order_by(AuditEntry.seq.desc()).limit(1)
     ).scalar_one_or_none()

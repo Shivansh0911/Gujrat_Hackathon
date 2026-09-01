@@ -91,7 +91,7 @@ export default function DemoPage() {
   if (!data) return null;
 
   return (
-    <div className="p-4 space-y-4 max-w-5xl">
+    <div className="h-full overflow-y-auto p-4 space-y-4 max-w-5xl">
       {/* ------------------------------------------------ which feed is which */}
       <section className="panel p-4">
         <h1 className="font-medium text-lg">Demonstration and test footage</h1>
