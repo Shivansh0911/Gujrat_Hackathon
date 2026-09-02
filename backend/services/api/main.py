@@ -175,6 +175,7 @@ def own_feed_clip(name: str, exp: int = 0, sig: str = "") -> FileResponse:
     return FileResponse(candidate, media_type="video/mp4")
 
 
-@app.get("/", include_in_schema=False)
+# HEAD too: see the note on /healthz. Monitors often probe the root instead.
+@app.api_route("/", methods=["GET", "HEAD"], include_in_schema=False)
 def root() -> dict[str, str]:
     return {"service": "setu-api", "docs": "/docs", "openapi": "/openapi.json"}

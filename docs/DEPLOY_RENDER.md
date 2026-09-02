@@ -445,6 +445,7 @@ database from a laptop instead.
 | Deploy fails during migrations, `invalid interpolation syntax` | A `%` in the database password | Already fixed; make sure you are on `main` |
 | Journey and Alert screens show **empty image boxes** | Evidence crops written at runtime were lost | See below — this is expected on Render's free tier |
 | All free services suddenly suspended | The workspace exceeded 750 instance-hours | Wait for the next calendar month, or move a second service to another workspace |
+| **UptimeRobot reports a continuous outage, `405 Method Not Allowed`, while the site works** | The monitor probes with `HEAD`, and FastAPI does not add `HEAD` to a route declared with `.get()` | Fixed on `main`: `/` and `/healthz` now answer both. On an older build, set the monitor's method to `GET` instead. Note the 405 still reached the server, so the keep-alive was working the whole time — only the reporting was wrong |
 | `POST /auth/login` returns 503 | `SETU_ADMIN_PASSWORD` / `SETU_OPERATOR_PASSWORD` unset | The API refuses to issue tokens rather than fall back to a default credential. Set them |
 
 ### Evidence crops and the free tier — stated plainly

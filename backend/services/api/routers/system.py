@@ -78,6 +78,13 @@ def verify_audit_chain(session: SessionDep, actor: CurrentActor) -> AuditVerifyO
     return AuditVerifyOut(**result)
 
 
-@router.get("/healthz", include_in_schema=False)
+@router.api_route("/healthz", methods=["GET", "HEAD"], include_in_schema=False)
 def liveness() -> dict[str, str]:
+    """Liveness, answered for HEAD as well as GET.
+
+    FastAPI does not add HEAD to a GET route, and uptime monitors send HEAD by
+    default -- UptimeRobot did, and read the resulting 405 as an outage for four
+    days while the service was healthy the whole time. A liveness probe that only
+    half the monitoring world can speak is not doing its job.
+    """
     return {"status": "ok"}
