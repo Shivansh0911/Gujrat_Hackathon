@@ -139,6 +139,9 @@ class GatewaySource:
             discontinuities=st.discontinuities,
             time_to_first_frame_s=st.first_frame_latency_s,
             last_error=self._last_error,
+            codec=st.fourcc or self._descriptor.declared_codec,
+            width=st.width or self._descriptor.declared_width,
+            height=st.height or self._descriptor.declared_height,
         )
 
     def stop(self) -> None:

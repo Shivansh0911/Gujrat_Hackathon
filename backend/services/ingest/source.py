@@ -62,6 +62,15 @@ class HealthReport:
     discontinuities: int = 0
     time_to_first_frame_s: float | None = None
     last_error: str | None = None
+    # Observed stream properties. The estate's catalogue publishes only `id` and
+    # `name` -- confirmed by fetching it: 1,373 bytes for thirty cameras -- so the
+    # only way the registry can hold a codec or a resolution for a government camera
+    # is to record what the decoder actually saw. §2.2 of the integration guide asks
+    # consumers to read per-camera properties rather than assume a uniform grid;
+    # where they are not published, measuring them is the same requirement.
+    codec: str | None = None
+    width: int | None = None
+    height: int | None = None
     checked_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
     @property

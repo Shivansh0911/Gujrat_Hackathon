@@ -105,6 +105,11 @@ def ingest_one(
                 "ocr_runs": st.ocr_runs,
                 "discontinuities": st.discontinuities,
                 "measured_fps": getattr(health, "measured_fps", None),
+                "codec": getattr(health, "codec", None),
+                "width": getattr(health, "width", None),
+                "height": getattr(health, "height", None),
+                "declared_fps": getattr(health, "declared_fps", None),
+                "transport": getattr(health, "transport", None),
                 "fps_drift": getattr(health, "fps_drift", None),
                 "reconnects": getattr(health, "reconnects", None),
                 "clock_confidence": source.clock_confidence,
@@ -225,6 +230,26 @@ def main() -> int:
             rtsp_available=rtsp_available,
         )
         results.append(r)
+
+        if session is not None:
+            # The catalogue publishes only id and name, so this run is the only source
+            # the registry will ever have for this camera's codec, resolution and rate
+            # -- and a camera that just delivered frames should not still read DRAFT.
+            from services.registry.observation import record_observation
+
+            record_observation(
+                session,
+                d.external_id,
+                frames=int(r.get("frames_decoded") or 0),
+                codec=r.get("codec"),
+                width=r.get("width"),
+                height=r.get("height"),
+                measured_fps=r.get("measured_fps"),
+                declared_fps=r.get("declared_fps"),
+                transport=r.get("transport"),
+            )
+            session.commit()
+
         if r["error"]:
             print(f"  FAILED  {r['error']}  ({r['wall_seconds']}s)")
         else:
