@@ -25,6 +25,28 @@ from typing import Annotated, Any
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
+
+# passlib 1.7.4 reads `bcrypt.__about__.__version__` purely to log which backend it
+# found. bcrypt 4.1 removed `__about__`, so that lookup raises, passlib catches it, and
+# every process start prints a red AttributeError traceback under the heading
+# "(trapped) error reading bcrypt version".
+#
+# It is cosmetic -- hashing and verification are untouched, and both are exercised on
+# every login -- but a traceback in a deployment log is a thing an operator has to rule
+# out, and one that appears on every boot trains them to ignore logs that matter.
+#
+# The shim tells passlib the version bcrypt already reports through the modern
+# attribute. Pinning bcrypt below 4.1 would also silence it and would be the wrong
+# trade: a cosmetic log line is not worth an older crypto library.
+import bcrypt as _bcrypt
+
+if not hasattr(_bcrypt, "__about__"):  # pragma: no cover - depends on the installed pin
+
+    class _About:
+        __version__ = getattr(_bcrypt, "__version__", "unknown")
+
+    _bcrypt.__about__ = _About  # type: ignore[attr-defined]
+
 from passlib.context import CryptContext
 from sqlalchemy import Select, select
 from sqlalchemy.orm import Session
