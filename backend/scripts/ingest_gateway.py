@@ -40,6 +40,7 @@ from services.analytics.anpr import (  # noqa: E402
 from services.common import redact  # noqa: E402
 from services.common.catalogue import CameraDescriptor, fetch_catalogue  # noqa: E402
 from services.common.config import get_settings  # noqa: E402
+from services.common.transport import port_reachable  # noqa: E402
 from services.ingest.deadlined import Deadlined  # noqa: E402
 from services.ingest.gateway_source import GatewaySource  # noqa: E402
 
@@ -56,6 +57,7 @@ def ingest_one(
     seconds: float,
     max_frames: int,
     writer=None,
+    rtsp_available: bool = False,
 ) -> dict:
     """Ingest a single camera. Never raises: a failure is a recorded result."""
     started = time.monotonic()
@@ -71,7 +73,7 @@ def ingest_one(
 
     source = None
     try:
-        source = Deadlined(GatewaySource(descriptor), seconds)
+        source = Deadlined(GatewaySource(descriptor, rtsp_available=rtsp_available), seconds)
         result["transport"] = source.transport
         for rec in pipeline.run(source, max_frames=max_frames):
             if writer is not None:
@@ -168,7 +170,14 @@ def main() -> int:
     if args.cameras:
         wanted = {c.strip() for c in args.cameras.split(",") if c.strip()}
         descriptors = [d for d in descriptors if d.external_id in wanted]
-    print(f"catalogue: {len(descriptors)} cameras, {args.seconds:.0f}s budget each")
+    # Probe once for the estate rather than per camera: thirty identical probes against
+    # one host:port is the load pattern this gateway answers by refusing everything.
+    rtsp_available = port_reachable(settings.media_host, settings.gateway_rtsp_port)
+    transport = "RTSP/TCP" if rtsp_available else "HLS (RTSP port unreachable)"
+    print(
+        f"catalogue: {len(descriptors)} cameras, {args.seconds:.0f}s budget each, "
+        f"transport {transport}"
+    )
 
     print("loading models...")
     t0 = time.monotonic()
@@ -207,7 +216,14 @@ def main() -> int:
             # costs well under a minute across a full run.
             time.sleep(_SETTLE_S)
         print(f"\n[{i}/{len(descriptors)}] camera {d.external_id} ({d.name})")
-        r = ingest_one(d, pipeline, seconds=args.seconds, max_frames=args.max_frames, writer=writer)
+        r = ingest_one(
+            d,
+            pipeline,
+            seconds=args.seconds,
+            max_frames=args.max_frames,
+            writer=writer,
+            rtsp_available=rtsp_available,
+        )
         results.append(r)
         if r["error"]:
             print(f"  FAILED  {r['error']}  ({r['wall_seconds']}s)")
