@@ -468,7 +468,25 @@ submission.
    presenting a browser user-agent with our own identity appended, verified against
    the live estate. The lesson is recorded because the failure looked exactly like an
    outage on the organiser's side, and was not.
-10. **Every legible plate on the deployed instance came from our own footage.** It is
+10. **The estate publishes no department attribution, so 29 of 30 government cameras
+   sit under Home by default.** All five departments the problem statement names are
+   seeded, the registry is department-scoped, and row-level security enforces that
+   scoping — but the catalogue carries only `id` and `name`, verified by fetching it:
+   1,373 bytes for thirty cameras, two keys. Exactly one camera states its department
+   in its own label, `19 KHAPARIA GRAM PANCHAYAT , TALUKA GANDEVI, DISTRICT NAVSARI`.
+   Assigning the other twenty-nine would be inventing the one field a department-scoped
+   access-control model exists to protect, so they are left at the default and this
+   paragraph exists instead. `docs/SUPPORT_QUERY.md` asks the organisers whether the
+   thin catalogue is intended.
+11. **Six government cameras have no position, and are shown as having none.** Of
+   thirty, 18 resolved to a specific geocoded point and 6 to a district centroid; the
+   remaining 6 — `01 Chiman bhai Bridge`, `13 CN Vidhyalaya`, `14 Delight RLVD`,
+   `15 Suvidha park`, `20 Mohanpura`, `30 kheram` — name no district and match nothing
+   confidently, so they stay `unset` and are excluded from spatial queries rather than
+   placed at a guess. Every resolved position carries its provenance and a confidence
+   radius that route reconstruction consumes as its tolerance, which is why one bad
+   geocode was caught and downgraded; see DISCOVERY finding 19.
+12. **Every legible plate on the deployed instance came from our own footage.** It is
    live at https://setu-gujrat.netlify.app and passes 10/10 deployment checks. The
    government gateway has been ingested against the deployed database and contributed
    exactly one record, the caption described in limitation 8 — so route reconstruction,
