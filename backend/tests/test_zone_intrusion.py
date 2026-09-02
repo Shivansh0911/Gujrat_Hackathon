@@ -214,3 +214,47 @@ def test_an_inactive_zone_never_fires(fixture_camera):
         s, cam, {"x1": 950, "y1": 500, "x2": 1050, "y2": 600}, at=datetime.now(timezone.utc)
     )
     assert zones.evaluate_zones(s, det) == []
+
+
+def test_a_zone_is_created_the_way_the_endpoint_creates_one(fixture_camera):
+    """The insert path the API actually uses, which the other tests never touched.
+
+    Every test above seeds its zone with raw SQL, so the ORM insert the endpoint
+    performs was never exercised -- and it was broken from the first commit. It
+    assigned a placeholder to `polygon` and rewrote the column immediately after, but
+    the column is NOT NULL and typed, so PostGIS rejected the placeholder with "parse
+    error - invalid geometry" and the request 500'd before reaching the update. Seven
+    passing zone tests and an endpoint that could not create a single zone.
+
+    This inserts the way `create_zone` does and then asks the containment question, so
+    the geometry has to be both storable and usable.
+    """
+    from sqlalchemy import func
+
+    from services.registry.models import CameraZone
+
+    s, cam = fixture_camera["session"], fixture_camera["camera_id"]
+    wkt = "POLYGON((100 100, 300 100, 300 300, 100 300, 100 100))"
+
+    zone = CameraZone(
+        camera_id=cam,
+        name="created-like-the-endpoint",
+        polygon=func.ST_SetSRID(func.ST_GeomFromText(wkt), 0),
+        reference_width=1920,
+        reference_height=1080,
+        active=True,
+    )
+    s.add(zone)
+    s.flush()
+
+    stored = s.execute(
+        text("SELECT ST_AsText(polygon) FROM camera_zone WHERE id = :i"), {"i": str(zone.id)}
+    ).scalar_one()
+    assert stored.startswith("POLYGON((100 100")
+
+    # And it must actually decide containment, not merely store.
+    det = _detection(
+        s, cam, {"x1": 150, "y1": 150, "x2": 250, "y2": 250}, at=datetime.now(timezone.utc)
+    )
+    names = {hit.zone_name for hit in zones.zones_containing(s, det)}
+    assert "created-like-the-endpoint" in names

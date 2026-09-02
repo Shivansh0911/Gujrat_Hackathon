@@ -18,7 +18,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy import select, text
+from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
 from services.api import audit
@@ -128,8 +128,18 @@ def create_zone(
         )
     ).scalar_one_or_none()
 
+    # Build the geometry as a PostGIS expression and let the database parse it. The
+    # first version inserted a placeholder and rewrote the column immediately after,
+    # which never worked for a single request: `polygon` is NOT NULL *and* typed, so
+    # the placeholder had to be valid geometry, and an empty string is not -- PostGIS
+    # answers "parse error - invalid geometry" and the endpoint 500s before it reaches
+    # the update. Passing the expression makes an invalid ring the database's refusal
+    # rather than something stored and discovered later by a containment test.
+    geometry = func.ST_SetSRID(func.ST_GeomFromText(wkt), 0)
+
     if existing is not None:
         zone = existing
+        zone.polygon = geometry
         zone.reference_width = body.reference_width
         zone.reference_height = body.reference_height
         zone.active = body.active
@@ -138,7 +148,7 @@ def create_zone(
         zone = CameraZone(
             camera_id=camera.id,
             name=body.name.strip(),
-            polygon=text("''"),  # replaced below; the column is NOT NULL
+            polygon=geometry,
             reference_width=body.reference_width,
             reference_height=body.reference_height,
             active=body.active,
@@ -148,15 +158,6 @@ def create_zone(
         action = "CREATE_ZONE"
 
     session.flush()
-    # Set the geometry through PostGIS rather than binding a WKT string to the column,
-    # so an invalid ring is refused by the database instead of stored and failing every
-    # containment test later.
-    session.execute(
-        text(
-            "UPDATE camera_zone SET polygon = ST_SetSRID(ST_GeomFromText(:wkt), 0) WHERE id = :id"
-        ),
-        {"wkt": wkt, "id": str(zone.id)},
-    )
 
     audit.append(
         session,
