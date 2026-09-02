@@ -11,6 +11,8 @@ database or a configured gateway behind it.
 
 from __future__ import annotations
 
+import pytest
+
 from services.api.routers.system import router
 
 
@@ -25,12 +27,28 @@ def test_liveness_answers_head_as_well_as_get() -> None:
     assert {"GET", "HEAD"} <= _methods("/healthz")
 
 
-def test_the_root_route_answers_head_too() -> None:
-    """Monitors are as likely to be pointed at the root as at the probe path."""
-    from services.api.main import app
+def test_the_root_route_answers_head_too(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Monitors are as likely to be pointed at the root as at the probe path.
 
-    for route in app.routes:
-        if getattr(route, "path", None) == "/":
-            assert {"GET", "HEAD"} <= set(getattr(route, "methods", set()))
-            return
-    raise AssertionError("no route registered at /")
+    Importing the app builds `ApiSettings`, which requires a database URL and a JWT
+    secret. CI has neither, so the values are supplied here and the cache is cleared
+    on both sides -- otherwise this test either fails on a machine without a `.env`
+    (which is how it first went red) or leaks a dummy settings object into whatever
+    runs next.
+    """
+    monkeypatch.setenv("SETU_DATABASE_URL", "postgresql+psycopg://u:p@127.0.0.1/none")
+    monkeypatch.setenv("SETU_JWT_SECRET", "not-a-real-secret-only-for-import")
+
+    from services.api.config import get_api_settings
+
+    get_api_settings.cache_clear()
+    try:
+        from services.api.main import app
+
+        for route in app.routes:
+            if getattr(route, "path", None) == "/":
+                assert {"GET", "HEAD"} <= set(getattr(route, "methods", set()))
+                return
+        raise AssertionError("no route registered at /")
+    finally:
+        get_api_settings.cache_clear()
