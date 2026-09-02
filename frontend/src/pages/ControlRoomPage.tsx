@@ -35,7 +35,17 @@ export default function ControlRoomPage() {
   const [selected, setSelected] = useState<string[]>([]);
   const [picking, setPicking] = useState(false);
 
-  const cameras = useQuery({ queryKey: ["cameras"], queryFn: () => api.cameras() });
+  const camerasQuery = useQuery({ queryKey: ["cameras"], queryFn: () => api.cameras() });
+
+  // A retired camera has no stream by definition, so offering one on a video wall is
+  // offering a guaranteed failure. Thirty of them appeared here the moment the estate
+  // renamed its cameras, and picking one showed "Live feed unavailable" -- which reads
+  // as the platform being broken rather than as a camera that no longer exists. They
+  // remain in the registry and on the map, because detections still reference them.
+  const cameras = {
+    ...camerasQuery,
+    data: camerasQuery.data?.filter((c) => c.status !== "DECOMMISSIONED"),
+  };
   const gateway = useQuery({
     queryKey: ["gateway-status"],
     queryFn: () => api.gatewayStatus(),
