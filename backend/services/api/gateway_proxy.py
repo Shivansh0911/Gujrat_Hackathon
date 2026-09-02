@@ -36,7 +36,7 @@ import re
 import threading
 import time
 from collections import OrderedDict
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import Future, ThreadPoolExecutor
 from urllib.parse import urlsplit
 
 import requests
@@ -93,7 +93,9 @@ _cache_lock = threading.Lock()
 _playlists: dict[str, tuple[float, str]] = {}
 _segments: "OrderedDict[str, bytes]" = OrderedDict()
 _segments_bytes = 0
-_in_flight: set[str] = set()
+#: Prefetches currently running, so a request that arrives mid-flight can wait for
+#: the answer instead of asking the estate for the same bytes a second time.
+_in_flight: dict[str, "Future[None]"] = {}
 _prefetch_pool = ThreadPoolExecutor(max_workers=_LOOKAHEAD, thread_name_prefix="hls-prefetch")
 
 
@@ -143,7 +145,7 @@ def _prefetch(camera_ref: str, filename: str) -> None:
             log.debug("prefetch failed for %s", token, exc_info=True)
         finally:
             with _cache_lock:
-                _in_flight.discard(token)
+                _in_flight.pop(token, None)
 
     for offset in range(1, _LOOKAHEAD + 1):
         name = f"{stem}{num + offset:0{width}d}.ts"
@@ -151,8 +153,27 @@ def _prefetch(camera_ref: str, filename: str) -> None:
         with _cache_lock:
             if token in _segments or token in _in_flight:
                 continue
-            _in_flight.add(token)
-        _prefetch_pool.submit(fetch, name)
+            _in_flight[token] = _prefetch_pool.submit(fetch, name)
+
+
+def _await_in_flight(token: str, timeout: float) -> bytes | None:
+    """If this segment is already being fetched, wait for it rather than asking again.
+
+    Without this the browser races our own lookahead: measured on the deployed
+    instance, one segment took 31 seconds because the request duplicated a prefetch
+    that was already most of the way through. Duplicating it is worse than slow -- the
+    estate throttles per connection, so a second fetch of the same bytes spends
+    bandwidth the next segment needed.
+    """
+    with _cache_lock:
+        pending = _in_flight.get(token)
+    if pending is None:
+        return None
+    try:
+        pending.result(timeout=timeout)
+    except Exception:  # noqa: BLE001 - fall through to fetching it ourselves
+        return None
+    return _cache_get(token)
 
 
 #: The token that gets signed. A single opaque name, because the signing helper signs
@@ -254,7 +275,7 @@ def gateway_media(token: str, exp: int = 0, sig: str = "") -> Response:
                 headers={"Cache-Control": "no-store"},
             )
     else:
-        cached = _cache_get(token)
+        cached = _cache_get(token) or _await_in_flight(token, _UPSTREAM_TIMEOUT_S)
         if cached is not None:
             # Already warmed by a prefetch, so the browser gets it immediately instead
             # of waiting out the upstream throttle.

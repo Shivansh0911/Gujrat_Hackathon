@@ -123,3 +123,48 @@ def test_a_non_segment_name_is_not_extrapolated() -> None:
     gp._prefetch("cam01", "index.m3u8")
     with gp._cache_lock:
         assert not gp._in_flight
+
+
+def test_a_request_waits_for_a_prefetch_instead_of_duplicating_it(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Racing our own lookahead cost 31 seconds on the deployed instance.
+
+    The estate throttles per connection, so fetching the same bytes twice does not
+    just waste time -- it spends bandwidth the next segment needed.
+    """
+    import threading as _t
+
+    fetches: list[str] = []
+    release = _t.Event()
+
+    def slow_fetch(settings, url, timeout=0):  # type: ignore[no-untyped-def]
+        fetches.append(url)
+        release.wait(5)
+
+        class R:
+            ok = True
+            status_code = 200
+            headers = {"Content-Type": "video/mp2t"}
+            content = b"prefetched"
+
+        return R()
+
+    monkeypatch.setattr(gp.gateway_auth, "get", slow_fetch)
+    monkeypatch.setattr(gp.gateway_auth, "looks_like_login", lambda r: False)
+    monkeypatch.setattr(gp, "get_feed_settings", lambda: None)
+    monkeypatch.setattr(gp, "_upstream_url", lambda feed, ref, name: name)
+
+    gp._prefetch("cam01", "seg00000.ts")
+    token = f"cam01{gp._SEP}seg00001.ts"
+
+    got: list[bytes | None] = []
+    waiter = _t.Thread(target=lambda: got.append(gp._await_in_flight(token, 5)))
+    waiter.start()
+    release.set()
+    waiter.join(6)
+    gp._prefetch_pool.shutdown(wait=True)
+    gp._prefetch_pool = gp.ThreadPoolExecutor(max_workers=gp._LOOKAHEAD)
+
+    assert got == [b"prefetched"], "the waiter should get the prefetched bytes"
+    assert fetches.count("seg00001.ts") == 1, "seg00001 was fetched more than once"
