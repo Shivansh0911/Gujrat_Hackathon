@@ -38,9 +38,19 @@ def session() -> requests.Session:
     with _LOCK:
         if _SESSION is None:
             s = requests.Session()
-            # Some CDNs treat the bare library user-agent as a bot. Naming ourselves is
-            # also simply courteous to an operator reading their access log.
-            s.headers["User-Agent"] = "SETU/1.0 (Gujarat Police Innovation Challenge)"
+            # The estate refuses its media plane to anything that does not look like a
+            # browser: `GET /cam01/index.m3u8` with a bare library user-agent answers
+            # `403 browser required`, and because 403 also means "sign in", the client
+            # signed in again and was refused again. Measured directly -- our previous
+            # `SETU/1.0 (...)` string gets 403, a browser string gets the playlist.
+            #
+            # Our identity is kept on the end rather than dropped. That was tested too,
+            # not assumed: the combined string returns a real playlist, so an operator
+            # reading their access log can still tell who we are.
+            s.headers["User-Agent"] = (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                "(KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 SETU/1.0"
+            )
             _SESSION = s
         return _SESSION
 

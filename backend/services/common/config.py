@@ -42,7 +42,12 @@ class Settings(BaseSettings):
     #: URL template for a camera's HLS playlist, `{id}` substituted. Configurable for
     #: the same reason: the estate moved from `/live/stream/{id}/index.m3u8` to
     #: `/{id}/index.m3u8`.
-    hls_path_template: str = "/live/stream/{id}/index.m3u8"
+    #: Where the estate publishes HLS. Read off the estate's own control-room page,
+    #: which builds `src` as a RELATIVE url -- `${cam.id}/index.m3u8` against the site
+    #: root. The previous default, `/live/stream/{id}/index.m3u8`, was a guess from the
+    #: earlier estate and 404s here, which surfaced in the console as "Live feed
+    #: unavailable, upstream returned HTTP 502" on every government tile.
+    hls_path_template: str = "/{id}/index.m3u8"
 
     #: Access code for a catalogue behind a login. Empty when the estate is open.
     #:

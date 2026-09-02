@@ -30,7 +30,8 @@ def test_derived_endpoints_use_configured_host_and_ports():
     assert s.catalogue_url == "https://example.test/api/ingest"
     assert s.rtsp_url("17") == "rtsp://example.test:8554/stream/17"
     assert s.whep_url("17") == "http://example.test:8889/stream/17/whep"
-    assert s.hls_url("17") == "https://example.test/live/stream/17/index.m3u8"
+    # The estate serves HLS at the site root; see test_gateway_browser_gate.
+    assert s.hls_url("17") == "https://example.test/17/index.m3u8"
 
 
 def test_backoff_envelope_must_be_ordered():
