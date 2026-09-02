@@ -16,7 +16,17 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from services.api.config import get_api_settings
-from services.api.routers import alerts, analytics, auth, cameras, demo, gaps, journey, system
+from services.api.routers import (
+    alerts,
+    analytics,
+    auth,
+    cameras,
+    demo,
+    gaps,
+    journey,
+    system,
+    zones,
+)
 from services.common import redact
 
 redact.install(level=logging.INFO)
@@ -84,6 +94,7 @@ async def security_headers(request, call_next):  # type: ignore[no-untyped-def]
 # rejected as a malformed UUID. The specific path must be registered first.
 app.include_router(auth.router)
 app.include_router(gaps.router)
+app.include_router(zones.router)
 app.include_router(cameras.router)
 app.include_router(system.router)
 app.include_router(alerts.router)

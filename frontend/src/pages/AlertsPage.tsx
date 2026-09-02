@@ -4,6 +4,28 @@ import { useNavigate } from "react-router-dom";
 import { api, getToken, mediaUrl, type Alert, websocketUrl } from "../lib/api";
 import { Badge, Empty, ErrorBox, SourceBadge, Spinner } from "../components/ui";
 
+/**
+ * What each kind of alert is, in words an officer uses.
+ *
+ * The raw `match_type` is a database value: `zone_intrusion` and `speed_violation` mean
+ * nothing on a desk at 3am, and the two are not variants of a watchlist hit -- they are
+ * different claims about different things, and one of them is considerably stronger.
+ */
+const MATCH_LABEL: Record<string, string> = {
+  exact: "exact plate match",
+  fuzzy: "fuzzy plate match",
+  zone_intrusion: "entered restricted zone",
+  speed_violation: "speed exceeded",
+};
+
+const MATCH_TONE: Record<string, "ok" | "warn" | "bad" | "accent"> = {
+  exact: "ok",
+  fuzzy: "warn",
+  zone_intrusion: "accent",
+  // The strongest claim this platform makes, and the one to look at first.
+  speed_violation: "bad",
+};
+
 export default function AlertsPage() {
   const qc = useQueryClient();
   const navigate = useNavigate();
@@ -129,8 +151,9 @@ function AlertCard({
             <span className="mono text-lg text-slate-100">{alert.matched_value}</span>
             <SourceBadge sourceType={alert.camera_source_type} />
             <Badge tone={priorityTone}>priority {alert.priority.toFixed(2)}</Badge>
-            <Badge tone={alert.match_type === "exact" ? "ok" : "warn"}>
-              {alert.match_type} · {alert.match_score.toFixed(2)}
+            <Badge tone={MATCH_TONE[alert.match_type] ?? "warn"}>
+              {MATCH_LABEL[alert.match_type] ?? alert.match_type} ·{" "}
+              {alert.match_score.toFixed(2)}
             </Badge>
             {alert.is_movement && (
               <Badge tone="accent" title="Sightings at more than one camera, grouped as one developing event">

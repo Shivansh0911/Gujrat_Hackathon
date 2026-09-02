@@ -28,6 +28,8 @@ from typing import Any, Callable
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from services.analytics import speed as speed_module
+from services.analytics import zones as zones_module
 from services.analytics.plate_grammar import confusion_aware_distance
 from services.registry.enums import AlertState
 from services.registry.models import Alert, Camera, Detection, WatchlistEntry
@@ -257,6 +259,8 @@ class ScanStats:
     alerts_created: int = 0
     deduplicated: int = 0
     movement: int = 0
+    zone_alerts: int = 0
+    speed_alerts: int = 0
 
 
 def scan_detections(
@@ -265,6 +269,11 @@ def scan_detections(
     since: datetime | None = None,
     limit: int = 5000,
     on_alert: Callable[[Alert, str], None] | None = None,
+    # Speed ceilings are passed in rather than imported, so this analytics module stays
+    # free of the API's settings object and both callers -- the API and the seeding
+    # script -- name the same numbers the journey reconstruction uses.
+    max_speed_highway_kmph: float = 140.0,
+    max_speed_urban_kmph: float = 90.0,
 ) -> ScanStats:
     """Match unprocessed detections against the watchlist and raise alerts.
 
@@ -278,6 +287,29 @@ def scan_detections(
 
     for detection in session.execute(stmt).scalars():
         stats.detections_scanned += 1
+
+        # Two further classifiers over the same detection. They are deliberately not
+        # gated on a watchlist match: an unlisted vehicle inside a restricted zone, or
+        # one travelling at 150 km/h, is exactly the case the watchlist cannot cover.
+        for alert, action in zones_module.evaluate_zones(session, detection):
+            if action == "created":
+                stats.zone_alerts += 1
+            if on_alert is not None:
+                on_alert(alert, action)
+
+        finding = speed_module.evaluate_speed(
+            session,
+            detection,
+            max_speed_highway_kmph=max_speed_highway_kmph,
+            max_speed_urban_kmph=max_speed_urban_kmph,
+        )
+        if finding is not None:
+            alert, action = speed_module.raise_speed_alert(session, detection, finding)
+            if action == "created":
+                stats.speed_alerts += 1
+            if on_alert is not None:
+                on_alert(alert, action)
+
         match = match_detection(session, detection)
         if match is None:
             continue

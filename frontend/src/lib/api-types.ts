@@ -86,6 +86,53 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/cameras/{camera_id}/zones": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Zones
+         * @description Zones on one camera. Readable by any signed-in operator.
+         */
+        get: operations["list_zones_cameras__camera_id__zones_get"];
+        put?: never;
+        /**
+         * Create Zone
+         * @description Define a zone on a camera, or replace the one with this name.
+         *
+         *     Replacing rather than adding is deliberate: re-drawing "the gate" should move the
+         *     gate, not leave the old polygon in place to alert alongside the new one.
+         */
+        post: operations["create_zone_cameras__camera_id__zones_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/cameras/{camera_id}/zones/{zone_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Zone
+         * @description Remove a zone. Audited before the row goes.
+         */
+        delete: operations["delete_zone_cameras__camera_id__zones__zone_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/cameras": {
         parameters: {
             query?: never;
@@ -1389,6 +1436,55 @@ export interface components {
             /** Notes */
             notes: string | null;
         };
+        /** ZoneCreate */
+        ZoneCreate: {
+            /** Name */
+            name: string;
+            /** Points */
+            points: [
+                number,
+                number
+            ][];
+            /** Reference Width */
+            reference_width: number;
+            /** Reference Height */
+            reference_height: number;
+            /**
+             * Active
+             * @default true
+             */
+            active: boolean;
+        };
+        /** ZoneOut */
+        ZoneOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Camera Id
+             * Format: uuid
+             */
+            camera_id: string;
+            /** Camera Ref */
+            camera_ref: string;
+            /** Name */
+            name: string;
+            /** Points */
+            points: [
+                number,
+                number
+            ][];
+            /** Reference Width */
+            reference_width: number;
+            /** Reference Height */
+            reference_height: number;
+            /** Active */
+            active: boolean;
+            /** Created By */
+            created_by: string | null;
+        };
     };
     responses: never;
     parameters: never;
@@ -1497,6 +1593,102 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_zones_cameras__camera_id__zones_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                camera_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ZoneOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_zone_cameras__camera_id__zones_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                camera_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ZoneCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ZoneOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_zone_cameras__camera_id__zones__zone_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                camera_id: string;
+                zone_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };

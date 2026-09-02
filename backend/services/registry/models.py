@@ -20,8 +20,9 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from geoalchemy2 import Geography
+from geoalchemy2 import Geography, Geometry
 from sqlalchemy import (
+    Boolean,
     CheckConstraint,
     DateTime,
     Float,
@@ -278,6 +279,44 @@ class WatchlistEntry(Base):
     # NOT NULL deliberately: an entry without an expiry becomes a permanent shadow
     # record on a citizen, outliving the investigation that justified it.
     valid_to: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class CameraZone(Base):
+    """A polygon in one camera's image plane. A vehicle centring inside it alerts.
+
+    The geometry is deliberately **not** geographic. Every other geometry in this
+    schema answers a question about the world; this one answers a question about a
+    picture -- is the vehicle inside the region an operator drew on this camera's
+    view? Detection boxes are in frame pixels, and turning those into ground
+    coordinates needs camera calibration this estate does not publish. See migration
+    0006 for the full reasoning.
+    """
+
+    __tablename__ = "camera_zone"
+    __table_args__ = (
+        Index("ix_camera_zone_camera", "camera_id"),
+        Index("ix_camera_zone_polygon", "polygon", postgresql_using="gist"),
+        UniqueConstraint("camera_id", "name", name="uq_camera_zone_name"),
+    )
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    camera_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("camera.id", ondelete="CASCADE"), nullable=False
+    )
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    polygon: Mapped[Any] = mapped_column(
+        Geometry("POLYGON", srid=0, spatial_index=False), nullable=False
+    )
+
+    #: The frame size the polygon was drawn against. A camera that changes resolution
+    #: invalidates the zone; recording this is what lets that be noticed rather than
+    #: silently mis-evaluated against a differently-sized frame.
+    reference_width: Mapped[int] = mapped_column(Integer, nullable=False)
+    reference_height: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    created_by: Mapped[str | None] = mapped_column(String(120))
+    created_at: Mapped[datetime] = _utcnow()
 
 
 class Alert(Base):

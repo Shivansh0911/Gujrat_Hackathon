@@ -189,10 +189,13 @@ Stated plainly, because a roadmap that lists only successes is not a roadmap.
 
 - **No adapter other than HLS/RTSP-over-gateway and file has been written.** ONVIF is
   designed, not built. The interface makes it small; "small" is not "done".
-- **Speed-based flagging is not built.** It needs genuine cross-camera timestamps, and
-  the only multi-camera data available is a replay harness where camera attribution is
-  simulated. A speed alert computed from simulated attribution would be a fabricated
-  capability presented as a real one.
+- **Speed-based flagging is built, and raises nothing yet.** It computes an implied
+  speed only between two sightings of one plate on two genuinely different real cameras
+  with known positions, and excludes the `REPLAY-` harness cameras from ever being an
+  input. On the current database that means zero alerts: 7 detections come from
+  non-`REPLAY` cameras and no plate has been seen at two real placed cameras. The
+  feature is complete and tested; the data is what is missing, and it needs no code
+  change when the estate provides it.
 - **Edge deployment is measured, not deployed.** The compute reductions are real and
   benchmarked; no edge node has actually run in the field.
 - **ANPR accuracy is 29.6%** precision and recall on this footage, and the ceiling is

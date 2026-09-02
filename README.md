@@ -363,7 +363,28 @@ submission.
    **zero** grammar-valid registrations; the 27 August sweep produced two. The
    pipeline behaved identically — the difference is what the cameras publish.
    `docs/SUPPORT_QUERY.md` is the prepared fault report.
-6. **The deployed instance carries own-feed detections only.** It is live at
+6. **Speed flagging is built and tested, and will raise nothing on today's data.**
+   An implied speed is only computed between two sightings of one plate on two
+   *genuinely different real cameras* with known positions, and the `REPLAY-` harness
+   cameras are excluded from ever being an input — as a `WHERE` clause, not a
+   convention, with a test that fails if the clause is removed. The reason is that a
+   speed alert is a materially stronger claim than a journey hop: the journey view
+   labels `REPLAY` attribution where a viewer can see it, whereas "travelling at
+   150 km/h" carries no such label into wherever it gets quoted. Deriving one from a
+   simulated camera-to-camera distance would be fabricating a capability.
+   Counted on the current database: **7 detections from non-`REPLAY` cameras, and zero
+   plates seen on two real placed cameras.** So the feature is complete, covered by
+   eight tests, and currently produces no live alerts. It begins working the moment the
+   estate yields the same plate at two real cameras — nothing needs to change for it to.
+7. **Intrusion zones are defined in a camera's image plane, not on the ground.** A zone
+   is a polygon over one camera's *view*, and a detection alerts when its vehicle box
+   *centres* inside it. Overlap alone is not intrusion: a box grazing the boundary is a
+   vehicle passing, and alerting on that is how a desk fills with events an operator
+   learns to dismiss. Because the polygon is in frame pixels, a camera that changes
+   resolution invalidates its zones — the frame size a zone was drawn against is stored
+   with it so that can be detected rather than silently mis-evaluated. Turning a CCTV
+   frame into ground coordinates needs camera calibration this estate does not publish.
+8. **The deployed instance carries own-feed detections only.** It is live at
    https://setu-gujrat.netlify.app and passes 10/10 deployment checks, but every
    detection in it came from our own footage: the government gateway has not yet
    yielded a legible plate during a run against the deployed database. The console

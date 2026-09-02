@@ -43,6 +43,9 @@ from services.common.config import get_settings  # noqa: E402
 from services.ingest.deadlined import Deadlined  # noqa: E402
 from services.ingest.gateway_source import GatewaySource  # noqa: E402
 
+#: Pause between cameras, so a sweep does not become a burst the estate refuses.
+_SETTLE_S = 1.5
+
 log = logging.getLogger("ingest-gateway")
 
 
@@ -195,6 +198,14 @@ def main() -> int:
     started = datetime.now(timezone.utc)
     results = []
     for i, d in enumerate(descriptors, 1):
+        if i > 1:
+            # Breathe between cameras. Opening thirty captures back to back is a
+            # load pattern this estate answers by refusing all of them: a sweep run
+            # that way reported 0 of 30 producing frames, while the same cameras
+            # answered normally when approached one at a time. The organiser's
+            # integration guide asks for exactly this -- "pace your load" -- and it
+            # costs well under a minute across a full run.
+            time.sleep(_SETTLE_S)
         print(f"\n[{i}/{len(descriptors)}] camera {d.external_id} ({d.name})")
         r = ingest_one(d, pipeline, seconds=args.seconds, max_frames=args.max_frames, writer=writer)
         results.append(r)

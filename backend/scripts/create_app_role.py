@@ -56,6 +56,7 @@ TABLES = (
     "site",
     "camera",
     "camera_capability",
+    "camera_zone",
     "detection",
     "watchlist_entry",
     "alert",
