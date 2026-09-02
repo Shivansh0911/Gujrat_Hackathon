@@ -28,6 +28,15 @@ from services.common.config import Settings
 
 log = logging.getLogger(__name__)
 
+#: How many times to sign in and try again before giving the caller the sign-in page.
+#: One was not enough. A worker serving its first gateway request has no cookie, and
+#: uvicorn handles requests concurrently, so two threads can both see the sign-in page,
+#: both sign in, and one still be holding the older response when it retries. Measured
+#: on the deployed instance: sporadic 502s right after a redeploy, then 10 of 10
+#: playlists once warm. Two attempts covers the cold start; more would be a login loop
+#: against infrastructure we do not own.
+_LOGIN_ATTEMPTS = 2
+
 _LOCK = threading.Lock()
 _SESSION: requests.Session | None = None
 
@@ -89,6 +98,8 @@ def get(settings: Settings | None, url: str, timeout: float = 20.0) -> requests.
     more, and a caller with no configuration should not be forced to invent some.
     """
     resp = session().get(url, timeout=timeout)
-    if looks_like_login(resp) and login(settings, timeout):
+    for _ in range(_LOGIN_ATTEMPTS):
+        if not looks_like_login(resp) or not login(settings, timeout):
+            break
         resp = session().get(url, timeout=timeout)
     return resp

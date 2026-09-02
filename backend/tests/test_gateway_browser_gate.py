@@ -40,3 +40,45 @@ def test_hls_paths_are_built_at_the_site_root() -> None:
     settings = Settings(gateway_host="example.invalid", jwt_secret="x", database_url="x")
     assert settings.hls_url("cam01").endswith("/cam01/index.m3u8")
     assert "/live/stream/" not in settings.hls_url("cam01")
+
+
+def test_a_cold_session_gets_more_than_one_chance(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    """One retry was not enough on a worker serving its first gateway request.
+
+    The old code signed in once and tried once more. This drives the case where the
+    first retry still comes back as the sign-in page -- which is what a race between
+    two threads in a freshly started worker looks like -- and asserts the caller ends
+    up with the playlist rather than the login form.
+    """
+    from services.common import gateway_auth
+
+    pages = iter(["login", "login", "playlist"])
+
+    class Resp:
+        def __init__(self, kind: str) -> None:
+            self.status_code = 200
+            self.headers = {
+                "Content-Type": "text/html" if kind == "login" else "application/x-mpegURL"
+            }
+
+    class FakeSession:
+        headers: dict[str, str] = {}
+
+        def get(self, url: str, timeout: float = 0) -> Resp:
+            return Resp(next(pages))
+
+        def post(self, url: str, data: dict[str, str], timeout: float = 0) -> Resp:
+            r = Resp("playlist")
+            r.raise_for_status = lambda: None  # type: ignore[attr-defined]
+            return r
+
+    monkeypatch.setattr(gateway_auth, "session", lambda: FakeSession())
+
+    class S:
+        gateway_access_code = "code"
+        gateway_scheme = "https"
+        gateway_host = "example.invalid"
+        gateway_login_path = "/auth/login"
+
+    out = gateway_auth.get(S(), "https://example.invalid/cam01/index.m3u8")  # type: ignore[arg-type]
+    assert not gateway_auth.looks_like_login(out)  # type: ignore[arg-type]
