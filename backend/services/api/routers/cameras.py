@@ -440,13 +440,33 @@ def sync_catalogue(session: SessionDep, actor: AdminActor) -> SyncResult:
     for ref, camera in existing.items():
         if ref in seen:
             continue
+
+        # Absence means two different things depending on where the camera got to.
+        #
+        # A camera that was working and has gone is UNREACHABLE -- it may come back, and
+        # the lifecycle allows it to. A camera still in DRAFT was never onboarded at all,
+        # so "unreachable" is the wrong word for it: it is not a working camera that
+        # stopped, it is a candidate that no longer exists. DECOMMISSIONED is the right
+        # terminal state and, unlike UNREACHABLE, is a legal move from DRAFT.
+        #
+        # This mattered the moment the estate renamed every camera: thirty DRAFT rows
+        # for cameras that had ceased to exist failed the UNREACHABLE transition, hit
+        # the `continue` below, and stayed DRAFT indefinitely -- so the registry went on
+        # claiming an estate twice the size of the real one, silently, because the only
+        # signal was an exception being swallowed.
+        current = CameraStatus(camera.status)
+        target = (
+            CameraStatus.DECOMMISSIONED
+            if current is CameraStatus.DRAFT
+            else CameraStatus.UNREACHABLE
+        )
         try:
-            assert_transition(CameraStatus(camera.status), CameraStatus.UNREACHABLE)
+            assert_transition(current, target)
         except IllegalTransition:
             # e.g. already DECOMMISSIONED. Absence from the catalogue does not revive
             # or re-retire a camera; the lifecycle rules win.
             continue
-        camera.status = CameraStatus.UNREACHABLE.value
+        camera.status = target.value
         removed.append(ref)
         event_bus.publish(CameraEvent.REMOVED, {"camera_ref": ref})
         audit.append(
@@ -458,7 +478,7 @@ def sync_catalogue(session: SessionDep, actor: AdminActor) -> SyncResult:
             actor_role=actor.role,
             detail={
                 "camera_ref": ref,
-                "new_status": CameraStatus.UNREACHABLE.value,
+                "new_status": target.value,
                 "note": "absent from catalogue; row retained, evidence references it",
             },
         )
