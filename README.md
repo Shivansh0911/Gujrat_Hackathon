@@ -98,6 +98,31 @@ property of the feed rather than of the pipeline: at the resolution and framing 
 cameras publish, a number plate does not occupy enough pixels to survive. The evidence
 crops are committed; the illegible ones are illegible to a reviewer too.
 
+**The estate moved on 2026-09-01** to a new host, behind an access code, with the
+media plane split across two machines: a CDN serves the catalogue and HLS, while RTSP
+and WebRTC come from a bare public IP because a CDN cannot proxy either. It was swept
+again on **2026-09-02**, over RTSP, writing to the deployed database:
+
+| | Result |
+|---|---:|
+| Cameras catalogued | 30 |
+| Cameras that produced frames | **22** |
+| Cameras that produced none | 8 — `no frames within budget` |
+| Frames decoded | 2,150 |
+| Plate regions detected | 9 |
+| Records published | 1 |
+| Grammar-valid registrations | **0** |
+
+The one published record is not a vehicle. It is the caption the camera burns into its
+own frame — `O.N.G.C. Office BS-103_B1`, read as `0ACCO` — and the committed crop shows
+that plainly. A new host and a new estate produced the same answer as the old one:
+twenty-two live cameras and two thousand frames contain no plate a recogniser can read.
+
+One real plate was seen, and it is worth stating because it cuts the other way: an
+earlier pass on cam07 read `GJ3ZAG0344` from a genuine Gujarat plate whose crop reads
+`GJ32AG0344` — a real detection, one character wrong. The estate does occasionally
+present a legible plate. It does not do so reliably enough to trace a vehicle.
+
 Declared frame rate remains unreliable, as §2.2 warns: **5 of the 8 cameras that both
 declare a rate and delivered frames diverge by more than 5%** — camera 15 declares
 12.5 fps and delivers 5.38. Another 17 delivered frames while declaring nothing at all.
@@ -197,6 +222,45 @@ Live WebSocket feed. Every card carries the evidence crop, three timestamps
 (`observed_at_utc`, stream PTS, ingest), match type and score, corrections listed
 explicitly, and the watchlist authority and case reference. Confusion-aware fuzzy
 matching surfaces vehicles an exact-match system misses entirely.
+
+### Control Room — multi-camera video wall
+![Government tile](docs/screenshots/gateway-tile.png)
+
+Up to six tiles, chosen from the registry, each labelled **Government feed** or
+**Own feed** so nobody has to remember which is which. Cameras with recorded
+detections are listed first: a registry position with nothing behind it has nothing
+to show, and sorting by that saves an operator from picking an empty tile.
+
+Government tiles play through an authenticated proxy rather than directly. The
+estate serves HLS from a host that requires a session cookie and refuses anything
+that does not look like a browser, and a browser cannot be handed either — so the
+API holds the session and re-signs each playlist and segment as a short-lived URL.
+When a tile cannot play, it says which camera, what the upstream returned, and that
+the registry entry and its recorded detections are unaffected. A blank rectangle
+would leave an operator unable to tell a dead camera from a dead console.
+
+### Zones — intrusion detection areas
+
+A polygon drawn over one camera's view, in that camera's own frame pixels. Real
+detection centroids from that camera are plotted on the drawing surface, so a zone
+is placed against where vehicles have actually been seen rather than against a
+guess, and a pending polygon previews how many recorded detections it would have
+caught before it is saved. **Check recorded detections** then re-runs the
+classifiers over stored history, which is what makes a newly drawn zone testable
+without waiting for traffic.
+
+A detection alerts when its vehicle box *centres* inside the polygon — see
+limitation 7 for why overlap is deliberately not enough. Zones need only a vehicle
+box, not a readable plate, which is why they work on this estate today when journey
+and watchlist do not.
+
+### Demo — the own-feed clip, frame-aligned
+
+The clip that the accuracy figures are scored against, played beside the reads it
+produced, aligned by presentation timestamp so a reviewer can watch a plate arrive
+and see what the pipeline made of it. Three unprocessed YouTube videos sit below
+it, labelled as such: they are there so a judge can try footage we did not choose,
+not to imply we processed them.
 
 ### Coverage — gap analysis
 ![Gap analysis](docs/screenshots/08-gap-analysis.png)
@@ -372,8 +436,8 @@ submission.
    labels `REPLAY` attribution where a viewer can see it, whereas "travelling at
    150 km/h" carries no such label into wherever it gets quoted. Deriving one from a
    simulated camera-to-camera distance would be fabricating a capability.
-   Counted on the current database: **7 detections from non-`REPLAY` cameras, and zero
-   plates seen on two real placed cameras.** So the feature is complete, covered by
+   Counted on the deployed database after the 2026-09-02 sweep: **1 detection from a
+   non-`REPLAY` camera, and zero plates seen on two real placed cameras.** So the feature is complete, covered by
    eight tests, and currently produces no live alerts. It begins working the moment the
    estate yields the same plate at two real cameras — nothing needs to change for it to.
 7. **Intrusion zones are defined in a camera's image plane, not on the ground.** A zone
@@ -384,10 +448,32 @@ submission.
    resolution invalidates its zones — the frame size a zone was drawn against is stored
    with it so that can be detected rather than silently mis-evaluated. Turning a CCTV
    frame into ground coordinates needs camera calibration this estate does not publish.
-8. **The deployed instance carries own-feed detections only.** It is live at
-   https://setu-gujrat.netlify.app and passes 10/10 deployment checks, but every
-   detection in it came from our own footage: the government gateway has not yet
-   yielded a legible plate during a run against the deployed database. The console
-   labels the source of every hop and alert so this is visible rather than assumed.
-   See
-   [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) §4.
+8. **The deployed instance now carries one government-feed detection, and it is a
+   false positive.** A full 30-camera sweep on 2026-09-02 wrote exactly one record to
+   the deployed database, and it is a camera's own on-screen caption rather than a
+   vehicle. It is left in place: deleting a real output because it is unflattering
+   would make the error rate look better than it is, and the crop is committed so
+   anyone can see what happened. Note this is the same class of record as the twelve
+   `REPLAY-` misreads already in the database — of 21 detections, 8 are grammar-valid
+   and 13 are not. A grammar filter at write time was considered and rejected for
+   exactly this reason.
+9. **Live playback and live ingest go through different doors, and only one of them
+   has locks.** ANPR pulls RTSP from a bare public IP; the console plays HLS from the
+   CDN host, which requires a session cookie *and* refuses any client that does not
+   look like a browser — `403 browser required`. For a day the console showed
+   "Live feed unavailable, upstream returned HTTP 502" on every government tile while
+   ingest from the same cameras was decoding thousands of frames, and both were
+   accurate. The 403 hid itself especially well, because 403 is also how the estate
+   says "sign in": the client re-authenticated and was refused again. Fixed by
+   presenting a browser user-agent with our own identity appended, verified against
+   the live estate. The lesson is recorded because the failure looked exactly like an
+   outage on the organiser's side, and was not.
+10. **Every legible plate on the deployed instance came from our own footage.** It is
+   live at https://setu-gujrat.netlify.app and passes 10/10 deployment checks. The
+   government gateway has been ingested against the deployed database and contributed
+   exactly one record, the caption described in limitation 8 — so route reconstruction,
+   watchlist matching and speed flagging all still rest on own-feed and `REPLAY-`
+   material. Intrusion zones are the exception: they need a vehicle box rather than a
+   readable plate, and a rescan over stored history raised **5 zone alerts** alongside
+   the 6 watchlist ones. The console labels the source of every hop and alert so this is
+   visible rather than assumed. See [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) §4.
