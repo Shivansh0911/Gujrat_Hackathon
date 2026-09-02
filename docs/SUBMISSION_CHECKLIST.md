@@ -11,9 +11,9 @@ at upload time.
 
 | # | Deliverable | Artefact | State |
 |---|---|---|---|
-| 1 | Solution Presentation | `SETU_Solution_Presentation.pdf` | ✅ complete — **do not regenerate** |
+| 1 | Solution Presentation | `SETU_Solution_Presentation.pdf` | ⚠️ **not in this repository.** Checked 2026-09-03: not tracked by git, not on disk, not gitignored. If it exists on a drive, record the link here; if it does not, it is one of the seven scored areas and nothing else substitutes for it |
 | 2 | High-Level Design | [`docs/SETU_High_Level_Design.md`](SETU_High_Level_Design.md) | ✅ generated in-repo from measured evidence. Both previously-amended claims are correct from the start; `HLD_RECONCILIATION.md` remains as the dated audit trail of why |
-| 3 | Workflow / integration diagram | `SETU_Workflow_Integration_Diagram.png` | ✅ |
+| 3 | Workflow / integration diagram | `SETU_Workflow_Integration_Diagram.png` | ⚠️ **not in this repository**, same check and same date as row 1 |
 | 4 | Repository README | `README.md` | ✅ model choice, screenshots, quickstart, measured results |
 
 ## Demonstration videos
@@ -32,7 +32,7 @@ Script for both, screen by screen with timings and what to say:
 |---|---|---|---|
 | 7a | **Sample gap-analysis report** (Model 1) | `reports/gap-analysis-2026-08-31T06-14-08Z.md` | ✅ **10 districts, 28 cameras with a gap, 28 investigation-derived.** Grouped by remedy rather than severity, because a pin drop and a procurement do not belong on one scale. `make gap-report` |
 | 7 | Detected vehicles and plates with timestamps | `reports/detections-*.csv` and `.pdf`, `make detection-report` | ✅ 56 detections, 4 cameras, 32 grammar-valid, 8 distinct plates |
-| 8 | Government-feed output report | `reports/evidence/gateway-output-report-2026-08-27.md` and `-2026-08-30.md` | ✅ **two dated runs.** 27 Aug: 25 of 30 cameras, 9,158 frames, 2 valid registrations. 30 Aug: 18 of 30, 5,055 frames, **0** valid. Both kept — the difference is the feed, not the pipeline |
+| 8 | Government-feed output report | `reports/evidence/gateway-output-report-2026-09-02.md` | ✅ **submit the 2 September run**: the estate moved host on 1 September, so the 27 and 30 August reports describe `live.corp8.cloud`, which no longer exists. They are kept as history. Current run, `cctv.corp8.cloud`: 30 catalogued, 22 producing frames, 2,150 frames, 9 plate regions, **0** grammar-valid registrations. One report covers one estate — the generator used to merge both and claimed 60 cameras under a single host name |
 | 9 | ANPR precision and recall | `data/seed/anpr_ground_truth.csv`, `reports/evidence/anpr-accuracy-*` | ✅ **measured: 29.6% precision, 29.6% recall, 26.9% CER** (was 0.0% before three defects were found and fixed). Annotations were made by reading each crop; **have a second person spot-check them** |
 
 ## Platform
@@ -42,7 +42,7 @@ Script for both, screen by screen with timings and what to say:
 | 10 | GitHub repository | `github.com/Shivansh0911/Gujrat_Hackathon` | ✅ |
 | 10a | **Manual + bulk camera onboarding** (Model 1) | `POST /cameras` and `POST /cameras/bulk-import`, both on the System screen | ✅ both demonstrable, both audited |
 | 10b | **Control Room video wall** (Model 2) | Console → Control Room | ✅ 1 / 2×2 / 2×3 tiles, capped at six concurrent streams |
-| 11 | Screenshots, all screens, real data | `docs/screenshots/` | ✅ 11 images covering all eight screens |
+| 11 | Screenshots, all screens, real data | `docs/screenshots/` and `docs/screenshots/responsive/` | ✅ 14 images, plus a full responsive set in **both themes** at 375/390/768/1024. The console now has **ten** screens, not eight: Control Room, Zones and Demo were added after this row was written |
 | 12 | Screenshots of the deployed instance | `docs/screenshots/deployed/` | ✅ 8 images, captured against the container stack |
 | 13 | Hosted URL + test credentials | **Console: https://setu-gujrat.netlify.app** · API: https://setu-api-ai7z.onrender.com | ✅ **live**, verified 10/10 by `verify_deployment.py`. Deployed on Render + Netlify, not Railway — see `docs/adr/0004` addendum. Credentials in `deploy-secrets.env` (gitignored) |
 | 14 | Test accounts for the screening committee | `admin` (System Administrator) and `operator` (Control Room Operator) | ✅ **live and verified.** Values are in the gitignored `deploy-secrets.env` and go on the **submission form**. They are deliberately *not* written into `DEMO_RUNBOOK.md` — that file is committed, and a working credential in a public repository is a secret leak whatever the reason for putting it there. `DEMO_RUNBOOK.md` §0 says where to find them |
