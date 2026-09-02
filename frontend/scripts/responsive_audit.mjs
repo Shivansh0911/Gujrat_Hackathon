@@ -11,6 +11,15 @@
  * container*; what must never happen is the whole layout sliding, because then the
  * navigation and half the controls are simply off-screen.
  *
+ * A warning about the browser this uses. Playwright's bundled Chromium is the
+ * open-source build, which ships **without H.264**. It reports "format not supported"
+ * on perfectly good video, so it cannot be used to judge whether media plays -- doing
+ * exactly that produced a confident and completely wrong diagnosis in this project:
+ * the console was declared broken while it was working in Edge and Chrome. Launch with
+ * `{ channel: "msedge" }` or `{ channel: "chrome" }` before believing anything about
+ * playback. The broken-video check below is still worth having for a *missing* source,
+ * which is codec-independent.
+ *
  *   node scripts/responsive_audit.mjs
  *   SETU_CONSOLE_URL=https://setu-gujrat.netlify.app node scripts/responsive_audit.mjs
  */
