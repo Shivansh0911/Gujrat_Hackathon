@@ -28,7 +28,13 @@ from services.api import audit
 from services.api.config import get_api_settings
 from services.api.media_signing import signed_media_url
 from services.api.db import get_session
-from services.api.security import Actor, CurrentActor, camera_scope, decode_token
+from services.api.security import (
+    Actor,
+    AdminActor,
+    CurrentActor,
+    camera_scope,
+    decode_token,
+)
 from services.registry.enums import AlertDisposition, AlertState, Role
 from services.registry.models import Alert, Camera, WatchlistEntry
 
@@ -492,3 +498,76 @@ async def alert_stream(
         await hub.disconnect(websocket)
     except Exception:
         await hub.disconnect(websocket)
+
+
+class RescanResult(BaseModel):
+    detections_scanned: int
+    watchlist_alerts: int
+    zone_alerts: int
+    speed_alerts: int
+    deduplicated: int
+
+
+@router.post("/alerts/rescan", response_model=RescanResult)
+def rescan(
+    session: SessionDep,
+    actor: AdminActor,
+    hours: int = Query(default=168, ge=1, le=24 * 90),
+) -> RescanResult:
+    """Re-evaluate detections already on record against the current configuration.
+
+    Alerts are normally raised as detections arrive, which means a rule added afterwards
+    only ever applies to the future. That is the wrong default for how this system is
+    actually used: an officer adds a registration to the watchlist *because* of something
+    that already happened, and draws an intrusion zone around a place that has already
+    been driven through. Without this, the honest answer to "has this vehicle been seen?"
+    is "it will be, from now on", and the evidence sitting in the database goes unasked.
+
+    So it runs the same three classifiers over stored detections -- the watchlist matcher,
+    the zone test and the speed check -- with no re-decoding of any video. Deduplication
+    is unchanged, so re-running it does not multiply alerts: a detection that already
+    produced one folds into it rather than raising a second.
+
+    Admin-only and audited. Re-evaluating the estate against a newly drawn zone can put
+    alerts in front of officers, and who asked for that should be recoverable.
+    """
+    from datetime import timedelta
+
+    from services.analytics.matcher import scan_detections
+    from services.api.config import get_api_settings as _api_settings
+
+    settings = _api_settings()
+    since = datetime.now(timezone.utc) - timedelta(hours=hours)
+
+    stats = scan_detections(
+        session,
+        since=since,
+        max_speed_highway_kmph=settings.max_speed_highway_kmph,
+        max_speed_urban_kmph=settings.max_speed_urban_kmph,
+    )
+
+    audit.append(
+        session,
+        action="RESCAN_DETECTIONS",
+        subject_type="estate",
+        subject_id="alerts",
+        actor_id=actor.subject,
+        actor_role=actor.role,
+        purpose="Re-evaluate stored detections against current watchlist and zones",
+        detail={
+            "hours": hours,
+            "detections_scanned": stats.detections_scanned,
+            "watchlist_alerts": stats.alerts_created,
+            "zone_alerts": stats.zone_alerts,
+            "speed_alerts": stats.speed_alerts,
+        },
+    )
+    session.flush()
+
+    return RescanResult(
+        detections_scanned=stats.detections_scanned,
+        watchlist_alerts=stats.alerts_created,
+        zone_alerts=stats.zone_alerts,
+        speed_alerts=stats.speed_alerts,
+        deduplicated=stats.deduplicated,
+    )

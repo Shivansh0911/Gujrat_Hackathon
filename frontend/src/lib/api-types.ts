@@ -513,6 +513,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/alerts/rescan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Rescan
+         * @description Re-evaluate detections already on record against the current configuration.
+         *
+         *     Alerts are normally raised as detections arrive, which means a rule added afterwards
+         *     only ever applies to the future. That is the wrong default for how this system is
+         *     actually used: an officer adds a registration to the watchlist *because* of something
+         *     that already happened, and draws an intrusion zone around a place that has already
+         *     been driven through. Without this, the honest answer to "has this vehicle been seen?"
+         *     is "it will be, from now on", and the evidence sitting in the database goes unasked.
+         *
+         *     So it runs the same three classifiers over stored detections -- the watchlist matcher,
+         *     the zone test and the speed check -- with no re-decoding of any video. Deduplication
+         *     is unchanged, so re-running it does not multiply alerts: a detection that already
+         *     produced one folds into it rather than raising a second.
+         *
+         *     Admin-only and audited. Re-evaluating the estate against a newly drawn zone can put
+         *     alerts in front of officers, and who asked for that should be recoverable.
+         */
+        post: operations["rescan_alerts_rescan_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/journey": {
         parameters: {
             query?: never;
@@ -1251,6 +1286,19 @@ export interface components {
             implied_speed_kmph: number | null;
             /** Reason */
             reason: string;
+        };
+        /** RescanResult */
+        RescanResult: {
+            /** Detections Scanned */
+            detections_scanned: number;
+            /** Watchlist Alerts */
+            watchlist_alerts: number;
+            /** Zone Alerts */
+            zone_alerts: number;
+            /** Speed Alerts */
+            speed_alerts: number;
+            /** Deduplicated */
+            deduplicated: number;
         };
         /** ResolveRequest */
         ResolveRequest: {
@@ -2242,6 +2290,37 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    rescan_alerts_rescan_post: {
+        parameters: {
+            query?: {
+                hours?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RescanResult"];
+                };
             };
             /** @description Validation Error */
             422: {

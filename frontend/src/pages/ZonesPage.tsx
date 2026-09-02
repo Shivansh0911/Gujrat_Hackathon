@@ -89,6 +89,21 @@ export default function ZonesPage() {
     onError: (e) => setError(e instanceof Error ? e.message : "Could not save the zone"),
   });
 
+  /**
+   * Ask whether anything already on record matches what was just configured.
+   *
+   * Alerts are raised as detections arrive, so a zone drawn today would otherwise only
+   * ever apply to tomorrow's traffic -- and an operator draws a zone precisely because
+   * of somewhere that has already been driven through. No video is re-read; the stored
+   * detections are re-evaluated.
+   */
+  const rescan = useMutation({
+    mutationFn: () => api.rescan(24 * 30),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["alerts"] });
+    },
+  });
+
   const remove = useMutation({
     mutationFn: (zoneId: string) => api.deleteZone(cameraId, zoneId),
     onSuccess: () => void qc.invalidateQueries({ queryKey: ["zones", cameraId] }),
@@ -295,6 +310,14 @@ export default function ZonesPage() {
                 >
                   {save.isPending ? "Saving…" : "Save zone"}
                 </button>
+                <button
+                  className="btn"
+                  onClick={() => rescan.mutate()}
+                  disabled={rescan.isPending}
+                  title="Re-evaluate detections already on record against the current zones and watchlist"
+                >
+                  {rescan.isPending ? "Checking…" : "Check recorded detections"}
+                </button>
               </div>
             )}
 
@@ -311,6 +334,23 @@ export default function ZonesPage() {
                 the {detections.data?.length ?? 0} recorded detections.{" "}
                 {wouldCatch === 0 &&
                   "Nothing has been seen there yet, so it would not have alerted."}
+              </p>
+            )}
+            {rescan.data && (
+              <p className="text-[11px] mt-2 text-muted">
+                Re-evaluated {rescan.data.detections_scanned} recorded detection
+                {rescan.data.detections_scanned === 1 ? "" : "s"}:{" "}
+                <strong className={rescan.data.zone_alerts ? "text-warn" : ""}>
+                  {rescan.data.zone_alerts}
+                </strong>{" "}
+                zone alert{rescan.data.zone_alerts === 1 ? "" : "s"},{" "}
+                {rescan.data.watchlist_alerts} watchlist,{" "}
+                {rescan.data.speed_alerts} speed. They appear on the Alert Desk.
+              </p>
+            )}
+            {rescan.error != null && (
+              <p className="text-[11px] text-bad mt-2">
+                {rescan.error instanceof Error ? rescan.error.message : "Re-check failed"}
               </p>
             )}
             {error && <p className="text-[11px] text-bad mt-2">{error}</p>}

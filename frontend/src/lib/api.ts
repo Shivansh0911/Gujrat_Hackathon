@@ -31,6 +31,7 @@ export type JourneyGap = components["schemas"]["JourneyGap"];
 export type Zone = components["schemas"]["ZoneOut"];
 export type ZoneCreate = components["schemas"]["ZoneCreate"];
 export type DetectionPoint = components["schemas"]["DetectionPoint"];
+export type RescanResult = components["schemas"]["RescanResult"];
 export type DemoFeed = components["schemas"]["DemoFeed"];
 export type DemoRead = components["schemas"]["DemoRead"];
 
@@ -221,6 +222,8 @@ export const api = {
     request<void>(`/cameras/${cameraId}/zones/${zoneId}`, { method: "DELETE" }),
   detectionPoints: (cameraId: string) =>
     request<DetectionPoint[]>(`/cameras/${cameraId}/detection-points`),
+  rescan: (hours = 168) =>
+    request<RescanResult>(`/alerts/rescan?hours=${hours}`, { method: "POST" }),
   demoFeed: () => request<DemoFeed>("/demo/own-feed"),
 
   /**
