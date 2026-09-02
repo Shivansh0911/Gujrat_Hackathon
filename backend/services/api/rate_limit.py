@@ -11,9 +11,11 @@ The passwords this deployment issues are 18+ characters of `token_urlsafe`, so
 guessing is not the realistic threat; exhausting the CPU is.
 
 **What this is not.** State lives in this process. The container runs uvicorn with
-`SETU_WORKERS` workers, defaulting to 2, and each holds its own window -- so the
-effective ceiling is the configured limit times the worker count, and which worker
-answers a given request is up to the kernel. Measured on the running stack: 35 rapid
+`SETU_WORKERS` workers -- **defaulting to 1**, per `docker-entrypoint.sh` -- and each
+holds its own window, so the effective ceiling is the configured limit times the
+worker count and which worker answers a given request is up to the kernel. On the
+default single worker there is exactly one window; the multiplication only appears
+if someone raises the count. Measured on the running stack: 35 rapid
 attempts got through before a 429, against a nominal limit of 30.
 
 That is an acceptable trade at this size, because the property that matters is the

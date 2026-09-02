@@ -401,7 +401,7 @@ in the Render dashboard's Environment tab:
 | Variable | Value | Effect |
 |---|---|---|
 | `SETU_SEED_DEMO` | `0` | Skip boot-time seeding entirely. Safe whenever the database already holds detections — check the Alert Desk |
-| `SETU_WORKERS` | `1` | One uvicorn worker instead of two |
+| `SETU_WORKERS` | `1` | **Already the default** — `docker-entrypoint.sh` runs `--workers ${SETU_WORKERS:-1}`. Set it only if a previous deploy raised it; there is nothing to change on a fresh service |
 
 ### "No open ports detected" and the deploy is killed and retried
 
@@ -430,7 +430,7 @@ database from a laptop instead.
 | Variable | Why you might change it |
 |---|---|
 | `SETU_DEMO_FRAMES` | Lower than 900 makes background seeding finish sooner. Fewer frames means fewer detections, so do not go so low the journey demo has nothing to show |
-| `SETU_WORKERS` | Set to `1` if the instance runs out of memory while seeding. Two uvicorn workers plus two ONNX models in 512 MB is tight, and a shared 0.1 CPU gains nothing from the second worker |
+| `SETU_WORKERS` | Leave unset: it already defaults to `1`. Two uvicorn workers plus two ONNX models in 512 MB is tight and a shared 0.1 CPU gains nothing from a second worker, so raise it only on a larger instance. A second worker also halves the benefit of the gateway playlist cache, which is per process |
 
 
 | Symptom | Cause | Fix |
