@@ -104,7 +104,9 @@ async function signIn(page, password) {
   if (await roleButton.count()) await roleButton.first().click();
   await page.fill('input[autocomplete="current-password"]', password);
   await page.click('button:has-text("Sign in")');
-  await page.waitForSelector("nav", { timeout: 25000 });
+  // The API sleeps on the free tier and can take most of a minute to wake, so a
+  // 25-second wait failed the whole audit on a service that was merely cold.
+  await page.waitForSelector("nav", { timeout: 90000 });
 }
 
 /** Open the page, coping with the nav being behind a menu button on narrow screens. */
