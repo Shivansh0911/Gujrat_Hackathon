@@ -106,7 +106,7 @@ export default function DemoPage() {
           <div className="bg-ink-900 rounded p-3">
             <div className="flex items-center gap-2">
               <Badge tone="muted">Government feed</Badge>
-              <span className="mono text-sm text-slate-200">
+              <span className="mono text-sm text-fg">
                 {data.gateway_detections}
               </span>
               <span className="text-[11px] text-muted">detections</span>
@@ -120,7 +120,7 @@ export default function DemoPage() {
           <div className="bg-ink-900 rounded p-3">
             <div className="flex items-center gap-2">
               <Badge tone="warn">Own feed</Badge>
-              <span className="mono text-sm text-slate-200">
+              <span className="mono text-sm text-fg">
                 {data.own_feed_detections}
               </span>
               <span className="text-[11px] text-muted">detections</span>
@@ -212,7 +212,7 @@ export default function DemoPage() {
                 )}
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="mono text-sm text-slate-100">{r.plate}</span>
+                    <span className="mono text-sm text-fg">{r.plate}</span>
                     <Badge tone={r.confidence >= 0.7 ? "ok" : "warn"}>
                       {r.confidence.toFixed(2)}
                     </Badge>
@@ -269,7 +269,7 @@ export default function DemoPage() {
                   className="absolute inset-0 w-full h-full"
                 />
               </div>
-              <div className="text-xs text-slate-200 mt-1.5">{v.title}</div>
+              <div className="text-xs text-fg mt-1.5">{v.title}</div>
               <div className="text-[10px] text-muted leading-snug">{v.why}</div>
             </div>
           ))}

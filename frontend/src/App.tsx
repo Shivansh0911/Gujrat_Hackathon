@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { NavLink, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "./lib/auth";
+import { ThemeToggle } from "./lib/theme";
 import Login from "./pages/Login";
 import MapPage from "./pages/MapPage";
 import JourneyPage from "./pages/JourneyPage";
@@ -60,6 +61,7 @@ function Shell() {
         <div className="font-semibold tracking-tight">SETU</div>
         <div className="text-[10px] text-muted truncate">Gujarat CCTV Integration</div>
         <div className="flex-1" />
+        <ThemeToggle className="px-2 py-1" />
         <div className="text-[10px] text-muted truncate max-w-[9rem]">{username}</div>
       </header>
 
@@ -94,7 +96,7 @@ function Shell() {
                 `block px-3 py-2.5 rounded text-sm transition-colors min-h-[44px] ${
                   isActive
                     ? "bg-accent/15 text-accent border border-accent/40"
-                    : "text-slate-300 hover:bg-ink-700 border border-transparent"
+                    : "text-fg2 hover:bg-ink-700 border border-transparent"
                 }`
               }
             >
@@ -104,8 +106,9 @@ function Shell() {
           ))}
         </nav>
         <div className="p-3 border-t border-edge text-xs">
-          <div className="text-slate-300">{username}</div>
+          <div className="text-fg2">{username}</div>
           <div className="text-muted mb-2">{role}</div>
+          <ThemeToggle className="w-full justify-center mb-2" />
           <button className="btn w-full" onClick={signOut}>
             Sign out
           </button>

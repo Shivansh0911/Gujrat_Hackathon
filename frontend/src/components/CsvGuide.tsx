@@ -144,7 +144,7 @@ export default function CsvGuide() {
                 {COLUMNS.map((c) => (
                   <tr key={c.name} className="border-t border-edge align-top">
                     <td className="py-1.5 pr-3 whitespace-nowrap">
-                      <span className="mono text-slate-200">{c.name}</span>
+                      <span className="mono text-fg">{c.name}</span>
                       {c.required && (
                         <div className="text-[9px] uppercase tracking-wide text-warn mt-0.5">
                           required
@@ -162,7 +162,7 @@ export default function CsvGuide() {
           </div>
 
           <div className="bg-ink-900 rounded p-3 space-y-1.5">
-            <div className="text-[11px] font-medium text-slate-200">
+            <div className="text-[11px] font-medium text-fg">
               What happens when a row is wrong
             </div>
             <p className="text-[11px] text-muted leading-snug">

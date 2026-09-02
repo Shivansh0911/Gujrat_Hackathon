@@ -8,6 +8,34 @@ import maplibregl from "maplibre-gl";
  * render on an isolated government network where neither is available. Raster tiles
  * degrade to blank grey rather than failing the whole map.
  */
+/**
+ * How the OSM raster is treated in each theme.
+ *
+ * On the dark ground the tiles are desaturated and dimmed so the operational overlays
+ * -- status dots, confidence circles, journey lines -- stay the brightest thing on
+ * screen. On the light ground that treatment would produce grey mud, so the tiles are
+ * shown nearly as published and only slightly desaturated, which is enough to keep the
+ * overlay colours dominant without washing the map out.
+ *
+ * Applied with `setPaintProperty` on a theme change rather than by rebuilding the
+ * style: `setStyle` would discard every source and layer the pages have added, and
+ * the map would come back empty.
+ */
+export const BASEMAP_PAINT = {
+  dark: {
+    "raster-opacity": 0.55,
+    "raster-saturation": -0.7,
+    "raster-brightness-max": 0.7,
+  },
+  light: {
+    "raster-opacity": 0.9,
+    "raster-saturation": -0.25,
+    "raster-brightness-max": 1,
+  },
+} as const;
+
+export const BASEMAP_BACKGROUND = { dark: "#0b0f14", light: "#f8fafc" } as const;
+
 export const BASEMAP: maplibregl.StyleSpecification = {
   version: 8,
   sources: {
@@ -24,12 +52,7 @@ export const BASEMAP: maplibregl.StyleSpecification = {
       id: "osm",
       type: "raster",
       source: "osm",
-      paint: {
-        // Desaturate and darken so operational overlays stay legible on top.
-        "raster-opacity": 0.55,
-        "raster-saturation": -0.7,
-        "raster-brightness-max": 0.7,
-      },
+      paint: BASEMAP_PAINT.dark,
     },
   ],
 };

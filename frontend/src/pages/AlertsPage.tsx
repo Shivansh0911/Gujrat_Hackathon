@@ -148,7 +148,7 @@ function AlertCard({
 
         <div className="min-w-0 flex-1 space-y-1.5">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="mono text-lg text-slate-100">{alert.matched_value}</span>
+            <span className="mono text-lg text-fg">{alert.matched_value}</span>
             <SourceBadge sourceType={alert.camera_source_type} />
             <Badge tone={priorityTone}>priority {alert.priority.toFixed(2)}</Badge>
             <Badge tone={MATCH_TONE[alert.match_type] ?? "warn"}>
@@ -176,19 +176,19 @@ function AlertCard({
           <div className="grid grid-cols-3 gap-2 text-[11px]">
             <div>
               <div className="text-muted text-[10px] uppercase">Observed (UTC)</div>
-              <div className="mono text-slate-300">
+              <div className="mono text-fg2">
                 {new Date(alert.observed_at_utc).toISOString().replace("T", " ").slice(0, 19)}
               </div>
             </div>
             <div>
               <div className="text-muted text-[10px] uppercase">Stream PTS</div>
-              <div className="mono text-slate-300">
+              <div className="mono text-fg2">
                 {alert.detection_pts_ms != null ? `${(alert.detection_pts_ms / 1000).toFixed(1)}s` : "—"}
               </div>
             </div>
             <div>
               <div className="text-muted text-[10px] uppercase">Read confidence</div>
-              <div className="mono text-slate-300">
+              <div className="mono text-fg2">
                 {alert.detection_confidence != null ? alert.detection_confidence.toFixed(2) : "—"}
               </div>
             </div>
@@ -211,14 +211,14 @@ function AlertCard({
           )}
 
           <div className="text-[11px] text-muted">
-            <span className="text-slate-300">{alert.watchlist_name}</span>
+            <span className="text-fg2">{alert.watchlist_name}</span>
             {alert.watchlist_authority && <> · {alert.watchlist_authority}</>}
             {alert.watchlist_case_ref && <> · case <span className="mono">{alert.watchlist_case_ref}</span></>}
           </div>
 
           {alert.acknowledged_by && (
             <div className="text-[11px] text-muted">
-              acknowledged by <span className="text-slate-300">{alert.acknowledged_by}</span>
+              acknowledged by <span className="text-fg2">{alert.acknowledged_by}</span>
             </div>
           )}
         </div>
@@ -230,7 +230,7 @@ function AlertCard({
           <div className="flex gap-2 overflow-x-auto">
             {(alert.sightings as Array<Record<string, unknown>>).map((s, i) => (
               <div key={i} className="text-[10px] bg-ink-900 rounded px-2 py-1 shrink-0">
-                <div className="text-slate-300">{String(s.camera_name ?? "—")}</div>
+                <div className="text-fg2">{String(s.camera_name ?? "—")}</div>
                 <div className="mono text-muted">
                   {String(s.observed_at_utc).slice(11, 19)}
                 </div>

@@ -260,7 +260,7 @@ export default function WatchlistPage() {
                   type="button"
                   onClick={() => set("valid_to", localDateTimeIn(days as number))}
                   className="text-[10px] px-2 py-0.5 rounded border border-edge bg-ink-700
-                             hover:bg-ink-600 text-muted hover:text-slate-200 transition-colors"
+                             hover:bg-ink-600 text-muted hover:text-fg transition-colors"
                 >
                   {label}
                 </button>
@@ -363,7 +363,7 @@ function Row({
     <tr className={`border-t border-edge ${expired ? "opacity-55" : ""}`}>
       <td className="px-3 py-2 mono">{entry.plate_normalised ?? "—"}</td>
       <td className="px-3 py-2">{entry.watchlist_name}</td>
-      <td className="px-3 py-2 text-slate-300">{entry.authority ?? "—"}</td>
+      <td className="px-3 py-2 text-fg2">{entry.authority ?? "—"}</td>
       <td className="px-3 py-2 mono text-xs">{entry.case_ref ?? "—"}</td>
       <td className="px-3 py-2 text-right tabular-nums">{entry.priority}</td>
       <td className="px-3 py-2">
@@ -373,7 +373,7 @@ function Row({
         {expired ? (
           <Badge tone="muted">expired</Badge>
         ) : (
-          <span className={days <= 7 ? "text-warn" : "text-slate-300"}>
+          <span className={days <= 7 ? "text-warn" : "text-fg2"}>
             {days} day{days === 1 ? "" : "s"} left
           </span>
         )}
@@ -422,7 +422,7 @@ function Field({
 }) {
   return (
     <label className="block">
-      <div className="text-xs text-slate-300 mb-1">{label}</div>
+      <div className="text-xs text-fg2 mb-1">{label}</div>
       {children}
       {hint && <div className="text-[10px] text-muted mt-1">{hint}</div>}
     </label>

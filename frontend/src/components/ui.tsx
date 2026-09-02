@@ -76,7 +76,7 @@ export function Spinner({ label }: { label?: string }) {
 export function Empty({ title, detail }: { title: string; detail?: string }) {
   return (
     <div className="text-center py-10 px-4">
-      <div className="text-slate-300 font-medium">{title}</div>
+      <div className="text-fg2 font-medium">{title}</div>
       {detail && <div className="text-muted text-sm mt-1 max-w-md mx-auto">{detail}</div>}
     </div>
   );

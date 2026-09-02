@@ -1,5 +1,6 @@
 import { FormEvent, useState } from "react";
 import { useAuth } from "../lib/auth";
+import { ThemeToggle } from "../lib/theme";
 
 /**
  * The two roles, named as an officer would recognise them.
@@ -47,13 +48,19 @@ export default function Login() {
   }
 
   return (
-    <div className="h-full grid place-items-center">
-      <form onSubmit={submit} className="panel p-6 w-80 space-y-4">
-        <div>
-          <div className="text-xl font-semibold">SETU</div>
-          <div className="text-xs text-muted">
-            Gujarat Police CCTV Integration Platform
+    <div className="h-full grid place-items-center p-4">
+      <form onSubmit={submit} className="panel p-6 w-full max-w-xs space-y-4">
+        <div className="flex items-start gap-3">
+          <div className="min-w-0">
+            <div className="text-xl font-semibold">SETU</div>
+            <div className="text-xs text-muted">
+              Gujarat Police CCTV Integration Platform
+            </div>
           </div>
+          <div className="flex-1" />
+          {/* Offered before sign-in too: someone on a bright desk should not have to
+              authenticate through a dark screen first. */}
+          <ThemeToggle className="px-2 py-1 shrink-0" />
         </div>
 
         <div>
@@ -67,7 +74,7 @@ export default function Login() {
                 className={`w-full text-left px-2.5 py-1.5 rounded border text-sm transition-colors ${
                   username === r.id
                     ? "bg-accent/15 text-accent border-accent/50"
-                    : "bg-ink-900 border-edge text-slate-300 hover:bg-ink-700"
+                    : "bg-ink-900 border-edge text-fg2 hover:bg-ink-700"
                 }`}
               >
                 <div className="font-medium">{r.label}</div>

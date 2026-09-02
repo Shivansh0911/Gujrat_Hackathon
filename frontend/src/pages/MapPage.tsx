@@ -208,7 +208,7 @@ export default function MapPage() {
 
         {/* Legend. The provenance explanation is the point of this panel. */}
         <div className="hidden lg:block absolute bottom-4 right-4 panel p-3 text-xs space-y-2 w-72 bg-ink-800/95">
-          <div className="font-medium text-slate-200">Legend</div>
+          <div className="font-medium text-fg">Legend</div>
           <div className="flex items-center gap-2"><StatusDot status="ACTIVE" /> Active</div>
           <div className="flex items-center gap-2"><StatusDot status="DEGRADED" /> Degraded</div>
           <div className="flex items-center gap-2"><StatusDot status="UNREACHABLE" /> Unreachable</div>
@@ -273,7 +273,7 @@ export default function MapPage() {
               {missing.map((c) => (
                 <div key={c.id} className="flex items-center justify-between gap-2 text-xs bg-ink-900 rounded px-2 py-1.5">
                   <div className="min-w-0">
-                    <div className="mono text-slate-300">{c.camera_ref}</div>
+                    <div className="mono text-fg2">{c.camera_ref}</div>
                     <div className="text-muted truncate">{c.location_text || c.name}</div>
                   </div>
                   <button className="btn py-0.5 text-[11px]" onClick={() => setPlacing(c)}>
@@ -307,7 +307,7 @@ export default function MapPage() {
                 className="w-full text-left px-2 py-1.5 rounded hover:bg-ink-700 flex items-center gap-2 text-xs"
               >
                 <StatusDot status={c.status} />
-                <span className="mono text-slate-300 w-8">{c.camera_ref}</span>
+                <span className="mono text-fg2 w-8">{c.camera_ref}</span>
                 <span className="truncate flex-1 text-muted">{c.location_text || c.name}</span>
                 {(c.confidence_radius_m ?? 0) > 500 && (
                   <span className="text-[10px] text-warn shrink-0">
@@ -400,7 +400,7 @@ function Row({ k, v }: { k: string; v: React.ReactNode }) {
   return (
     <div className="flex justify-between gap-3">
       <dt className="text-muted shrink-0">{k}</dt>
-      <dd className="text-right text-slate-300 min-w-0 truncate">{v}</dd>
+      <dd className="text-right text-fg2 min-w-0 truncate">{v}</dd>
     </div>
   );
 }

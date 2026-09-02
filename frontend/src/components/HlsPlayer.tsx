@@ -126,7 +126,7 @@ export default function HlsPlayer({
         <div className="text-xs text-muted">{detail}</div>
         <div className="text-xs text-muted">
           Camera <span className="mono">{cameraRef}</span> · last known status{" "}
-          <span className="text-slate-300">{lastKnownStatus}</span>
+          <span className="text-fg2">{lastKnownStatus}</span>
         </div>
         <div className="text-[11px] text-muted/80 pt-1 border-t border-edge">
           The registry entry, coordinates and recorded detections for this camera remain

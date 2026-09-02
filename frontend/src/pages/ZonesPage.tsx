@@ -401,7 +401,7 @@ function ZoneRow({
   return (
     <div className="bg-ink-900 rounded p-2.5 space-y-1">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-sm text-slate-100">{zone.name}</span>
+        <span className="text-sm text-fg">{zone.name}</span>
         <Badge tone={zone.active ? "ok" : "muted"}>{zone.active ? "active" : "inactive"}</Badge>
       </div>
       <div className="text-[10px] text-muted">

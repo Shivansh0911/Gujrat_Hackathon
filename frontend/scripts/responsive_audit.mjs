@@ -33,6 +33,18 @@ const ROOT = resolve(HERE, "..", "..");
 const OUT = join(ROOT, "docs", "screenshots", "responsive");
 const BASE = process.env.SETU_CONSOLE_URL ?? "http://127.0.0.1:5173";
 
+/**
+ * Which theme to audit. The console has a light mode as well as a dark one, and a
+ * layout can be sound in one and unreadable in the other: a colour that only exists
+ * in the dark palette leaves light-mode text sitting on its own background. Set
+ * SETU_THEME=light to check that side, or `both` to run the whole sweep twice.
+ *
+ * Injected as an init script so the preference is in place before the app's own
+ * pre-paint stamp reads it -- setting it after load would audit a repaint.
+ */
+const THEME = process.env.SETU_THEME ?? "dark";
+const SUFFIX = THEME === "light" ? "-light" : "";
+
 /** iPhone SE, iPhone 14, iPad portrait, small laptop. */
 const VIEWPORTS = [
   { name: "375", width: 375, height: 812 },
@@ -80,6 +92,13 @@ function secret(key) {
  * changed, which is why this is one helper rather than three copies.
  */
 async function signIn(page, password) {
+  await page.addInitScript((theme) => {
+    try {
+      localStorage.setItem("setu.theme", theme);
+    } catch {
+      /* the app falls back to its own default */
+    }
+  }, THEME === "both" ? "dark" : THEME);
   await page.goto(BASE, { waitUntil: "networkidle" });
   const roleButton = page.locator('button:has-text("System Administrator")');
   if (await roleButton.count()) await roleButton.first().click();
@@ -184,7 +203,62 @@ async function measure(page, pageName, vp) {
       .filter((v) => v.error !== null || (v.currentSrc === "" && v.getAttribute("src")))
       .map((v) => (v.getAttribute("src") ?? "(no src)").slice(0, 80));
 
+    // Text the viewer cannot read. This is the failure mode a second theme
+    // introduces and that no geometry check can see: a colour defined only for the
+    // dark palette leaves light-mode text sitting on its own background, perfectly
+    // laid out and perfectly invisible. WCAG AA wants 4.5:1 for body text; 3:1 is
+    // used here as the threshold for "broken" rather than "could be better", so the
+    // check fails on genuinely unreadable text and stays quiet about taste.
+    const luminance = (rgb) => {
+      const [r, g, b] = rgb.map((v) => {
+        const c = v / 255;
+        return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+      });
+      return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    };
+    const parse = (str) => {
+      const m = String(str).match(/rgba?\(([^)]+)\)/);
+      if (!m) return null;
+      const parts = m[1].split(",").map((x) => parseFloat(x));
+      if (parts.length >= 4 && parts[3] === 0) return null; // fully transparent
+      return parts.slice(0, 3);
+    };
+    // Walk up for the first ancestor that actually paints a background.
+    const backgroundOf = (el) => {
+      let node = el;
+      while (node && node !== document.documentElement) {
+        const bg = parse(getComputedStyle(node).backgroundColor);
+        if (bg) return bg;
+        node = node.parentElement;
+      }
+      return parse(getComputedStyle(document.body).backgroundColor) ?? [0, 0, 0];
+    };
+    const lowContrast = [];
+    const textNodes = [...document.querySelectorAll("main *, nav *, header *")].filter(
+      (el) => {
+        if (el.children.length > 0) return false; // leaf elements carry the text
+        const t = (el.textContent ?? "").trim();
+        if (t.length < 2) return false;
+        const r = el.getBoundingClientRect();
+        return r.width > 0 && r.height > 0;
+      },
+    );
+    for (const el of textNodes.slice(0, 400)) {
+      const fg = parse(getComputedStyle(el).color);
+      if (!fg) continue;
+      const bg = backgroundOf(el);
+      const l1 = luminance(fg);
+      const l2 = luminance(bg);
+      const ratio = (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+      if (ratio < 3) {
+        lowContrast.push(
+          `${(el.textContent ?? "").trim().slice(0, 24)} @${ratio.toFixed(1)}:1`,
+        );
+      }
+    }
+
     return {
+      lowContrast: [...new Set(lowContrast)].slice(0, 6),
       brokenVideos: [...new Set(brokenVideos)].slice(0, 4),
       scrollWidth: doc.scrollWidth,
       innerWidth: window.innerWidth,
@@ -221,6 +295,14 @@ async function measure(page, pageName, vp) {
   if (navTooWide) {
     problems.push(
       `${tag}: navigation occupies ${(metrics.navShare * 100).toFixed(0)}% of the viewport`,
+    );
+  }
+
+  const unreadable = metrics.lowContrast.length > 0;
+  if (unreadable) {
+    problems.push(
+      `${tag}: ${metrics.lowContrast.length} text run(s) below 3:1 contrast — ` +
+        metrics.lowContrast.join("; "),
     );
   }
 
@@ -281,7 +363,7 @@ const run = async () => {
     await signIn(page, password);
     await page.waitForTimeout(2500);
     await measure(page, "login+map", vp);
-    await page.screenshot({ path: join(OUT, `map-${vp.name}.png`) });
+    await page.screenshot({ path: join(OUT, `map-${vp.name}${SUFFIX}.png`) });
 
     for (const p of PAGES.slice(1)) {
       const went = await navigateTo(page, p.nav);
@@ -293,7 +375,7 @@ const run = async () => {
       // Keep evidence for the two narrowest and the tablet width only; four full
       // sets of eight is noise in a submission.
       if (vp.name !== "1024") {
-        await page.screenshot({ path: join(OUT, `${p.name}-${vp.name}.png`) });
+        await page.screenshot({ path: join(OUT, `${p.name}-${vp.name}${SUFFIX}.png`) });
       }
     }
 

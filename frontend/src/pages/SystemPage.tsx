@@ -116,7 +116,7 @@ export default function SystemPage() {
               <Badge tone={audit.data.valid ? "ok" : "bad"}>
                 {audit.data.valid ? "chain intact" : "CHAIN BROKEN"}
               </Badge>
-              <span className="text-sm text-slate-300 tabular-nums">
+              <span className="text-sm text-fg2 tabular-nums">
                 {audit.data.entries_checked} entries checked
               </span>
               <span className="text-xs text-muted">
@@ -127,7 +127,7 @@ export default function SystemPage() {
             {audit.data.head_hash && (
               <div className="mt-3">
                 <div className="label">Head hash</div>
-                <div className="mono text-xs break-all text-slate-300">
+                <div className="mono text-xs break-all text-fg2">
                   {audit.data.head_hash}
                 </div>
               </div>
@@ -183,7 +183,7 @@ export default function SystemPage() {
                   ? "gateway reachable"
                   : "gateway unreachable"}
               </Badge>
-              <span className="text-sm text-slate-300 tabular-nums">
+              <span className="text-sm text-fg2 tabular-nums">
                 {sync.data.cameras_in_catalogue} in catalogue
               </span>
               <span className="text-xs text-muted tabular-nums">
@@ -297,7 +297,7 @@ export default function SystemPage() {
             }}
           >
             <label className="block">
-              <div className="text-xs text-slate-300 mb-1">Camera reference</div>
+              <div className="text-xs text-fg2 mb-1">Camera reference</div>
               <input
                 className="input mono"
                 required
@@ -311,7 +311,7 @@ export default function SystemPage() {
             </label>
 
             <label className="block">
-              <div className="text-xs text-slate-300 mb-1">Name</div>
+              <div className="text-xs text-fg2 mb-1">Name</div>
               <input
                 className="input"
                 required
@@ -322,7 +322,7 @@ export default function SystemPage() {
             </label>
 
             <label className="block">
-              <div className="text-xs text-slate-300 mb-1">Location</div>
+              <div className="text-xs text-fg2 mb-1">Location</div>
               <input
                 className="input"
                 value={camera.location_text ?? ""}
@@ -353,7 +353,7 @@ export default function SystemPage() {
             {withPosition && (
               <>
                 <label className="block">
-                  <div className="text-xs text-slate-300 mb-1">Latitude</div>
+                  <div className="text-xs text-fg2 mb-1">Latitude</div>
                   <input
                     className="input mono"
                     type="number"
@@ -369,7 +369,7 @@ export default function SystemPage() {
                   />
                 </label>
                 <label className="block">
-                  <div className="text-xs text-slate-300 mb-1">Longitude</div>
+                  <div className="text-xs text-fg2 mb-1">Longitude</div>
                   <input
                     className="input mono"
                     type="number"
@@ -385,7 +385,7 @@ export default function SystemPage() {
                   />
                 </label>
                 <label className="block">
-                  <div className="text-xs text-slate-300 mb-1">Uncertainty (metres)</div>
+                  <div className="text-xs text-fg2 mb-1">Uncertainty (metres)</div>
                   <input
                     className="input mono"
                     type="number"
@@ -463,7 +463,7 @@ function ImportSummary({ result }: { result: BulkImportResult }) {
                 <tr key={r.line} className="border-t border-edge">
                   <td className="px-3 py-2 text-right tabular-nums">{r.line}</td>
                   <td className="px-3 py-2 mono">{r.camera_ref ?? "—"}</td>
-                  <td className="px-3 py-2 text-xs text-slate-300">
+                  <td className="px-3 py-2 text-xs text-fg2">
                     {r.reasons.map((reason, i) => (
                       <div key={i}>{reason}</div>
                     ))}
@@ -493,13 +493,13 @@ function DiffList({
     <div className="rounded border border-edge bg-ink-900 p-3">
       <div className="flex items-center gap-2 mb-1">
         <Badge tone={items.length ? tone : "muted"}>{items.length}</Badge>
-        <span className="text-xs text-slate-300">{label}</span>
+        <span className="text-xs text-fg2">{label}</span>
       </div>
       <div className="text-[10px] text-muted mb-2">{hint}</div>
       {items.length === 0 ? (
         <div className="text-xs text-muted">None</div>
       ) : (
-        <div className="mono text-xs text-slate-300 max-h-40 overflow-auto">
+        <div className="mono text-xs text-fg2 max-h-40 overflow-auto">
           {items.map((i) => (
             <div key={i}>{i}</div>
           ))}

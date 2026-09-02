@@ -288,7 +288,7 @@ export default function JourneyPage() {
                 type="button"
                 onClick={() => setPurpose(p)}
                 className="text-[10px] px-2 py-0.5 rounded border border-edge bg-ink-700
-                           hover:bg-ink-600 text-muted hover:text-slate-200 transition-colors"
+                           hover:bg-ink-600 text-muted hover:text-fg transition-colors"
               >
                 {p.trim()}
               </button>
@@ -314,7 +314,7 @@ export default function JourneyPage() {
           {result && (
             <div className="hidden lg:block absolute top-3 left-3 panel px-3 py-2 text-xs bg-ink-800/95 space-y-1">
               <div className="flex items-center gap-2">
-                <span className="mono text-slate-100 text-sm">{result.plate}</span>
+                <span className="mono text-fg text-sm">{result.plate}</span>
                 <Badge tone={result.confidence > 0.7 ? "ok" : "warn"}>
                   confidence {result.confidence.toFixed(2)}
                 </Badge>
@@ -358,7 +358,7 @@ export default function JourneyPage() {
           {result && (
             <div className="lg:hidden p-3 border-b border-edge text-[11px] space-y-1.5">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="mono text-slate-100 text-sm">{result.plate}</span>
+                <span className="mono text-fg text-sm">{result.plate}</span>
                 <Badge tone={result.confidence > 0.7 ? "ok" : "warn"}>
                   confidence {result.confidence.toFixed(2)}
                 </Badge>
@@ -450,10 +450,10 @@ function Results({
     <div className="divide-y divide-edge">
       <div className="p-3 text-xs text-muted space-y-1">
         <div>
-          Purpose recorded: <span className="text-slate-300">{result.purpose}</span>
+          Purpose recorded: <span className="text-fg2">{result.purpose}</span>
         </div>
         <div>
-          Requested by <span className="text-slate-300">{result.requested_by}</span>
+          Requested by <span className="text-fg2">{result.requested_by}</span>
         </div>
         {result.cameras_excluded_no_coordinate > 0 && (
           <div className="text-warn">
@@ -501,7 +501,7 @@ function Results({
             <div className="min-w-0 flex-1">
               <div className="font-medium text-sm truncate">{hop.camera_name}</div>
               <div className="text-[11px] text-muted truncate">{hop.location_text}</div>
-              <div className="text-[11px] mono text-slate-300 mt-0.5">
+              <div className="text-[11px] mono text-fg2 mt-0.5">
                 {new Date(hop.observed_at_utc).toLocaleString()}
               </div>
             </div>
@@ -561,7 +561,7 @@ function Results({
           <div className="text-xs font-medium text-warn">Coverage gaps</div>
           {result.coverage_gaps.map((g, i) => (
             <div key={i} className="text-[11px] bg-ink-900 rounded px-2 py-1.5">
-              <span className="mono text-slate-300">{g.camera_ref}</span>{" "}
+              <span className="mono text-fg2">{g.camera_ref}</span>{" "}
               <span className="text-muted">— {g.reason}</span>
             </div>
           ))}
@@ -579,7 +579,7 @@ function Results({
           <div className="text-xs font-medium text-bad">Rejected candidates</div>
           {result.rejected.map((r, i) => (
             <div key={i} className="text-[11px] bg-ink-900 rounded px-2 py-1.5">
-              <span className="mono text-slate-300">{r.camera_ref}</span>{" "}
+              <span className="mono text-fg2">{r.camera_ref}</span>{" "}
               <span className="text-muted">{r.reason}</span>
             </div>
           ))}
@@ -597,7 +597,7 @@ function Metric({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div>
       <div className="text-muted text-[10px] uppercase tracking-wide">{label}</div>
-      <div className="text-slate-300">{value}</div>
+      <div className="text-fg2">{value}</div>
     </div>
   );
 }

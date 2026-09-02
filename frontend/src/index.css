@@ -2,10 +2,58 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Control-room defaults: dark, dense, readable at three metres. */
-:root { color-scheme: dark; }
+/*
+  Two themes from one set of tokens.
+
+  Every colour in the app is a Tailwind class -- `bg-ink-800`, `text-fg`,
+  `border-edge` -- and those names resolve to the custom properties below rather than
+  to fixed hex. So a theme switch is a change of nine variables, not a rewrite of
+  every component, and a class written before this existed keeps working in both.
+
+  The channels are stored space-separated rather than as `#rrggbb` because Tailwind's
+  opacity modifiers compile to `rgb(var(--x) / <alpha-value>)`. Storing hex would
+  silently break `bg-accent/20`, which this codebase uses in several places.
+
+  The light palette is chosen, not inverted. Dark greys flipped to light greys give
+  muddy text and an accent that vibrates on white, so the accent darkens to #1d4ed8
+  and the status colours darken with it to stay legible on a pale ground.
+*/
+:root {
+  --ink-900: 11 15 20;
+  --ink-800: 17 24 35;
+  --ink-700: 26 36 50;
+  --ink-600: 38 52 74;
+  --edge: 43 58 82;
+  --accent: 77 163 255;
+  --ok: 49 196 141;
+  --warn: 240 161 58;
+  --bad: 240 82 82;
+  --muted: 139 160 189;
+  --fg: 226 232 240;
+  --fg2: 203 213 225;
+  --fg3: 148 163 184;
+  color-scheme: dark;
+}
+
+:root[data-theme="light"] {
+  --ink-900: 248 250 252;
+  --ink-800: 255 255 255;
+  --ink-700: 241 245 249;
+  --ink-600: 226 232 240;
+  --edge: 203 213 225;
+  --accent: 29 78 216;
+  --ok: 4 120 87;
+  --warn: 180 83 9;
+  --bad: 185 28 28;
+  --muted: 100 116 139;
+  --fg: 15 23 42;
+  --fg2: 30 41 59;
+  --fg3: 71 85 105;
+  color-scheme: light;
+}
+
 html, body, #root { height: 100%; }
-body { @apply bg-ink-900 text-slate-200 antialiased; }
+body { @apply bg-ink-900 text-fg2 antialiased; }
 
 .panel { @apply bg-ink-800 border border-edge rounded-lg; }
 .btn { @apply px-3 py-1.5 rounded border border-edge bg-ink-700 hover:bg-ink-600
@@ -17,8 +65,11 @@ body { @apply bg-ink-900 text-slate-200 antialiased; }
 .badge { @apply inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium; }
 .mono { @apply font-mono tabular-nums; }
 
-/* MapLibre's default light chrome fights the control-room theme. */
-.maplibregl-popup-content { @apply bg-ink-800 text-slate-200 border border-edge rounded-lg; }
-.maplibregl-popup-tip { border-top-color: #1a2432 !important; }
+/* MapLibre ships light chrome; in dark mode it fights the surrounding panel. */
+.maplibregl-popup-content { @apply bg-ink-800 text-fg2 border border-edge rounded-lg; }
+.maplibregl-popup-tip { border-top-color: rgb(var(--ink-800)) !important; }
 .maplibregl-ctrl-group { @apply bg-ink-800 border border-edge; }
-.maplibregl-ctrl-group button { filter: invert(1) hue-rotate(180deg); }
+/* The control glyphs are dark PNGs, so they need inverting only on a dark ground. */
+:root:not([data-theme="light"]) .maplibregl-ctrl-group button {
+  filter: invert(1) hue-rotate(180deg);
+}

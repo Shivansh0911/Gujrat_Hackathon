@@ -101,7 +101,7 @@ export default function HealthPage() {
           <span key={status} className="flex items-center gap-1.5 text-xs">
             <StatusDot status={status} />
             <span className="text-muted">{status}</span>
-            <span className="text-slate-300">{n}</span>
+            <span className="text-fg2">{n}</span>
           </span>
         ))}
         <div className="flex-1" />
@@ -154,7 +154,7 @@ export default function HealthPage() {
               return (
                 <tr key={c.camera_id} className="hover:bg-ink-700/40">
                   <td className="px-3 py-2">
-                    <div className="mono text-slate-300">{c.camera_ref}</div>
+                    <div className="mono text-fg2">{c.camera_ref}</div>
                     <div className="text-muted truncate max-w-[16rem]">{c.name}</div>
                   </td>
                   <td className="px-3 py-2">
@@ -203,7 +203,7 @@ export default function HealthPage() {
         </div>
 
         <div className="p-3 text-[11px] text-muted max-w-3xl leading-snug">
-          <strong className="text-slate-300">Declared versus measured frame rate.</strong>{" "}
+          <strong className="text-fg2">Declared versus measured frame rate.</strong>{" "}
           The integration guide warns that a camera's reported frame rate cannot be
           trusted, and on this estate most cameras declare no rate at all. Every measured
           figure here is derived from stream presentation timestamps, never from the
@@ -521,7 +521,7 @@ function ReadsChart({
         <div className="text-[11px] text-muted tabular-nums h-4">
           {active ? (
             <>
-              <span className="text-slate-200">{fmt(active.bucket_start_utc)}</span>
+              <span className="text-fg">{fmt(active.bucket_start_utc)}</span>
               {" — "}
               <span className="text-accent">{active.reads} reads</span>
               {", "}

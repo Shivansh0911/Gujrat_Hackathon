@@ -160,7 +160,7 @@ export default function ControlRoomPage() {
                     className={`text-[11px] px-2 py-1 rounded border transition-colors ${
                       on
                         ? "bg-accent/15 text-accent border-accent/50"
-                        : "bg-ink-800 border-edge text-slate-300 hover:bg-ink-700"
+                        : "bg-ink-800 border-edge text-fg2 hover:bg-ink-700"
                     }`}
                   >
                     <span className="mono">{c.camera_ref}</span>
@@ -204,7 +204,7 @@ function Tile({ camera, url }: { camera: Camera; url: string | null }) {
   return (
     <div className="panel overflow-hidden">
       <div className="px-2.5 py-1.5 border-b border-edge flex items-center gap-2 flex-wrap">
-        <span className="mono text-xs text-slate-300">{camera.camera_ref}</span>
+        <span className="mono text-xs text-fg2">{camera.camera_ref}</span>
         <span className="text-[11px] text-muted truncate flex-1 min-w-0">{camera.name}</span>
         <SourceBadge sourceType={camera.source_type} />
         <NoDataBadge count={camera.detection_count ?? 0} />

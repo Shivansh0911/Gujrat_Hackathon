@@ -4,6 +4,27 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SETU — Gujarat CCTV Integration Platform</title>
+    <script>
+      /*
+        Runs before the first paint. React sets this attribute too, but only after the
+        bundle has parsed and mounted, which on a cold load is long enough for a light
+        user to see a full-screen dark flash. Wrapped because a browser with site data
+        blocked throws on localStorage access rather than returning null.
+      */
+      (function () {
+        try {
+          var saved = localStorage.getItem("setu.theme");
+          if (saved !== "dark" && saved !== "light") {
+            saved = window.matchMedia("(prefers-color-scheme: light)").matches
+              ? "light"
+              : "dark";
+          }
+          document.documentElement.dataset.theme = saved;
+        } catch (e) {
+          document.documentElement.dataset.theme = "dark";
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

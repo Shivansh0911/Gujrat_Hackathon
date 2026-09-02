@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import maplibregl from "maplibre-gl";
-import { BASEMAP, GUJARAT_CENTER, GUJARAT_ZOOM } from "./map";
+import {
+  BASEMAP,
+  BASEMAP_BACKGROUND,
+  BASEMAP_PAINT,
+  GUJARAT_CENTER,
+  GUJARAT_ZOOM,
+} from "./map";
+import { useTheme } from "./theme";
 
 /**
  * Create a MapLibre map bound to a container element.
@@ -20,6 +27,7 @@ import { BASEMAP, GUJARAT_CENTER, GUJARAT_ZOOM } from "./map";
 export function useMapLibre() {
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
+  const { theme } = useTheme();
 
   const ref = useCallback((node: HTMLDivElement | null) => setContainer(node), []);
 
@@ -47,6 +55,22 @@ export function useMapLibre() {
       mapRef.current = null;
     };
   }, [container]);
+
+  // Recolour the basemap in place when the theme changes. `setStyle` would take every
+  // source and layer the pages have added with it, and the map would come back empty.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const apply = () => {
+      if (!map.getLayer("osm")) return;
+      for (const [k, v] of Object.entries(BASEMAP_PAINT[theme])) {
+        map.setPaintProperty("osm", k as never, v as never);
+      }
+      map.setPaintProperty("bg", "background-color", BASEMAP_BACKGROUND[theme]);
+    };
+    if (map.isStyleLoaded()) apply();
+    else map.once("styledata", apply);
+  }, [theme]);
 
   return { ref, mapRef, ready: container !== null };
 }

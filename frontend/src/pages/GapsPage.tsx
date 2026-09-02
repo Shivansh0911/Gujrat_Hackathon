@@ -158,7 +158,7 @@ export default function GapsPage() {
             map that is already only 42vh tall; the same content is rendered inline in
             the panel below instead, so nothing is lost. */}
         <div className="hidden lg:block absolute bottom-4 right-4 panel p-3 text-xs w-80 bg-ink-800/95 space-y-2">
-          <div className="font-medium text-slate-200">Coverage overlay</div>
+          <div className="font-medium text-fg">Coverage overlay</div>
           <div className="flex items-center gap-2">
             <span className="w-3.5 h-3.5 rounded-full border border-dashed border-warn/70 bg-warn/15" />
             Positional uncertainty — the circle is what we do not know
@@ -238,7 +238,7 @@ export default function GapsPage() {
                   {/* min-w-0 on the label so a long district name shrinks rather
                       than shoving the camera count off the right edge on a phone. */}
                   <div className="flex items-center justify-between gap-2 min-w-0">
-                    <span className="text-slate-300 truncate min-w-0">{d.district}</span>
+                    <span className="text-fg2 truncate min-w-0">{d.district}</span>
                     <span className="text-muted whitespace-nowrap shrink-0">
                       {d.cameras_total} camera{d.cameras_total !== 1 ? "s" : ""} ·{" "}
                       {(d.coverage_confidence * 100).toFixed(0)}%
@@ -274,7 +274,7 @@ export default function GapsPage() {
             <div className="space-y-1">
               {data.journey_gaps.slice(0, 12).map((g) => (
                 <div key={g.camera_id} className="flex items-center justify-between gap-2 text-[11px] bg-ink-900 rounded px-2 py-1.5">
-                  <span className="mono text-slate-300">{g.camera_ref}</span>
+                  <span className="mono text-fg2">{g.camera_ref}</span>
                   <span className="text-muted truncate flex-1">{g.name}</span>
                   <Badge tone="bad">{g.times_implied}×</Badge>
                 </div>
@@ -305,7 +305,7 @@ export default function GapsPage() {
               <div key={`${g.camera_id}-${i}`} className="bg-ink-900 rounded p-2 space-y-1">
                 <div className="flex items-center gap-2">
                   <Badge tone={KIND_TONE[g.kind] ?? "muted"}>{KIND_LABEL[g.kind] ?? g.kind}</Badge>
-                  <span className="mono text-[11px] text-slate-300">{g.camera_ref}</span>
+                  <span className="mono text-[11px] text-fg2">{g.camera_ref}</span>
                   {g.district && <span className="text-[10px] text-muted">{g.district}</span>}
                 </div>
                 <div className="text-[11px] text-muted">{g.location_text || g.name}</div>
@@ -334,7 +334,7 @@ function Stat({
   value: number;
   tone?: "bad" | "warn" | "muted";
 }) {
-  const colour = tone === "bad" ? "text-bad" : tone === "warn" ? "text-warn" : "text-slate-200";
+  const colour = tone === "bad" ? "text-bad" : tone === "warn" ? "text-warn" : "text-fg";
   return (
     <div className="bg-ink-900 rounded px-2 py-1.5">
       <div className="text-[10px] uppercase tracking-wide text-muted">{label}</div>
