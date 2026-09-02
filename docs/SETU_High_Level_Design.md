@@ -190,17 +190,24 @@ deliver frames before testing anything against them.
 
 ### 4.3 Feed-contract compliance — 8/8
 
-The organiser's §2.4 checklist, verified empirically rather than asserted:
+The organiser's §2.4 checklist, verified empirically rather than asserted. Measured
+2026-09-02: **8 passed, 0 failed, 0 not exercised**, every live check over RTSP/TCP.
+
+Check 1 is worth singling out. For most of this project it could only be proved
+*statically* — TCP is forced in every capture, and cv2 is reachable only through the
+module that forces it — because port 8554 was unreachable behind Cloudflare and there
+was nothing to demonstrate against. The estate's move to a directly-addressed media
+host made the live half possible for the first time.
 
 | # | Requirement | Result |
 |---|---|---|
-| 1 | RTSP forced over TCP, HLS fallback when 8554 blocked | PASS |
+| 1 | RTSP forced over TCP, HLS fallback when 8554 blocked | PASS — **over RTSP**, 5 frames decoded, join 0.12 s |
 | 2 | No timing logic depends on declared FPS | PASS — exactly 2 reference-only reads, CI-enforced |
-| 3 | Inter-frame gaps do not stall the pipeline | PASS — 109 intervals, median 40 ms |
-| 4 | Reconnect with backoff, resumes frames | PASS |
-| 5 | Decoder warnings on join are logged, not fatal | PASS |
-| 6 | Camera list read from `/api/ingest` | PASS — 30 cameras |
-| 7 | Mixed H.264/H.265 and mixed resolutions | PASS — 4 distinct resolutions |
+| 3 | Inter-frame gaps do not stall the pipeline | PASS — 139 intervals, median 80 ms |
+| 4 | Reconnect with backoff, resumes frames | PASS — disconnect forced mid-stream, 42 frames after recovery |
+| 5 | Decoder warnings on join are logged, not fatal | PASS — 25 frames, session never aborted |
+| 6 | Camera list read from the catalogue | PASS — 30 cameras from `/cameras.json` |
+| 7 | Mixed H.264/H.265 and mixed resolutions | PASS — h264 and hevc decoded, 2 measured resolutions |
 | 8 | Sane across a scene discontinuity | PASS — 0 false cuts, real cut detected |
 
 `reports/evidence/preflight-*.json`. A check the gateway cannot supply data for

@@ -404,3 +404,164 @@ One correction to the record: during this session the Render API was read as dow
 `/health/cameras` and `/health/gateway` — so a 404 was misread as a continuing 502
 after a genuine cold-start window. The service recovered on its own and the deployed
 OpenAPI carries `/cameras/gap-analysis/export`.
+
+
+---
+
+# The estate moved — 2026-09-02
+
+The entries above stand as written. Two statements in them are now superseded and are
+called out here rather than edited, because a dated record that quietly changes is worth
+less than one that accumulates:
+
+* **"Speed-based flagging is not built"** — it is, as of today. See below.
+* **"The gateway is down"** — it moved. The old host is gone; a new one answers.
+
+## What changed on the organiser's side
+
+The feed is no longer `live.corp8.cloud/api/ingest`. It is `cctv.corp8.cloud` behind a
+login, with the media plane on a bare public IP because a CDN cannot proxy RTSP.
+
+| | Before | Now |
+|---|---|---|
+| Catalogue | `live.corp8.cloud/api/ingest`, open | `cctv.corp8.cloud/cameras.json`, **behind a password** |
+| Catalogue contents | per-camera URLs, codec, resolution, fps, `live` flag | **`id` and `name`. Nothing else** |
+| RTSP | 8554 **unreachable** — Cloudflare proxies 443/80 only | `103.250.160.189:8554`, **open** |
+| HLS | `/live/stream/{id}/index.m3u8` | `/{id}/index.m3u8`, authenticated, VOD playlist |
+
+**The single most consequential line in that table is RTSP.** ADR 0002 chose HLS because
+8554 could not be reached; it can now, and the pipeline uses it.
+
+## The first honest 8/8
+
+`reports/evidence/preflight-2026-09-01T23-35-14Z` — **8 passed, 0 failed, 0 not
+exercised**, every live check over RTSP/TCP.
+
+Check 1 had never been demonstrated in this project. "Every client forces RTSP over TCP"
+could only be proved by reading the source, because there was no reachable RTSP port to
+prove it against. It now decodes frames over TCP directly, join 0.12 s.
+
+Getting there meant fixing the harness, and one of those fixes matters more than the
+number it produced.
+
+### The preflight could report 8/8 with a failing check inside it
+
+`Check.status` defaulted to `"pass"`, and almost no check set it. The summary counts
+`status`, not `passed` — so **every check that computed `False` and returned without an
+explicit status printed as PASS**. The first 8/8 of the day was wrong: check 7's own
+detail line said "1 distinct resolution" while its criterion required more than one, and
+it rendered green anyway. With the default derived from `passed`, check 5 then showed
+itself as a genuine failure.
+
+That is the fourth time in this project a green result has been the bug rather than the
+finding, and it is the worst of them: this one was in the tool whose entire purpose is
+to report honestly.
+
+### Two more checks that could not have been right
+
+* **Check 5** took `cameras[0]`. A camera that happened to be down that second was
+  reported as "decoder warnings are fatal" — the mirror image of the defect
+  `discover_live_cameras` exists to prevent. It now tries the estate and reports NOT
+  EXERCISED when nothing answers, because no frame decoded is the absence of a
+  demonstration, not evidence of a defect.
+* **Check 7** read codecs from the catalogue. The new catalogue declares none, so it
+  reported the estate as lacking mixed codecs while that estate plainly carries both.
+  It now probes, which is the rule this codebase already follows for exactly this
+  reason (DISCOVERY finding 1).
+
+### We were causing an outage we then measured
+
+Probing cameras individually succeeded while a sweep opening all thirty in rapid
+succession reported **every one of them dead** — port open throughout, same cameras
+answering moments later. That was our load pattern, not the estate's health. The
+organiser's integration guide says "pace your load" in as many words, and discovery was
+the one place this codebase did not. Both the preflight sweep and `ingest_gateway.py`
+are now paced and bounded.
+
+## ANPR against the new grid: the same answer, from a new estate
+
+Ran the production pipeline over the live feed and, separately, the detector alone over
+one still from every camera that answered.
+
+| | |
+|---|---:|
+| Cameras with a still captured | 25 |
+| **Plate boxes found across all of them** | **1** |
+| Size of that box | **66 × 21 px** |
+| Its read | `AAA1649`, character confidence **0.28** |
+
+The crop was opened and looked at: illegible to a human. Most feeds are night footage on
+a loop — the OSD clock reads `14-06-2026 05:04` — and only cam11 and cam21 are daylight.
+
+This is Finding 12 and Finding 16 reproduced a third time, now on a **different estate,
+different cameras, different resolutions**. It strengthens the scaling argument rather
+than weakening it: camera placement and resolution bound this problem far more tightly
+than model choice does.
+
+## Availability still swings, and now the fallback does not save us
+
+At 05:00 the preflight found three cameras delivering and passed 8/8. At 06:00, with
+pacing in place and cameras approached one at a time, **nothing answered** — RTSP and
+HLS both, with port 8554 still open. A full `gateway-ingest` sweep in that window
+recorded 0 of 30 producing frames.
+
+One finding to carry into the demonstration: **HLS is not a usable ingest fallback on
+this estate.** The playlist sits behind the login, so `requests` can fetch it with a
+session cookie and FFmpeg — which is handed only a URL — cannot. RTSP needs no
+authentication and is the working transport. Passing the cookie through to FFmpeg is
+plausible but was not built, because the media plane was down and it could not have been
+verified; building it blind is the thing this project does not do.
+
+## Two bonus capabilities, built as classifiers over the existing stream
+
+Neither is a new ingest path. Both are additional passes over detections the ANPR
+pipeline already produced.
+
+**Intrusion zones.** A polygon per camera via migration `0006`, with a working downgrade
+and the same `FORCE ROW LEVEL SECURITY` that `detection` and `alert` carry. Admin-only
+configuration, audited, with deletion audited *before* the row goes. Alerts arrive on the
+existing Alert Desk with the same cooldown shape the movement logic uses.
+
+The geometry is deliberately **not** geographic. Every other geometry in this schema
+answers a question about the world; this one answers a question about a picture. Turning
+a monocular CCTV frame into ground coordinates needs calibration this estate does not
+publish, so storing the zone in EPSG:4326 would be a coordinate system chosen for
+consistency rather than meaning — and would invite comparing it against real positions.
+Containment is on the vehicle box *centroid*: a box grazing the boundary is a vehicle
+passing, and alerting on that is how a desk fills with events an operator learns to
+dismiss.
+
+**Speed flagging.** An implied speed only between two sightings of one plate on two
+genuinely different real cameras with known positions. The `REPLAY-` harness cameras are
+excluded as a `WHERE` clause rather than a convention, with a test written so that
+removing the clause fails the suite. It also reuses the journey reconstruction's
+uncertainty tolerance exactly: the speed must exceed the ceiling *after* subtracting both
+cameras' coordinate error, so a vehicle is flagged when it must have been speeding rather
+than when it might have been.
+
+**It currently raises nothing.** Seven detections come from non-`REPLAY` cameras, and no
+plate has been seen at two real placed cameras. Stated in `README.md` beside the other
+limitations rather than worked around. The data is missing, not the code.
+
+## A CI failure worth recording
+
+CI went red on Tests while every local run passed, and the difference was a file
+developers have and CI does not: `.env`.
+
+`resolve_hls_variant` had been given a `get_settings()` call to find the access code.
+`SETU_GATEWAY_HOST` has no default on purpose, so on a machine with no configuration,
+merely resolving a playlist URL raised. The regression test asserts the **absence** of
+that call — by making `get_settings` explode — rather than the success of the function,
+because the function succeeds either way on a developer machine. A test written the
+obvious way would have passed on both the broken and the fixed code.
+
+## Method and state
+
+| | |
+|---|---|
+| Tests | **273 passed, 0 skipped** with Postgres up; 250 passed / 24 skipped the way CI runs it |
+| New tests this session | 16 — 7 zone, 8 speed, 1 transport regression |
+| `ruff`, `ruff format` | clean, 105 files |
+| `mypy --strict` | clean but for the 19 pre-existing numpy-drift errors in `anpr.py`, `scene_cut.py`, `stream_client.py` |
+| CI | green on `8360d16` |
+| Deployed API | gateway `reachable: true`, 30 cameras in catalogue, audit chain valid |

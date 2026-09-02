@@ -51,7 +51,7 @@ Script for both, screen by screen with timings and what to say:
 
 | # | Artefact | State |
 |---|---|---|
-| 15 | Feed-contract compliance | `reports/evidence/preflight-2026-08-27T14-11-24Z.*` | ✅ **8/8 on 27 Aug**, the last day the gateway answered. Re-run 31 Aug: **1 pass, 0 fail, 7 NOT EXERCISED**, exit 3 — the catalogue returns a Cloudflare 502, so seven checks had nothing to exercise. That is an upstream outage, not a regression, and the script now says so instead of reporting a pass or dying on a traceback |
+| 15 | Feed-contract compliance | `reports/evidence/preflight-2026-09-01T23-35-14Z.*` | ✅ **8/8 on 2 Sep, 0 failed, 0 not exercised** — the first run where every check was exercised live, and the first ever over **RTSP**: port 8554 was unreachable for the whole project until the estate moved, so check 1 had never been demonstrated, only proved statically. Earlier runs for the record: 8/8 on 27 Aug over HLS; 1 pass with 7 NOT EXERCISED on 31 Aug while the old gateway returned a Cloudflare 502 |
 | 16 | Catalogue probe, declared vs measured | `reports/evidence/catalogue-probe-*` | ✅ two dated runs, including one against the recovered gateway |
 | 17 | Performance benchmarks | `reports/evidence/benchmarks-*` | ✅ |
 | 18 | Gateway outage support query | `docs/SUPPORT_QUERY.md` | ⏳ **Harshit — send it.** It is the evidence that we reported the fault |

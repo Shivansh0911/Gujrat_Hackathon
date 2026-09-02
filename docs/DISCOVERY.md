@@ -368,6 +368,67 @@ bound this problem far more tightly than model choice does.
 The clip was therefore **not** shipped as a second demonstration feed: a demo that
 displays zero reads demonstrates nothing to a judge. It is cited here as a measurement.
 
+## Finding 17 - the estate moved, and RTSP became reachable
+
+**2026-09-02.** The gateway is no longer `live.corp8.cloud`. A new one answers, with a
+different address, a different access model and a very different catalogue.
+
+| | Before | Now |
+|---|---|---|
+| Catalogue | `live.corp8.cloud/api/ingest`, open | `cctv.corp8.cloud/cameras.json`, behind a password |
+| Catalogue fields | urls, codec, resolution, fps, bitrate, `live` | **`id`, `name`** |
+| RTSP | 8554 unreachable (Cloudflare proxies 443/80) | `103.250.160.189:8554`, **open** |
+| HLS | `/live/stream/{id}/index.m3u8` | `/{id}/index.m3u8`, authenticated, `PLAYLIST-TYPE:VOD` |
+
+Three consequences, in order of how much they changed.
+
+**RTSP works.** This is the finding that overturns an architectural decision. Findings 6
+and 10 established that 8554 was unreachable and HLS was the only viable transport; ADR
+0002 was written on that basis. The media plane is now on a bare IP a CDN is not in front
+of, and the preflight decodes frames over forced TCP with a 0.12 s join. See the addendum
+to ADR 0002.
+
+**The catalogue now declares nothing.** Finding 1 recorded that 19 of 30 cameras declared
+no codec or resolution, and concluded that capabilities must be probed rather than
+trusted. The new catalogue declares none for *any* camera and carries no `live` flag at
+all. The policy needed no revision -- only the numbers moved -- which is the strongest
+evidence so far that "probe, never trust" was the right call rather than a defensive one.
+
+**HLS is authenticated, and therefore not a usable ingest fallback.** The playlist sits
+behind the login. A Python client with a session cookie can fetch it; FFmpeg, which is
+handed a URL and nothing else, cannot. Both transports were tested with the media plane
+down and both failed, but the failures are different in kind: RTSP was unavailable, HLS
+is unavailable *to FFmpeg* whenever the session is not in the request. RTSP needs no
+authentication and is the working ingest transport on this estate.
+
+### Availability swings within the hour
+
+| Time (2026-09-02) | Observation |
+|---|---|
+| ~05:00 | Preflight discovered 3 cameras delivering; 8/8 with every check exercised |
+| ~05:35 | A full 30-camera ingest sweep: **0 producing frames** |
+| ~06:00 | Cameras probed individually, paced, one at a time: **none answered**; port 8554 still open |
+
+The 05:35 result had a cause we could fix and did: opening thirty captures back to back
+is a load pattern this estate answers by refusing all of them, and the organiser's own
+guide asks clients to pace their load. The 06:00 result did not -- that one is the estate.
+
+### What the cameras actually show
+
+The detector was run over one still from each of the 25 cameras that answered.
+
+| | |
+|---|---:|
+| Plate boxes found, all cameras | **1** |
+| Its size | **66 x 21 px** |
+| Its read | `AAA1649`, character confidence 0.28 |
+
+The crop is illegible to a human. Most feeds are night footage on a loop -- the burnt-in
+clock reads `14-06-2026 05:04` against a real date of 2 September -- and only two cameras
+show daylight. Finding 12 and Finding 16 reproduced a third time, on a different estate
+with different cameras: **camera placement and resolution bound this problem far more
+tightly than model choice does.**
+
 ## Local evaluation hardware
 
 Python 3.12.5, Docker 29.7.2, Node 20.14, **NVIDIA RTX 4050 Laptop, 6 GB VRAM**.

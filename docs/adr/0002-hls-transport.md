@@ -81,3 +81,35 @@ and that is the trade we are accepting, visibly, until RTSP is available.
   registry health is derived from probing, never from the catalogue.
 - If the organisers expose a direct origin, transport flips to RTSP by configuration and
   probe result, with no change to any pipeline.
+
+
+---
+
+## Addendum — 2026-09-02: RTSP became reachable, and is now preferred
+
+The decision above rested on a measurement: port 8554 was unreachable because the gateway
+resolved to a Cloudflare edge, and Cloudflare proxies 443/80 only. That measurement was
+correct and is no longer true.
+
+The organiser moved the estate to `cctv.corp8.cloud` with the media plane on a bare public
+IP (`103.250.160.189`) precisely because a CDN cannot carry RTSP or WebRTC. Port 8554 is
+open, and the pipeline decodes frames over forced TCP with a join latency of 0.12 s.
+
+**Nothing in the transport layer had to change.** `select_transport` already probed the
+port and preferred RTSP when it answered, falling back to HLS when it did not -- the
+fallback was the contingency, not the design. What changed is which branch runs. Two
+consequences are worth recording:
+
+* **The feed contract's check 1 is now demonstrable.** "Every client forces RTSP over
+  TCP" had only ever been proved by static analysis, because there was no reachable port
+  to prove it against. It now passes `static+live`.
+* **HLS has become the weaker fallback, not the stronger one.** On this estate the
+  playlist is behind a login. A client with a session cookie can fetch it; FFmpeg, handed
+  only a URL, cannot. So the fallback this ADR chose as the reliable path is now the one
+  that needs credentials it cannot carry, and RTSP -- which needs none -- is the reliable
+  one. If HLS is ever needed for ingest here, the session cookie has to reach FFmpeg
+  through its `headers` capture option. That is not built: the media plane was down when
+  this was written and it could not have been verified.
+
+The original decision stands as correct for the estate it was made against. This addendum
+records that the estate changed, not that the reasoning was wrong.
