@@ -429,6 +429,51 @@ show daylight. Finding 12 and Finding 16 reproduced a third time, on a different
 with different cameras: **camera placement and resolution bound this problem far more
 tightly than model choice does.**
 
+## Finding 18 - tiling finds more boxes and fewer plates
+
+**2026-09-02.** The obvious optimisation, measured, and rejected.
+
+The detector is a 384x384 model. Handed a 1920x1080 frame it resizes the whole thing, so
+a plate 66 px wide in the original reaches the network at about 13 px. Splitting the
+frame into overlapping tiles and detecting on each keeps the plate nearer its native
+size, which should find plates the whole-frame pass misses. It does. That turns out not
+to be the same as reading more of them.
+
+**On the live estate** (12 frames, cam01 and cam04): whole-frame found **0** plate boxes,
+tiling found **5**. Every one was a false positive -- a wall, a kerb, headlight glare --
+and the recogniser correctly returned an empty string for all five. The crops were
+enlarged and looked at; none contains a number plate.
+
+**On footage that genuinely has readable plates** (40 frames of the own-feed clip, the
+same footage the 29.6% figure is scored against):
+
+| | whole frame | tiled |
+|---|---:|---:|
+| Plate boxes | 12 | **57** |
+| Grammar-valid reads | 8 | **8** |
+| Distinct "valid" plates | 5 | **7** |
+
+Five times the boxes and not one extra valid read. Worse, the distinct-plate count went
+*up*, and that is a loss rather than a gain: the clip contains one vehicle,
+`KA25AB1542`. Whole-frame found it. Tiling produced `KA25AB1116`, `KA25AB1561` and
+`KA2SAB156` -- plausible-looking strings that satisfy Indian plate grammar and are
+wrong -- **and lost the correct plate entirely.**
+
+The mechanism is worth stating, because it generalises. Extra detections are not free.
+Each false box is handed to a recogniser that will always return *something*, and the
+grammar filter cannot tell a confident misread from a real registration. So an
+optimisation that improves recall on the detector improves the supply of fabricated
+registrations at the same time. On this estate that trade is entirely one-directional:
+there are no plates to gain and only noise to add.
+
+**Not shipped.** The tiling code exists only in this record. The whole-frame path stays.
+
+This is the third measurement in three days pointing the same way, and it is the answer
+to "are we doing something wrong with the feed?": no. The pipeline decodes the live grid
+at full resolution, gates it, detects on it, and passes 8/8 of the organiser's own feed
+contract. What is missing is not processing but pixels on the plate -- and the standard
+trick for recovering small objects makes the output less truthful rather than more.
+
 ## Local evaluation hardware
 
 Python 3.12.5, Docker 29.7.2, Node 20.14, **NVIDIA RTX 4050 Laptop, 6 GB VRAM**.
