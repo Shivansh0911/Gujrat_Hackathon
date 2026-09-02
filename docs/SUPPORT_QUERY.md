@@ -1,153 +1,119 @@
-# Support query — RTSP/WHEP reachability, and a media-plane 502 outage
+# Support query — catalogue fields, and media-plane throughput
 
 **To:** Gujarat Police Innovation Challenge 2026 — CCTV Integration Hackathon, feed support
 **From:** Team SETU (Category 1 — student team)
-**Raised:** 2026-08-25T16:47:00Z
-**Format:** per the integration guide's support protocol (§2.5) — camera id, exact URL,
+**Raised:** 2026-09-02T16:30:00Z
+**Estate:** `cctv.corp8.cloud` (catalogue and HLS) and `103.250.160.189` (RTSP :8554)
+**Format:** per the integration guide's support protocol (§5) — camera id, exact URL,
 client and version, UTC timestamp, client-side error log.
 
-We have confirmed each camera's `live` status in `/api/ingest` before reporting, as the
-protocol requires. **All 30 cameras are flagged `live: true` in the catalogue.**
+**Client:** Python 3.12, `requests` 2.32 and OpenCV/FFmpeg, RTSP forced over TCP.
 
-There are two separate issues. Issue 1 is a question about intended architecture. Issue 2
-is an outage we believe you will want to know about immediately.
+Neither item below is blocking us. Both are places where the estate's behaviour and the
+integration guide disagree, and other teams are likely hitting them without knowing why.
 
----
-
-## Issue 1 — RTSP (:8554) and WHEP (:8889) are not reachable from any network
-
-### Question
-
-The integration guide names RTSP over TCP as the intended path for AI inference
-(OpenCV, GStreamer, FFmpeg, DeepStream) and describes HLS as a fallback for dashboards,
-mobile and restricted networks. We cannot reach the RTSP or WHEP ports at all.
-
-**Is there a direct origin endpoint for RTSP/WHEP that participants should use, or is
-HLS the intended ingest path for all participants?**
-
-We ask because the answer changes what we optimise. If other teams are consuming RTSP
-directly, we are demonstrating on materially higher latency for no reason. If HLS is the
-intended path for everyone, we would like to state that confidently in our architecture
-documentation rather than describe it as a workaround.
-
-### Evidence — DNS
-
-```
-$ python -c "import socket; print(sorted({ai[4][0] for ai in socket.getaddrinfo('live.corp8.cloud', None)}))"
-['104.21.59.42', '172.67.213.199']
-```
-
-Both addresses are in Cloudflare ranges. Cloudflare's reverse proxy forwards HTTP(S)
-ports only, which would explain the port behaviour below as a property of how the
-gateway is published rather than a local firewall.
-
-### Evidence — port reachability
-
-Measured 2026-08-25T16:46Z, from a residential ISP connection in India with no
-outbound port filtering (verified: other hosts' 8554 is reachable from this machine).
-
-```
-  :443  OPEN
-  :80   OPEN
-  :8554 FAILED (TimeoutError after 6s)   <- RTSP
-  :8889 FAILED (TimeoutError after 6s)   <- WHEP
-```
-
-### Evidence — client-side error log
-
-- **Camera id:** 13 (`13 CN Vidhyalaya`) — behaviour is identical for all 30 cameras
-- **Exact URL:** `rtsp://live.corp8.cloud:8554/stream/13`
-- **Client:** OpenCV 4.10.0, FFmpeg backend (avcodec 58.134.100, avformat 58.76.100),
-  `rtsp_transport;tcp` forced, Python 3.12.5 on Windows 11
-- **UTC timestamp:** 2026-08-25T16:46:12Z
-
-```
-TCP connect to live.corp8.cloud:8554 -> TimeoutError (no SYN-ACK within 6s)
-cv2.VideoCapture(...).isOpened() -> False
-```
-
-`ffplay -rtsp_transport tcp rtsp://live.corp8.cloud:8554/stream/13` fails identically at
-the TCP layer, before any RTSP exchange.
-
-### What we have done meanwhile
-
-We fall back to HLS automatically, per the guide's own instruction for restricted
-networks, and our pipeline is fully operational on it — 1920×1080 HEVC decoding at a
-measured 24.18 fps against a declared 25.0, with all eight §2.4 checklist items passing.
-No change is required on your side for us to proceed. This question is about whether we
-are on the intended path.
-
-### One note that may help other participants
-
-Consuming the HLS endpoint required a step that is not in the integration guide, and we
-suspect other teams are losing time on it. Every request is gated on the
-**`cookieCheck=1` query parameter** — a cookie alone does not satisfy it. FFmpeg takes
-the variant URI from the master playlist verbatim, dropping the parameter, so its segment
-requests hit a redirect and stall until the socket times out at 30 s. The visible symptom
-is:
-
-```
-[hls @ ...] Error when loading first segment
-  'https://live.corp8.cloud/live/stream/1/..._seg1518.mp4?cookieCheck=1&session=<uuid>'
-```
-
-which reads as a decoder fault rather than an authorisation failure. Resolving the master
-playlist client-side and re-appending `cookieCheck=1` to the variant URI resolves it. If
-this matches your expectations, a line in the integration guide would likely save several
-teams a debugging session.
+Our two earlier issues, raised 2026-08-25 against the previous estate, are **resolved**
+and kept at the end of this document for the record. The second of them turned out to be
+our own fault, and we say so there.
 
 ---
 
-## Issue 2 — All camera playlists returning 502 Bad Gateway (media plane down)
+## Issue 1 — `/api/ingest` returns only `id` and `name`
 
-**This is an active outage as of the timestamp on this document.** The control plane is
-healthy and reports every camera as live; the media plane is serving 502 for all of them.
+### What the guide says
 
-### Evidence
+> It returns every camera with its id, location, codec, live status, stream properties,
+> and all three URLs.
 
-```
-2026-08-25T16:39:30Z
-  GET https://live.corp8.cloud/api/ingest                                -> HTTP 200
-       (30 cameras returned, all "live": true)
-  GET https://live.corp8.cloud/live/stream/13/index.m3u8?cookieCheck=1   -> HTTP 502
-  GET https://live.corp8.cloud/live/stream/6/index.m3u8?cookieCheck=1    -> HTTP 502
+and, under *Don't assume a uniform grid*:
 
-2026-08-25T16:47:00Z  (re-checked)
-  GET https://live.corp8.cloud/api/ingest                                -> HTTP 200
-  GET https://live.corp8.cloud/live/stream/13/index.m3u8?cookieCheck=1   -> timeout (no response)
-```
+> Cameras differ in resolution, codec, frame rate, and bitrate. Read per-camera
+> properties from `/api/ingest` and size batching, buffers, and decoders accordingly.
 
-- **Cameras affected:** all 30
-- **Client:** curl 8.7.1 (Schannel) and OpenCV 4.10.0/FFmpeg, identical results
-- **First observed:** 2026-08-25T16:31:46Z
-- **Still failing at:** 2026-08-25T16:47:00Z
+The pre-submission checklist repeats it: *"Camera list and per-camera properties are read
+from `/api/ingest`."*
 
-### Client-side error log (camera 13, representative of all 30)
+### What the endpoint returns
 
-```
-2026-08-25 16:31:46Z WARNING stream_client: stream URL resolution failed camera=13:
-    502 Server Error: Bad Gateway for url:
-    https://live.corp8.cloud/live/stream/13/index.m3u8?cookieCheck=1
-2026-08-25 16:31:47Z WARNING stream_client: connect failed camera=13 attempt=1 retry_in=1.0s
-2026-08-25 16:31:49Z WARNING stream_client: stream URL resolution failed camera=13: 502 ...
-2026-08-25 16:31:50Z WARNING stream_client: connect failed camera=13 attempt=2 retry_in=1.0s
-[... identical for 12 further attempts across a 23s window, exponential backoff applied ...]
+`GET https://cctv.corp8.cloud/api/ingest` at 2026-09-02T16:12Z — **HTTP 200,
+`application/json`, 1,373 bytes for 30 cameras.** The first element in full:
+
+```json
+{ "id": "cam01", "name": "01 Chiman bhai Bridge" }
 ```
 
-The same code path decoded frames successfully from these cameras at
-**2026-08-25T05:31Z** the same day, so this is a change in gateway state rather than a
-change on our side.
+The union of keys across all thirty cameras is exactly `["id", "name"]`. There is no
+`location`, no `codec`, no `live`, no stream properties and no URLs.
 
-### Impact on us
+### Why we are raising it
 
-Low — we retry with exponential backoff and resume automatically when the feed returns.
-We are reporting it because the catalogue continues to advertise these cameras as live
-while they are not servable, and if that divergence is unintentional it may be masking
-the fault from your monitoring.
+A participant who follows the checklist literally cannot pass it, and a participant who
+sizes decoders from catalogue properties will size them from nothing. We have worked
+around it by measuring each camera's codec, resolution and frame rate from the decoded
+stream and storing that in our registry, which we would argue is the right behaviour
+anyway — but it is not what the guide describes, and the difference is large enough that
+we assume the endpoint is not serving what you intended.
+
+**Question:** is the thin catalogue intentional for this estate, or has the richer
+document been lost in the move from the previous host?
 
 ---
 
-## Contact
+## Issue 2 — the HLS plane appears to be throttled per connection (~5 KB/s)
 
-Team SETU. Please reply to the address on our submission record. We can supply full
-packet-level logs, our client configuration, or run any diagnostic you would find useful.
+### Measurement
+
+Direct from a workstation, no proxy in the path, authenticated session, browser
+user-agent. 2026-09-02T15:40Z–16:05Z.
+
+| Request | Size | Time |
+|---|---:|---:|
+| `GET /cam01/index.m3u8` | 211 KB | **25 s** |
+| `GET /cam01/seg00000.ts` (8 s of video) | 263 KB | **46 s** |
+| six segments **sequentially** | 1.2 MB | **277 s** |
+| the same six **in parallel** | 1.2 MB | **46 s** |
+
+Sequential throughput is about 5 KB/s per connection. Fetching in parallel multiplies it
+almost exactly by the number of connections, which is what makes us think the limit is
+per connection rather than per client or per camera.
+
+### Why it matters to participants
+
+`hls.js` requests fragments strictly in order, one at a time. At 5 KB/s it needs roughly
+46 seconds to fetch 8 seconds of video, so an unmodified browser player can never keep
+up, and reports `fragLoadTimeOut` on a camera that is serving correctly. Your own
+control-room page sets `manifestLoadingTimeOut: 60000` and small buffers, which suggests
+this is known.
+
+We have handled it by fetching several segments ahead in parallel and serving the player
+from a cache, which brings 48 seconds of video down to about 1 second of wall clock. We
+are not asking you to change anything — we would like to know whether the throttle is
+deliberate, so we can say so accurately in our submission rather than describing your
+infrastructure as slow.
+
+### Camera availability, for the record
+
+Across a full 30-camera sweep on 2026-09-02 (RTSP/TCP, 25–40 s budget each, paced one at
+a time per your *pace your load* guidance): **22 produced frames, 8 did not**, each of
+the 8 returning no frames within the budget rather than an error. Camera ids:
+`cam07`–`cam11`, `cam21`, `cam24`, `cam25`. This may simply be normal supervision
+restarts; we mention it only so the figure in our report is not mistaken for a claim that
+your estate was down.
+
+---
+
+# Previously raised, 2026-08-25 — now resolved
+
+Kept because a support record that quietly deletes its own history is not a record. Both
+were against `live.corp8.cloud`, the estate retired on 2026-09-01.
+
+**Issue 1 (RTSP/WHEP unreachable) — resolved by the move.** Port 8554 on
+`103.250.160.189` answers, and our full pipeline now runs over RTSP/TCP against it.
+
+**Issue 2 (all playlists 502) — partly ours.** The estate was genuinely returning
+Cloudflare 502s on 2026-08-31. But on the new estate the same symptom in our console
+turned out to be our own client: the media plane answers a non-browser user-agent with
+`403 browser required`, and because 403 also signals "sign in", our client
+re-authenticated and was refused again. Our fault, recorded here so the earlier report is
+not left overstating a problem on your side.
+
