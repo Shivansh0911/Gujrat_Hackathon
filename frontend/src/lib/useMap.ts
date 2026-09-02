@@ -70,7 +70,13 @@ export function useMapLibre() {
     };
     if (map.isStyleLoaded()) apply();
     else map.once("styledata", apply);
-  }, [theme]);
+    // `container` is in the dependencies because the map does not exist on the first
+    // run: the container is null until a callback ref attaches it. Keyed on `theme`
+    // alone, this effect returned early on mount and never ran again unless someone
+    // toggled the theme -- so a viewer who arrived in light mode got a light console
+    // around a map still painted for the dark one. Caught by looking at a screenshot;
+    // no geometry or contrast check can see it, because the tiles are an image.
+  }, [theme, container]);
 
   return { ref, mapRef, ready: container !== null };
 }
