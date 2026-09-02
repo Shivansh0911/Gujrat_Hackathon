@@ -33,6 +33,10 @@ from __future__ import annotations
 
 import logging
 import re
+import threading
+import time
+from collections import OrderedDict
+from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import urlsplit
 
 import requests
@@ -56,6 +60,100 @@ _REF = re.compile(r"^[A-Za-z0-9_-]{1,32}$")
 
 #: Playlist, segment or key filenames. No slashes, no `..`, one extension.
 _FILE = re.compile(r"^[A-Za-z0-9_-]{1,64}\.(m3u8|ts|key|m4s|mp4)$")
+
+#: The estate throttles each connection to roughly 5 KB/s. Measured 2026-09-02, direct
+#: from a workstation with no proxy in the path: an 8-second segment of ~200 KB took
+#: 46 seconds, and the playlist itself took 25. Our own rewriting of that playlist costs
+#: 0.3s, so essentially all of this is upstream. The previous 20-second timeout was
+#: therefore shorter than a normal response, and turned a slow camera into a dead one.
+_UPSTREAM_TIMEOUT_S = 90.0
+
+#: Playlists are VOD recordings -- they carry `#EXT-X-ENDLIST` and do not change -- so
+#: the 25-second fetch is worth paying once rather than once per tile. Six tiles opening
+#: at once previously meant six independent 25-second waits for identical bytes.
+#: Kept below the 900s signature lifetime so a cached playlist never hands a browser
+#: URLs that expire while it is still playing them.
+_PLAYLIST_TTL_S = 300.0
+
+#: What makes playback possible at all. The throttle is per connection, not per client:
+#: six segments fetched in parallel returned 48 seconds of video in 46 seconds of wall
+#: clock, where the same six fetched one after another took 277. hls.js asks for
+#: fragments strictly in order, one at a time, so on its own it can only ever see the
+#: 5 KB/s figure. Fetching the next few in the background while it plays the current one
+#: converts a stall into a buffer.
+_LOOKAHEAD = 4
+
+#: Bounded because this shares 512 MB with the API and two ONNX models. At ~200 KB a
+#: segment this holds roughly two minutes of video per camera.
+_SEG_CACHE_MAX_BYTES = 24 * 1024 * 1024
+
+_SEG_NAME = re.compile(r"^(?P<stem>[A-Za-z0-9_-]*?)(?P<num>\d+)\.ts$")
+
+_cache_lock = threading.Lock()
+_playlists: dict[str, tuple[float, str]] = {}
+_segments: "OrderedDict[str, bytes]" = OrderedDict()
+_segments_bytes = 0
+_in_flight: set[str] = set()
+_prefetch_pool = ThreadPoolExecutor(max_workers=_LOOKAHEAD, thread_name_prefix="hls-prefetch")
+
+
+def _cache_get(token: str) -> bytes | None:
+    with _cache_lock:
+        data = _segments.get(token)
+        if data is not None:
+            _segments.move_to_end(token)
+        return data
+
+
+def _cache_put(token: str, data: bytes) -> None:
+    """Store a segment, evicting the least recently used until we are back under budget."""
+    global _segments_bytes
+    with _cache_lock:
+        if token in _segments:
+            return
+        _segments[token] = data
+        _segments_bytes += len(data)
+        while _segments_bytes > _SEG_CACHE_MAX_BYTES and _segments:
+            _, evicted = _segments.popitem(last=False)
+            _segments_bytes -= len(evicted)
+
+
+def _prefetch(camera_ref: str, filename: str) -> None:
+    """Warm the next few segments in the background, in parallel.
+
+    Never raises into the request that scheduled it: a failed prefetch simply means the
+    browser waits for that segment the slow way, which is what would have happened
+    anyway.
+    """
+    m = _SEG_NAME.match(filename)
+    if m is None:
+        return
+    stem, num, width = m.group("stem"), int(m.group("num")), len(m.group("num"))
+    feed = get_feed_settings()
+
+    def fetch(name: str) -> None:
+        token = f"{camera_ref}{_SEP}{name}"
+        try:
+            resp = gateway_auth.get(
+                feed, _upstream_url(feed, camera_ref, name), _UPSTREAM_TIMEOUT_S
+            )
+            if resp.ok and not gateway_auth.looks_like_login(resp):
+                _cache_put(token, resp.content)
+        except Exception:  # noqa: BLE001 - a warm cache is an optimisation, never a duty
+            log.debug("prefetch failed for %s", token, exc_info=True)
+        finally:
+            with _cache_lock:
+                _in_flight.discard(token)
+
+    for offset in range(1, _LOOKAHEAD + 1):
+        name = f"{stem}{num + offset:0{width}d}.ts"
+        token = f"{camera_ref}{_SEP}{name}"
+        with _cache_lock:
+            if token in _segments or token in _in_flight:
+                continue
+            _in_flight.add(token)
+        _prefetch_pool.submit(fetch, name)
+
 
 #: The token that gets signed. A single opaque name, because the signing helper signs
 #: bare filenames -- and a signature over a path would be asserting something about a
@@ -144,10 +242,33 @@ def gateway_media(token: str, exp: int = 0, sig: str = "") -> Response:
 
     camera_ref, filename = _split(token)
     feed = get_feed_settings()
+    is_playlist = filename.endswith(".m3u8")
+
+    if is_playlist:
+        with _cache_lock:
+            hit = _playlists.get(token)
+        if hit is not None and time.monotonic() - hit[0] < _PLAYLIST_TTL_S:
+            return Response(
+                content=hit[1],
+                media_type="application/vnd.apple.mpegurl",
+                headers={"Cache-Control": "no-store"},
+            )
+    else:
+        cached = _cache_get(token)
+        if cached is not None:
+            # Already warmed by a prefetch, so the browser gets it immediately instead
+            # of waiting out the upstream throttle.
+            _prefetch(camera_ref, filename)
+            return Response(
+                content=cached,
+                media_type="video/mp2t",
+                headers={"Cache-Control": "no-store"},
+            )
+
     url = _upstream_url(feed, camera_ref, filename)
 
     try:
-        upstream = gateway_auth.get(feed, url, timeout=20.0)
+        upstream = gateway_auth.get(feed, url, timeout=_UPSTREAM_TIMEOUT_S)
     except requests.RequestException as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
@@ -167,13 +288,19 @@ def gateway_media(token: str, exp: int = 0, sig: str = "") -> Response:
     if not upstream.ok:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="gateway error")
 
-    if filename.endswith(".m3u8"):
+    if is_playlist:
         rewritten = _rewrite_playlist(upstream.text, camera_ref, api_settings.jwt_secret)
+        with _cache_lock:
+            _playlists[token] = (time.monotonic(), rewritten)
         return Response(
             content=rewritten,
             media_type="application/vnd.apple.mpegurl",
             headers={"Cache-Control": "no-store"},
         )
+
+    if filename.endswith(".ts"):
+        _cache_put(token, upstream.content)
+        _prefetch(camera_ref, filename)
 
     media_type = "application/octet-stream" if filename.endswith(".key") else "video/mp2t"
     return StreamingResponse(

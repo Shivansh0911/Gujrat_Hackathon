@@ -62,7 +62,33 @@ export default function HlsPlayer({
       });
       video.addEventListener("error", () => fail("clip could not be opened"));
     } else if (Hls.isSupported()) {
-      hls = new Hls({ manifestLoadingMaxRetry: 1, levelLoadingMaxRetry: 1, fragLoadingMaxRetry: 1 });
+      // Tuned against measurement, not taste. The estate throttles each connection to
+      // about 5 KB/s: on 2026-09-02 a 200 KB segment covering 8 seconds of video took
+      // 46 seconds to arrive, and the playlist itself took 25. hls.js ships with a
+      // 10-second manifest timeout and a 20-second fragment timeout, so both expired
+      // before a healthy camera could answer, and the tile reported
+      // `manifestLoadTimeOut` / `fragLoadTimeOut` on a stream that was working.
+      //
+      // The estate's own control-room page sets the same shape of values, which is a
+      // useful confirmation: they know what their server does.
+      //
+      // Buffers stay small on purpose. A large buffer on a slow link means hls.js
+      // queues many fragments and falls further behind; six seconds keeps it near the
+      // live edge, where the operator wants it.
+      hls = new Hls({
+        manifestLoadingMaxRetry: 2,
+        levelLoadingMaxRetry: 2,
+        fragLoadingMaxRetry: 3,
+        manifestLoadingTimeOut: 60000,
+        levelLoadingTimeOut: 60000,
+        fragLoadingTimeOut: 90000,
+        fragLoadingMaxRetryTimeout: 16000,
+        maxBufferLength: 6,
+        maxMaxBufferLength: 14,
+        backBufferLength: 12,
+        capLevelToPlayerSize: true,
+        startPosition: -1,
+      });
       hls.loadSource(src);
       hls.attachMedia(video);
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
