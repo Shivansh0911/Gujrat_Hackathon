@@ -109,7 +109,13 @@ from fastapi import HTTPException  # noqa: E402
 from fastapi.responses import FileResponse  # noqa: E402
 
 
-@app.get("/media/crops/{name}", include_in_schema=False)
+# HEAD as well as GET. A client checking whether an evidence file exists -- a
+# monitor, a link checker, our own responsive audit -- should not have to
+# download 22 MB of video to find out, and FastAPI does not add HEAD to a route
+# declared with `.get()`. This is the same omission that had UptimeRobot
+# reporting a four-day outage on a healthy service; it recurs because each
+# route decides for itself.
+@app.api_route("/media/crops/{name}", methods=["GET", "HEAD"], include_in_schema=False)
 def evidence_crop(name: str, exp: int = 0, sig: str = "") -> FileResponse:
     """Serve one evidence crop, by signed URL.
 
@@ -148,7 +154,13 @@ def evidence_crop(name: str, exp: int = 0, sig: str = "") -> FileResponse:
     return FileResponse(candidate, media_type="image/jpeg")
 
 
-@app.get("/media/own-feed/{name}", include_in_schema=False)
+# HEAD as well as GET. A client checking whether an evidence file exists -- a
+# monitor, a link checker, our own responsive audit -- should not have to
+# download 22 MB of video to find out, and FastAPI does not add HEAD to a route
+# declared with `.get()`. This is the same omission that had UptimeRobot
+# reporting a four-day outage on a healthy service; it recurs because each
+# route decides for itself.
+@app.api_route("/media/own-feed/{name}", methods=["GET", "HEAD"], include_in_schema=False)
 def own_feed_clip(name: str, exp: int = 0, sig: str = "") -> FileResponse:
     """Serve the bundled own-feed clip for the replay cameras, by signed URL.
 

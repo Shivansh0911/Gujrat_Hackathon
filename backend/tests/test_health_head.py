@@ -52,3 +52,48 @@ def test_the_root_route_answers_head_too(monkeypatch: pytest.MonkeyPatch) -> Non
         raise AssertionError("no route registered at /")
     finally:
         get_api_settings.cache_clear()
+
+
+def test_media_routes_answer_head_too(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Checking whether an evidence file exists must not cost 22 MB of video.
+
+    The own-feed clip is that big, and a HEAD against it returned 405 while GET
+    returned `200 video/mp4` -- so the responsive audit's own probe concluded the
+    video was broken. Same omission as `/healthz`, one route family later.
+    """
+    monkeypatch.setenv("SETU_DATABASE_URL", "postgresql+psycopg://u:p@127.0.0.1/none")
+    monkeypatch.setenv("SETU_JWT_SECRET", "not-a-real-secret-only-for-import")
+
+    from services.api.config import get_api_settings
+
+    get_api_settings.cache_clear()
+    try:
+        from services.api.main import app
+
+        wanted = {
+            "/media/crops/{name}",
+            "/media/own-feed/{name}",
+            "/media/gateway/{token}",
+        }
+
+        # `app.routes` does not flatten: an included router is kept as a wrapper
+        # object with the real routes underneath it. Reading only the top level made
+        # this test report the gateway proxy as unregistered while it was serving
+        # traffic on the deployed instance -- the test's model of the route table was
+        # wrong, not the app.
+        def walk(routes):  # type: ignore[no-untyped-def]
+            for r in routes:
+                inner = getattr(r, "original_router", None)
+                if inner is not None:
+                    yield from walk(inner.routes)
+                    continue
+                path = getattr(r, "path", None)
+                if path:
+                    yield path, set(getattr(r, "methods", set()) or set())
+
+        seen = {p: m for p, m in walk(app.routes) if p in wanted}
+        assert wanted <= set(seen), f"missing media routes: {wanted - set(seen)}"
+        for path, methods in seen.items():
+            assert {"GET", "HEAD"} <= methods, f"{path} answers {sorted(methods)}"
+    finally:
+        get_api_settings.cache_clear()

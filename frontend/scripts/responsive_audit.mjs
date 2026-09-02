@@ -199,9 +199,31 @@ async function measure(page, pageName, vp) {
     // sized, it just has no media behind it. This is how a stream URL resolved against
     // the wrong origin presented -- "clip could not be opened" on every tile, reading
     // as a broken camera rather than a wrong host.
+    //
+    // With one exemption, and it is not a convenience. Playwright's bundled Chromium
+    // ships without H.264, so it cannot decode the own-feed MP4 no matter how
+    // correctly the API serves it -- verified by fetching the URL directly: HTTP 200,
+    // video/mp4, 22.5 MB beginning `ftypisom`. Reading that as a broken video once
+    // led to the conclusion that the API was at fault, and hours were spent looking
+    // for a defect that did not exist. So a decode failure is only counted when the
+    // browser can actually play the codec; when it cannot, the test says nothing
+    // about the file and must not pretend otherwise.
+    // Report the src of anything that failed, and let the caller settle whether the
+    // file is actually missing. The probe cannot happen here: a `fetch` from the page
+    // to the media origin is a cross-origin request, and the media routes are built
+    // for `<img>` and `<video>`, which need no CORS headers -- so the probe would fail
+    // for every file, healthy or not, and this check would report them all as broken.
+    // Node has no such restriction.
+    const canH264 =
+      document.createElement("video").canPlayType('video/mp4; codecs="avc1.42E01E"') !== "";
     const brokenVideos = [...document.querySelectorAll("main video")]
       .filter((v) => v.error !== null || (v.currentSrc === "" && v.getAttribute("src")))
-      .map((v) => (v.getAttribute("src") ?? "(no src)").slice(0, 80));
+      .map((v) => ({
+        src: v.currentSrc || v.getAttribute("src") || "(no src)",
+        // A 404 and an undecodable codec both raise code 4, so the code alone cannot
+        // separate them; `codecOnly` marks the ones still to be settled over the wire.
+        codecOnly: v.error !== null && v.error.code === 4 && !canH264,
+      }));
 
     // Text the viewer cannot read. This is the failure mode a second theme
     // introduces and that no geometry check can see: a colour defined only for the
@@ -216,22 +238,41 @@ async function measure(page, pageName, vp) {
       });
       return 0.2126 * r + 0.7152 * g + 0.0722 * b;
     };
+    // Returns [r, g, b, a]; alpha matters and dropping it is how this check first
+    // reported eleven pages as broken. A selected nav item is `bg-accent/15
+    // text-accent`: treating that 15% wash as solid accent compares the text with
+    // itself and yields a perfect 1.0:1, on a control that is in fact perfectly
+    // readable. Every one of those failures was the measurement's fault.
     const parse = (str) => {
       const m = String(str).match(/rgba?\(([^)]+)\)/);
       if (!m) return null;
-      const parts = m[1].split(",").map((x) => parseFloat(x));
-      if (parts.length >= 4 && parts[3] === 0) return null; // fully transparent
-      return parts.slice(0, 3);
+      const p = m[1].split(",").map((x) => parseFloat(x));
+      return [p[0], p[1], p[2], p.length >= 4 ? p[3] : 1];
     };
-    // Walk up for the first ancestor that actually paints a background.
+    const over = (fg, bg) => {
+      const a = fg[3];
+      return [
+        fg[0] * a + bg[0] * (1 - a),
+        fg[1] * a + bg[1] * (1 - a),
+        fg[2] * a + bg[2] * (1 - a),
+      ];
+    };
+    // Composite every translucent layer from the element up until something opaque
+    // stops the stack, which is what the eye actually sees.
     const backgroundOf = (el) => {
+      const stack = [];
       let node = el;
-      while (node && node !== document.documentElement) {
-        const bg = parse(getComputedStyle(node).backgroundColor);
-        if (bg) return bg;
+      while (node) {
+        const c = parse(getComputedStyle(node).backgroundColor);
+        if (c && c[3] > 0) {
+          stack.push(c);
+          if (c[3] >= 0.999) break;
+        }
         node = node.parentElement;
       }
-      return parse(getComputedStyle(document.body).backgroundColor) ?? [0, 0, 0];
+      let base = [255, 255, 255];
+      for (let i = stack.length - 1; i >= 0; i--) base = over(stack[i], base);
+      return base;
     };
     const lowContrast = [];
     const textNodes = [...document.querySelectorAll("main *, nav *, header *")].filter(
@@ -244,9 +285,10 @@ async function measure(page, pageName, vp) {
       },
     );
     for (const el of textNodes.slice(0, 400)) {
-      const fg = parse(getComputedStyle(el).color);
-      if (!fg) continue;
+      const fgRaw = parse(getComputedStyle(el).color);
+      if (!fgRaw || fgRaw[3] === 0) continue;
       const bg = backgroundOf(el);
+      const fg = over(fgRaw, bg);
       const l1 = luminance(fg);
       const l2 = luminance(bg);
       const ratio = (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
@@ -259,7 +301,7 @@ async function measure(page, pageName, vp) {
 
     return {
       lowContrast: [...new Set(lowContrast)].slice(0, 6),
-      brokenVideos: [...new Set(brokenVideos)].slice(0, 4),
+      brokenVideos: brokenVideos.slice(0, 4),
       scrollWidth: doc.scrollWidth,
       innerWidth: window.innerWidth,
       overflowing: [...new Set(overflowing)].slice(0, 4),
@@ -269,6 +311,25 @@ async function measure(page, pageName, vp) {
       brokenImages: [...new Set(brokenImages)].slice(0, 4),
     };
   });
+
+  // Settle the videos this browser could not decode. Playwright's Chromium ships
+  // without H.264, so it cannot play the own-feed MP4 however correctly the API serves
+  // it -- once read as an API fault, and hours went into looking for a defect that was
+  // not there. A HEAD from Node says which it is, and a genuine 404 still fails.
+  const settledVideos = [];
+  for (const v of metrics.brokenVideos) {
+    if (v.codecOnly && v.src.startsWith("http")) {
+      try {
+        const probe = await fetch(v.src, { method: "HEAD" });
+        const type = probe.headers.get("content-type") ?? "";
+        if (probe.ok && type.startsWith("video/")) continue; // the file is fine
+      } catch {
+        /* unreachable: report it */
+      }
+    }
+    settledVideos.push(v.src.slice(0, 80));
+  }
+  metrics.brokenVideos = [...new Set(settledVideos)].slice(0, 4);
 
   // Two pixels of slack: sub-pixel rounding on scaled viewports is not a defect.
   const overflows = metrics.scrollWidth > metrics.innerWidth + 2;

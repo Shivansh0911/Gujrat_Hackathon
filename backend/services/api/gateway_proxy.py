@@ -252,7 +252,13 @@ def _rewrite_playlist(body: str, camera_ref: str, secret: str) -> str:
     return "\n".join(out) + "\n"
 
 
-@router.get("/media/gateway/{token}", include_in_schema=False)
+# HEAD as well as GET. A client checking whether an evidence file exists -- a
+# monitor, a link checker, our own responsive audit -- should not have to
+# download 22 MB of video to find out, and FastAPI does not add HEAD to a route
+# declared with `.get()`. This is the same omission that had UptimeRobot
+# reporting a four-day outage on a healthy service; it recurs because each
+# route decides for itself.
+@router.api_route("/media/gateway/{token}", methods=["GET", "HEAD"], include_in_schema=False)
 def gateway_media(token: str, exp: int = 0, sig: str = "") -> Response:
     """One playlist, segment or key from the gateway, with our session in front."""
     api_settings = get_api_settings()
