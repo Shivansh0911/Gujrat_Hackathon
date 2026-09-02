@@ -520,6 +520,63 @@ One check in this session was also wrong in the other direction and is worth adm
 `34 dhanori` was first flagged as 267 km out of place, because the reference city used
 for the comparison was picked badly. It is 14 km from Navsari and correct.
 
+## Finding 20 - three ways the plate ceiling was attacked, and what each returned
+
+**2026-09-02.** After the estate was fully onboarded, the remaining gap was the one
+that matters most: 3,292 frames across 26 live cameras and **zero** grammar-valid
+registrations. Three separate attempts to move that number, each measured rather than
+argued.
+
+**Upscaling the crop before OCR: a no-op.** The detector can hand the recogniser a
+crop 60 px wide, and `fast_plate_ocr` resizes internally, so a better interpolation
+first might plausibly help. Run over 40 frames of the own-feed clip at 1x, 2x, 3x and
+4x cubic upscale, the results are not merely similar, they are **identical**: 8
+grammar-valid reads, 5 distinct plates, the same five strings, `KA25AB1542` present in
+all four. The library normalises the input itself and nothing upstream of that
+survives. Not shipped, because there is nothing to ship.
+
+**Tiling: rejected earlier, see Finding 18.** More boxes, no more plates, and it lost
+the correct registration.
+
+**The one real plate this estate has produced is two-line.** `cam22` yielded a genuine
+yellow commercial plate, enlarged and inspected: the lower row reads roughly `AZ 90 2`
+and the upper row is an unrecoverable smear. Our recogniser reads a single line of up
+to ten characters, so a two-row plate cannot form a complete registration even when
+legible -- the read returns one row and the Indian grammar filter correctly rejects it.
+This is worth recording as a genuine capability gap rather than a resolution problem,
+but building two-line handling now would be building against a single illegible
+example, which is the mistake this project keeps declining to make.
+
+The conclusion after three attempts is unchanged and now better evidenced: what is
+missing is pixels on the plate. `AZ9072` is the useful datum, because it separates the
+two failure modes we keep having to explain. The detector is not merely firing on
+signage; it found a real plate. The plate was not readable.
+
+## Finding 21 - the thin catalogue is the estate's, not our parsing
+
+**2026-09-02.** Before writing that the estate publishes no department attribution,
+three sources were checked rather than one.
+
+`GET /api/ingest` returns **1,373 bytes for thirty cameras**, and the union of keys
+across all of them is exactly `["id", "name"]`. The estate's own control-room page
+fetches a different path, `cameras.json`, which raised the possibility that the richer
+document existed somewhere and we were reading the wrong endpoint: it returns the same
+1,373 bytes and the same two keys. The dashboard HTML itself contains no occurrence of
+`department`, `dept`, `owner`, `agency`, `GSRTC`, `Panchayat`, `Municipal`, `Health` or
+`Police`.
+
+So the integration guide's promise -- "every camera with its id, location, codec, live
+status, stream properties, and all three URLs" -- is not met by anything the estate
+serves, and the pre-submission checklist item "camera list and per-camera properties
+are read from `/api/ingest`" cannot be satisfied by any participant. Raised with the
+organisers in `docs/SUPPORT_QUERY.md`.
+
+The consequence for us is stated rather than worked around: department attribution is
+unavailable for 29 of 30 cameras, and inventing it would mean fabricating the single
+field a department-scoped access-control model exists to protect. Per-camera codec,
+resolution and frame rate *are* recoverable, because they can be measured from the
+decoded stream, and now are.
+
 ## Local evaluation hardware
 
 Python 3.12.5, Docker 29.7.2, Node 20.14, **NVIDIA RTX 4050 Laptop, 6 GB VRAM**.

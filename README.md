@@ -123,6 +123,22 @@ earlier pass on cam07 read `GJ3ZAG0344` from a genuine Gujarat plate whose crop 
 `GJ32AG0344` — a real detection, one character wrong. The estate does occasionally
 present a legible plate. It does not do so reliably enough to trace a vehicle.
 
+**The estate is genuinely heterogeneous, and the registry now proves it.** The
+catalogue publishes no codec, resolution or frame rate — it returns 1,373 bytes and two
+keys, `id` and `name` — so every property below was measured from the decoded stream and
+written back to the registry:
+
+| Property | Observed across 30 government cameras |
+|---|---|
+| Codec | **24 × H.264, 6 × H.265** |
+| Resolution | 2560×1440, 1920×1080, 1280×960, 1280×720, 960×576 |
+| Measured frame rate | 15.0 – 30.1 fps, per camera |
+| Status after probing | 26 ACTIVE, 4 UNREACHABLE |
+
+The organiser's checklist asks that a pipeline handle mixed H.264/H.265 and mixed
+resolutions. That is now a property of the registry a reviewer can read, rather than a
+claim in a document.
+
 Declared frame rate remains unreliable, as §2.2 warns: **5 of the 8 cameras that both
 declare a rate and delivered frames diverge by more than 5%** — camera 15 declares
 12.5 fps and delivers 5.38. Another 17 delivered frames while declaring nothing at all.
@@ -448,10 +464,15 @@ submission.
    resolution invalidates its zones — the frame size a zone was drawn against is stored
    with it so that can be detected rather than silently mis-evaluated. Turning a CCTV
    frame into ground coordinates needs camera calibration this estate does not publish.
-8. **The deployed instance now carries one government-feed detection, and it is a
-   false positive.** A full 30-camera sweep on 2026-09-02 wrote exactly one record to
-   the deployed database, and it is a camera's own on-screen caption rather than a
-   vehicle. It is left in place: deleting a real output because it is unflattering
+8. **The deployed instance carries three government-feed detections; one is a real
+   number plate and two are not.** Sweeps on 2026-09-02 wrote three records, and all
+   three crops were opened and looked at: `cam03` is the camera's own on-screen caption,
+   `cam02` is a dark building facade with no plate in it, and **`cam22` is a genuine
+   yellow commercial plate** read as `AZ9072`. None satisfies Indian plate grammar, so
+   none becomes a registration — which on `cam22` is the filter working correctly on a
+   real plate rather than on noise. The plate is two-line and our recogniser reads one
+   line, so even a sharper image of it would not produce a complete registration; see
+   DISCOVERY finding 20. All three are left in place. It is left in place: deleting a real output because it is unflattering
    would make the error rate look better than it is, and the crop is committed so
    anyone can see what happened. Note this is the same class of record as the twelve
    `REPLAY-` misreads already in the database — of 21 detections, 8 are grammar-valid
@@ -492,6 +513,8 @@ submission.
    exactly one record, the caption described in limitation 8 — so route reconstruction,
    watchlist matching and speed flagging all still rest on own-feed and `REPLAY-`
    material. Intrusion zones are the exception: they need a vehicle box rather than a
-   readable plate, and a rescan over stored history raised **5 zone alerts** alongside
-   the 6 watchlist ones. The console labels the source of every hop and alert so this is
+   readable plate. A zone drawn over the near carriageway of `cam22` — a live
+   government camera — raises a real `zone_intrusion` alert on that camera's own
+   detection, so the bonus feature is demonstrated on the government feed and not only
+   on the replay harness. Six zone alerts stand alongside the six watchlist ones. The console labels the source of every hop and alert so this is
    visible rather than assumed. See [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) §4.
