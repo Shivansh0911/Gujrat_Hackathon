@@ -49,7 +49,11 @@ export default function ZonesPage() {
   const [refH, setRefH] = useState(DEFAULT_H);
   const [error, setError] = useState<string | null>(null);
   const [showView, setShowView] = useState(true);
-  const [viewOk, setViewOk] = useState(false);
+  // Tri-state on purpose. A boolean cannot tell "still arriving" from "never will",
+  // and the first version said "connecting…" forever on a camera whose stream had
+  // already failed -- a page waiting for something it knows is not coming.
+  const [viewState, setViewState] = useState<"idle" | "connecting" | "ok" | "failed">("idle");
+  const viewOk = viewState === "ok";
   const svgRef = useRef<SVGSVGElement>(null);
 
   const cameras = useQuery({
@@ -94,6 +98,10 @@ export default function ZonesPage() {
   // Take the frame size from what the pipeline measured on this camera. Typing it by
   // hand is an invitation to get it wrong, and a wrong reference size does not fail
   // loudly -- it silently places every point in the zone against the wrong frame.
+  useEffect(() => {
+    setViewState(showView ? "connecting" : "idle");
+  }, [cameraId, showView]);
+
   useEffect(() => {
     if (camera?.resolution_w && camera?.resolution_h) {
       setRefW(camera.resolution_w);
@@ -226,10 +234,13 @@ export default function ZonesPage() {
                   />
                   camera view
                 </label>
-                {showView && stream.data?.url && !viewOk ? (
-                  // Said once, quietly, and only while it is still true. The surface
-                  // works without the picture, so this is a note rather than an error.
+                {showView && stream.data?.url && viewState === "connecting" ? (
                   <span className="text-[11px] text-muted">connecting…</span>
+                ) : null}
+                {showView && viewState === "failed" ? (
+                  // Stated once and quietly. Everything on this page works without the
+                  // picture, so it is a note about the estate, not an error about us.
+                  <span className="text-[11px] text-muted">no picture from this camera</span>
                 ) : null}
                 <label className="text-[11px] text-muted">frame</label>
                 <input
@@ -261,7 +272,10 @@ export default function ZonesPage() {
               style={{ aspectRatio: `${refW} / ${refH}` }}
             >
               {showView && stream.data?.url ? (
-                <CameraBackdrop url={stream.data.url} onReady={setViewOk} />
+                <CameraBackdrop
+                  url={stream.data.url}
+                  onReady={(ok) => setViewState(ok ? "ok" : "failed")}
+                />
               ) : null}
               <svg
                 ref={svgRef}
