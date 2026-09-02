@@ -106,3 +106,28 @@ def test_port_probe_reports_false_for_a_closed_port():
     # Port 1 on localhost is reliably closed; asserts the probe fails closed rather
     # than raising, so one unreachable camera cannot abort estate-wide discovery.
     assert T.port_reachable("127.0.0.1", 1, timeout=1.0) is False
+
+
+def test_resolving_a_playlist_does_not_require_a_configured_gateway(monkeypatch):
+    """URL resolution must work on a machine with no gateway configuration.
+
+    `SETU_GATEWAY_HOST` has no default on purpose, so `get_settings()` raises wherever
+    there is no .env -- CI, for one. A version of `resolve_hls_variant` that reached for
+    settings to find an access code therefore turned "resolve this URL" into "require a
+    fully configured estate", and every transport test failed in CI while passing on
+    every developer machine, because developers have a .env.
+
+    Asserting the absence of that call rather than the success of the function: the
+    function succeeds either way here, which is exactly why the original defect was
+    invisible locally.
+    """
+    import services.common.config as config_module
+
+    def _explode():
+        raise AssertionError("resolve_hls_variant must not need the settings object")
+
+    monkeypatch.setattr(config_module, "get_settings", _explode)
+    monkeypatch.setattr(T.gateway_auth, "get", lambda settings, url, timeout=None: _Resp(MASTER))
+
+    out = T.resolve_hls_variant("https://h/live/stream/6/index.m3u8")
+    assert out.endswith("cookieCheck=1")

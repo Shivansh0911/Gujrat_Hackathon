@@ -60,9 +60,9 @@ def looks_like_login(resp: requests.Response) -> bool:
     return "html" in ctype
 
 
-def login(settings: Settings, timeout: float = 20.0) -> bool:
-    """Sign in with the configured access code. False when none is configured."""
-    if not settings.gateway_access_code:
+def login(settings: Settings | None, timeout: float = 20.0) -> bool:
+    """Sign in with the configured access code. False when there is nothing to use."""
+    if settings is None or not settings.gateway_access_code:
         return False
     url = f"{settings.gateway_scheme}://{settings.gateway_host}{settings.gateway_login_path}"
     log.info("gateway requires authentication; signing in")
@@ -71,8 +71,13 @@ def login(settings: Settings, timeout: float = 20.0) -> bool:
     return True
 
 
-def get(settings: Settings, url: str, timeout: float = 20.0) -> requests.Response:
-    """GET `url`, signing in once and retrying if the gateway asks us to."""
+def get(settings: Settings | None, url: str, timeout: float = 20.0) -> requests.Response:
+    """GET `url`, signing in once and retrying if the gateway asks us to.
+
+    `settings` may be None, meaning "no credentials available": the request is made
+    unauthenticated and whatever comes back is returned. An open estate needs nothing
+    more, and a caller with no configuration should not be forced to invent some.
+    """
     resp = session().get(url, timeout=timeout)
     if looks_like_login(resp) and login(settings, timeout):
         resp = session().get(url, timeout=timeout)

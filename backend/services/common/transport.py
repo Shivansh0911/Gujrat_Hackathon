@@ -38,7 +38,7 @@ from urllib.parse import urljoin, urlsplit
 
 from services.common import gateway_auth
 from services.common.catalogue import CameraDescriptor
-from services.common.config import Settings, get_settings
+from services.common.config import Settings
 
 log = logging.getLogger(__name__)
 
@@ -64,7 +64,9 @@ def port_reachable(host: str, port: int, timeout: float = _PORT_PROBE_TIMEOUT_S)
         return False
 
 
-def resolve_hls_variant(master_url: str, timeout: float = 20.0) -> str:
+def resolve_hls_variant(
+    master_url: str, timeout: float = 20.0, settings: Settings | None = None
+) -> str:
     """Resolve an HLS master playlist to a directly-openable variant playlist URL.
 
     Returns the first variant with `cookieCheck=1` re-appended. Raises rather than
@@ -79,7 +81,11 @@ def resolve_hls_variant(master_url: str, timeout: float = 20.0) -> str:
     # and an unauthenticated fetch returns the sign-in page with HTTP 200. Without this
     # the resolver reported `not an HLS playlist`, which reads as the feed having
     # changed format rather than as a missing credential.
-    resp = gateway_auth.get(get_settings(), master_url, timeout)  # TLS always verified
+    # Settings are optional: without them the fetch is unauthenticated, which is
+    # right for an open estate and is also what a unit test wants. Reaching for
+    # get_settings() here made resolving a URL require a configured gateway host,
+    # and that raises on any machine without a .env.
+    resp = gateway_auth.get(settings, master_url, timeout)  # TLS always verified
     resp.raise_for_status()
     body = resp.text
 
@@ -118,6 +124,9 @@ class StreamSource:
     transport: Transport
     rtsp_url: str | None
     hls_master_url: str | None
+    #: Carried so `url()` can authenticate without a global settings lookup. Optional
+    #: because a source can legitimately be constructed in a test with no configuration.
+    settings: Settings | None = None
 
     def url(self) -> str:
         """The URL to open *now*.
@@ -132,7 +141,7 @@ class StreamSource:
             return self.rtsp_url
         if not self.hls_master_url:
             raise StreamResolutionError(f"camera {self.external_id}: no HLS URL")
-        return resolve_hls_variant(self.hls_master_url)
+        return resolve_hls_variant(self.hls_master_url, settings=self.settings)
 
 
 def select_transport(
@@ -159,4 +168,5 @@ def select_transport(
         transport=transport,
         rtsp_url=cam.rtsp_url,
         hls_master_url=cam.hls_url,
+        settings=settings,
     )
