@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 from services.api import audit
 from services.api.config import ApiSettings, get_api_settings
 from services.api.media_signing import signed_media_url
+from services.api.gateway_proxy import signed_proxy_url
 from services.api.db import get_session
 from services.api.schemas import (
     BulkImportRejection,
@@ -682,7 +683,12 @@ def get_stream_url(
         )
 
     if camera.source_type == SourceType.GATEWAY.value and feed_settings is not None:
-        url = feed_settings.hls_url(camera.camera_ref)
+        # Return a signed proxy URL, not the raw upstream address. The browser has no
+        # session with the gateway; handing it the direct URL gets the login page back
+        # (HTTP 200 text/html), which hls.js reports as manifestLoadError. The proxy
+        # in gateway_proxy.py holds the access code and rewrites every segment and key
+        # reference back to itself, so the credential never leaves the server.
+        url = signed_proxy_url(camera.camera_ref, "index.m3u8", settings.jwt_secret)
         transport = "hls"
     elif camera.source_type == SourceType.FILE.value:
         # Own-feed (replay) cameras are backed by a bundled clip, not a gateway
