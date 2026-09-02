@@ -3,21 +3,32 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, type Camera, type DetectionPoint, type Zone } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { Badge, Empty, ErrorBox, Spinner } from "../components/ui";
+import CameraBackdrop from "../components/CameraBackdrop";
 
 /**
  * Draw an intrusion zone on a camera's frame.
  *
- * The surface is deliberately not a live video still. A zone is stored in frame pixels
- * (see migration 0006), so what matters when drawing it is the coordinate space, not the
- * picture — and this estate's media plane is intermittent enough that a page which needs
- * a live frame to function would be unusable half the time.
+ * Two things are shown, and both are needed.
  *
- * What is shown instead is better for the job anyway: **every place a vehicle has
- * actually been detected on this camera**. Drawing a polygon on an empty rectangle is
- * guesswork — an operator cannot tell which part of the frame traffic passes through,
- * and a zone drawn over the sky alerts on nothing while looking entirely reasonable.
- * Plotting real detections makes zone placement answerable from evidence, the same way
- * the coverage report derives gaps from queries that really ran.
+ * **The camera's own picture**, behind the drawing surface. This page used to withhold
+ * it on the reasoning that a zone is stored in frame pixels so the coordinate space is
+ * what matters, and that a page depending on this estate's media plane would be
+ * unusable half the time. The first half was always a little too clever — an operator
+ * asked to fence off a carriageway needs to see the carriageway — and the second half
+ * stopped being true once the gateway proxy started serving playlists from cache with
+ * segments fetched ahead, which took a tile from 46 seconds a segment to under one.
+ * It is still only a backdrop: it fails quietly, and everything here works without it.
+ *
+ * **Every place a vehicle has actually been detected on this camera.** A polygon drawn
+ * on a picture alone is still partly guesswork, because a scene does not show where
+ * traffic passed while nobody was watching — a zone over a lane that is busy on camera
+ * but was empty during ingest alerts on nothing while looking entirely reasonable.
+ * Plotting real detections makes placement answerable from evidence, the same way the
+ * coverage report derives gaps from queries that really ran.
+ *
+ * The video and the SVG share one box and one coordinate space, which is what makes a
+ * click on a kerb store the pixel that kerb occupies; see `CameraBackdrop` for why the
+ * fit must stretch rather than preserve aspect.
  */
 
 const DEFAULT_W = 1920;
@@ -37,6 +48,8 @@ export default function ZonesPage() {
   const [refW, setRefW] = useState(DEFAULT_W);
   const [refH, setRefH] = useState(DEFAULT_H);
   const [error, setError] = useState<string | null>(null);
+  const [showView, setShowView] = useState(true);
+  const [viewOk, setViewOk] = useState(false);
   const svgRef = useRef<SVGSVGElement>(null);
 
   const cameras = useQuery({
@@ -66,6 +79,27 @@ export default function ZonesPage() {
   });
 
   const camera: Camera | undefined = cameras.data?.find((c) => c.id === cameraId);
+
+  // The camera's own picture, so a zone is drawn on the scene rather than on a grid.
+  // Best effort throughout: `retry: false` because a camera that cannot stream should
+  // cost the editor one request, not four, and a failure leaves the surface exactly as
+  // it was before this existed.
+  const stream = useQuery({
+    queryKey: ["stream-url", cameraId],
+    queryFn: () => api.streamUrl(cameraId),
+    enabled: Boolean(cameraId) && showView,
+    retry: false,
+  });
+
+  // Take the frame size from what the pipeline measured on this camera. Typing it by
+  // hand is an invitation to get it wrong, and a wrong reference size does not fail
+  // loudly -- it silently places every point in the zone against the wrong frame.
+  useEffect(() => {
+    if (camera?.resolution_w && camera?.resolution_h) {
+      setRefW(camera.resolution_w);
+      setRefH(camera.resolution_h);
+    }
+  }, [camera?.id, camera?.resolution_w, camera?.resolution_h]);
 
   // Fit the frame into the canvas. All coordinates are stored in frame pixels; this
   // scale exists only so a 1920-wide frame is drawable on a laptop.
@@ -184,6 +218,19 @@ export default function ZonesPage() {
                   : "No detections recorded on this camera yet."}
               </div>
               <div className="flex items-center gap-2">
+                <label className="flex items-center gap-1.5 text-[11px] text-muted cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={showView}
+                    onChange={(e) => setShowView(e.target.checked)}
+                  />
+                  camera view
+                </label>
+                {showView && stream.data?.url && !viewOk ? (
+                  // Said once, quietly, and only while it is still true. The surface
+                  // works without the picture, so this is a note rather than an error.
+                  <span className="text-[11px] text-muted">connecting…</span>
+                ) : null}
                 <label className="text-[11px] text-muted">frame</label>
                 <input
                   className="input w-20 text-xs py-1"
@@ -201,15 +248,29 @@ export default function ZonesPage() {
               </div>
             </div>
 
-            <svg
-              ref={svgRef}
-              onClick={addPoint}
-              viewBox={`0 0 ${CANVAS_W} ${canvasH}`}
-              className={`w-full rounded border border-edge bg-ink-900 ${
-                isAdmin ? "cursor-crosshair" : ""
-              }`}
+            {/*
+              The picture and the drawing surface share one box and one coordinate
+              space: the video is stretched to fill it and the SVG's viewBox maps the
+              camera's frame pixels onto the same rectangle, so a point clicked on a
+              kerb is stored as the pixel that kerb occupies. The video sits behind and
+              is purely a backdrop -- if it never arrives, everything below still works,
+              which is why it is allowed to fail quietly.
+            */}
+            <div
+              className="relative w-full rounded border border-edge bg-ink-900 overflow-hidden"
               style={{ aspectRatio: `${refW} / ${refH}` }}
             >
+              {showView && stream.data?.url ? (
+                <CameraBackdrop url={stream.data.url} onReady={setViewOk} />
+              ) : null}
+              <svg
+                ref={svgRef}
+                onClick={addPoint}
+                viewBox={`0 0 ${CANVAS_W} ${canvasH}`}
+                className={`absolute inset-0 h-full w-full ${
+                  isAdmin ? "cursor-crosshair" : ""
+                }`}
+              >
               {/* A grid, so the frame reads as a coordinate space rather than a void. */}
               {Array.from({ length: 8 }, (_, i) => (
                 <line
@@ -220,6 +281,7 @@ export default function ZonesPage() {
                   y2={canvasH}
                   stroke="#1e2733"
                   strokeWidth={1}
+                  opacity={viewOk ? 0.25 : 1}
                 />
               ))}
               {Array.from({ length: 5 }, (_, i) => (
@@ -231,6 +293,7 @@ export default function ZonesPage() {
                   y2={(canvasH / 5) * i}
                   stroke="#1e2733"
                   strokeWidth={1}
+                  opacity={viewOk ? 0.25 : 1}
                 />
               ))}
 
@@ -281,7 +344,8 @@ export default function ZonesPage() {
                   strokeWidth={1.5}
                 />
               ))}
-            </svg>
+              </svg>
+            </div>
 
             {isAdmin && (
               <div className="flex items-end gap-2 flex-wrap mt-3">
