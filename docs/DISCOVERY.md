@@ -474,6 +474,52 @@ at full resolution, gates it, detects on it, and passes 8/8 of the organiser's o
 contract. What is missing is not processing but pixels on the plate -- and the standard
 trick for recovering small objects makes the output less truthful rather than more.
 
+## Finding 19 - the government cameras were never placed on the map
+
+**2026-09-02.** Model 1 is the one mandatory model, and its whole point is a GIS
+registry. All thirty government cameras were sitting at `geom_source: unset`, with
+`lat` and `lon` null, so none of them appeared on the map, none could anchor a journey
+hop, and the coverage report counted every one of them as a gap.
+
+Nothing needed building. `scripts/geocode_cameras.py` already resolves a camera's
+free-text name against Nominatim with provenance tiers, and it had been run for the
+previous estate -- the four `REPLAY-` cameras carry `geocoded` and `approximate`
+positions from it. It had simply never been run against the estate that replaced it.
+
+Running it: **18 geocoded, 6 district-centroid, 6 honestly unset** of thirty. Coverage
+gaps fell from 34 to 28. The results were applied through `POST /cameras/bulk-import`
+rather than SQL, because that is the Model 1 capability a judge is meant to see, and
+using it here means it is exercised rather than merely demonstrated. It reported
+29 updated, 0 created, 0 rejected.
+
+Two things worth recording, because both are the kind of detail that decides whether a
+map is trustworthy.
+
+**The seed CSV was keyed on the old estate's references.** Its `camera_ref` column held
+`1`..`30` while the live registry uses `cam01`..`cam30`, so importing it unchanged
+would have created thirty new cameras rather than placing the existing ones. The rows
+were re-keyed by matching the camera's name, which matched 29 of 30 exactly; the
+estate had renamed `14 Delight` to `14 Delight RLVD`, and that camera resolves to
+nothing anyway.
+
+**One coordinate was wrong, and its confidence radius made it worse.** Every placement
+was checked against the city its own label names. Twenty-two of twenty-four sat within
+a few kilometres. `02 Janpath` sat **64 km** from Ahmedabad: Nominatim had answered the
+query `Janpath, Ahmedabad, Gujarat, India` with a guest house on the Palanpur highway
+whose name merely contains the word, and the geocoder accepted it as a confident hit at
+a **300 m** radius. A wrong position with a tight radius is worse than no position,
+because route reconstruction consumes that radius as its tolerance. It has been
+downgraded to the Ahmedabad district centroid at 5,000 m, with the rejection recorded in
+`resolved_by`.
+
+The general weakness stays: the acceptance rule looks at the geocoder's rank, not at
+whether the answer is anywhere near the place the label names. A distance check against
+the named district would catch this class, and is not written yet.
+
+One check in this session was also wrong in the other direction and is worth admitting:
+`34 dhanori` was first flagged as 267 km out of place, because the reference city used
+for the comparison was picked badly. It is 14 km from Navsari and correct.
+
 ## Local evaluation hardware
 
 Python 3.12.5, Docker 29.7.2, Node 20.14, **NVIDIA RTX 4050 Laptop, 6 GB VRAM**.
