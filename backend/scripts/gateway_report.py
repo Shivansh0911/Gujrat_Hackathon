@@ -66,6 +66,17 @@ def merge(runs: list[dict[str, Any]]) -> tuple[dict[str, dict[str, Any]], list[s
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--out", type=Path, default=None)
+    ap.add_argument(
+        "--host",
+        default=None,
+        help=(
+            "only merge passes against this gateway host; defaults to the host of the "
+            "most recent pass. The estate moved hosts on 2026-09-01, and merging the "
+            "two produced a report claiming 60 catalogued cameras -- thirty from an "
+            "estate that no longer exists -- under a single host name. A submission "
+            "report that describes two estates as one is worse than no report."
+        ),
+    )
     args = ap.parse_args()
 
     paths = sorted(EVIDENCE_DIR.glob("gateway-ingest-*.json"))
@@ -74,6 +85,18 @@ def main() -> int:
         return 2
 
     runs = load_runs(paths)
+
+    # One estate per report. The gateway moved host on 2026-09-01, and the evidence
+    # directory still holds passes against both; merging them produced a report
+    # claiming sixty catalogued cameras under one host name, half of them from an
+    # estate that no longer exists.
+    wanted = args.host or runs[-1]["gateway_host"]
+    kept = [r for r in runs if r["gateway_host"] == wanted]
+    if len(kept) != len(runs):
+        print(f"merging {len(kept)} of {len(runs)} passes: those against {wanted}")
+    runs = kept
+    paths = [p for p, r in zip(paths, load_runs(paths)) if r["gateway_host"] == wanted]
+
     latest, superseded = merge(runs)
 
     results = [latest[k] for k in sorted(latest, key=lambda r: int(r) if r.isdigit() else 0)]
