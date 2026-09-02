@@ -11,6 +11,7 @@ import WatchlistPage from "./pages/WatchlistPage";
 import SystemPage from "./pages/SystemPage";
 import ControlRoomPage from "./pages/ControlRoomPage";
 import DemoPage from "./pages/DemoPage";
+import ZonesPage from "./pages/ZonesPage";
 
 const NAV = [
   { to: "/map", label: "GIS Map", hint: "Camera registry" },
@@ -20,6 +21,7 @@ const NAV = [
   { to: "/health", label: "Health", hint: "Feed diagnostics" },
   { to: "/gaps", label: "Coverage", hint: "Gap analysis" },
   { to: "/watchlist", label: "Watchlist", hint: "Vehicles being watched" },
+  { to: "/zones", label: "Zones", hint: "Intrusion detection areas" },
   { to: "/system", label: "System", hint: "Audit chain, catalogue" },
   { to: "/demo", label: "Demo", hint: "Footage and the reads from it" },
 ];
@@ -119,6 +121,7 @@ function Shell() {
           <Route path="/health" element={<HealthPage />} />
           <Route path="/gaps" element={<GapsPage />} />
           <Route path="/watchlist" element={<WatchlistPage />} />
+          <Route path="/zones" element={<ZonesPage />} />
           <Route path="/system" element={<SystemPage />} />
           <Route path="/demo" element={<DemoPage />} />
           <Route path="*" element={<Navigate to="/map" replace />} />

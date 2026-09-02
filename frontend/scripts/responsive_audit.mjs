@@ -42,6 +42,7 @@ const PAGES = [
   { name: "system", nav: "System" },
   { name: "controlroom", nav: "Control Room", optional: true },
   { name: "demo", nav: "Demo", optional: true },
+  { name: "zones", nav: "Zones", optional: true },
 ];
 
 function secret(key) {
@@ -165,7 +166,17 @@ async function measure(page, pageName, vp) {
       .filter((img) => img.complete && img.naturalWidth === 0)
       .map((img) => (img.getAttribute("src") ?? "(no src)").slice(0, 80));
 
+    // Videos that failed to load their source. Same defect family as the broken
+    // images, and equally invisible to geometry: the element is present and correctly
+    // sized, it just has no media behind it. This is how a stream URL resolved against
+    // the wrong origin presented -- "clip could not be opened" on every tile, reading
+    // as a broken camera rather than a wrong host.
+    const brokenVideos = [...document.querySelectorAll("main video")]
+      .filter((v) => v.error !== null || (v.currentSrc === "" && v.getAttribute("src")))
+      .map((v) => (v.getAttribute("src") ?? "(no src)").slice(0, 80));
+
     return {
+      brokenVideos: [...new Set(brokenVideos)].slice(0, 4),
       scrollWidth: doc.scrollWidth,
       innerWidth: window.innerWidth,
       overflowing: [...new Set(overflowing)].slice(0, 4),
@@ -205,6 +216,13 @@ async function measure(page, pageName, vp) {
   }
 
   const imagesBroken = metrics.brokenImages.length > 0;
+  const videosBroken = metrics.brokenVideos.length > 0;
+  if (videosBroken) {
+    problems.push(
+      `${tag}: ${metrics.brokenVideos.length} video(s) failed to load — ` +
+        metrics.brokenVideos.join(", "),
+    );
+  }
   if (imagesBroken) {
     problems.push(
       `${tag}: ${metrics.brokenImages.length} image(s) loaded nothing — ` +
@@ -218,7 +236,8 @@ async function measure(page, pageName, vp) {
     );
   }
 
-  const ok = !overflows && !clipped && !navTooWide && !mapCrushed && !imagesBroken;
+  const ok =
+    !overflows && !clipped && !navTooWide && !mapCrushed && !imagesBroken && !videosBroken;
   console.log(
     ok
       ? `  ok   ${tag}`
@@ -227,7 +246,8 @@ async function measure(page, pageName, vp) {
           (clipped ? ` clipped:${metrics.clipped.length}` : "") +
           (navTooWide ? ` nav:${(metrics.navShare * 100).toFixed(0)}%` : "") +
           (mapCrushed ? ` map:${(metrics.mapShare * 100).toFixed(0)}%` : "") +
-          (imagesBroken ? ` brokenimg:${metrics.brokenImages.length}` : ""),
+          (imagesBroken ? ` brokenimg:${metrics.brokenImages.length}` : "") +
+          (videosBroken ? ` brokenvid:${metrics.brokenVideos.length}` : ""),
   );
   return ok;
 }

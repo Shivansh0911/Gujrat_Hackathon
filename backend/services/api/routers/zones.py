@@ -23,6 +23,7 @@ from sqlalchemy.orm import Session
 
 from services.api import audit
 from services.api.db import get_session
+from services.analytics.zones import bbox_centroid
 from services.api.security import AdminActor, CurrentActor, get_camera_or_404
 from services.registry.models import Camera, CameraZone
 
@@ -203,3 +204,59 @@ def delete_zone(
     )
     session.delete(zone)
     session.flush()
+
+
+class DetectionPoint(BaseModel):
+    """Where one vehicle was, in this camera's frame."""
+
+    x: float
+    y: float
+    plate: str | None
+    observed_at_utc: str
+
+
+@router.get("/cameras/{camera_id}/detection-points", response_model=list[DetectionPoint])
+def detection_points(
+    camera_id: uuid.UUID, session: SessionDep, actor: CurrentActor, limit: int = 300
+) -> list[DetectionPoint]:
+    """Recent vehicle-box centroids on this camera, for drawing a zone against.
+
+    Drawing a polygon on an empty rectangle is guesswork: an operator has no way to
+    know which part of the frame vehicles actually pass through, and a zone drawn over
+    the sky alerts on nothing while looking perfectly reasonable. Plotting where
+    detections have genuinely landed turns zone drawing into something answerable from
+    evidence -- the same principle as the coverage report deriving gaps from queries
+    that really ran rather than from a model.
+
+    These are the same pixel coordinates the containment test uses, so what an operator
+    draws around is exactly what will be tested against.
+    """
+    camera = get_camera_or_404(session, actor, camera_id)
+    rows = session.execute(
+        text(
+            """
+            SELECT vehicle_bbox, plate_normalised, observed_at_utc
+            FROM detection
+            WHERE camera_id = :camera_id
+              AND vehicle_bbox IS NOT NULL
+            ORDER BY observed_at_utc DESC
+            LIMIT :limit
+            """
+        ),
+        {"camera_id": str(camera.id), "limit": max(1, min(limit, 2000))},
+    ).mappings()
+
+    out: list[DetectionPoint] = []
+    for r in rows:
+        centre = bbox_centroid(r["vehicle_bbox"])
+        if centre is None:
+            continue
+        out.append(
+            DetectionPoint(
+                x=round(centre[0], 1),
+                y=round(centre[1], 1),
+                plate=r["plate_normalised"],
+                observed_at_utc=r["observed_at_utc"].isoformat(),
+            )
+        )
+    return out

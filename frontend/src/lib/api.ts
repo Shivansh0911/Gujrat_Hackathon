@@ -28,6 +28,9 @@ export type GapAnalysis = components["schemas"]["GapAnalysis"];
 export type DistrictCoverage = components["schemas"]["DistrictCoverage"];
 export type CameraGap = components["schemas"]["CameraGap"];
 export type JourneyGap = components["schemas"]["JourneyGap"];
+export type Zone = components["schemas"]["ZoneOut"];
+export type ZoneCreate = components["schemas"]["ZoneCreate"];
+export type DetectionPoint = components["schemas"]["DetectionPoint"];
 export type DemoFeed = components["schemas"]["DemoFeed"];
 export type DemoRead = components["schemas"]["DemoRead"];
 
@@ -207,6 +210,17 @@ export const api = {
   auditVerify: () => request<AuditVerify>("/audit/verify"),
   gatewayStatus: () => request<GatewayStatus>("/health/gateway"),
   gapAnalysis: () => request<GapAnalysis>("/cameras/gap-analysis"),
+
+  zones: (cameraId: string) => request<Zone[]>(`/cameras/${cameraId}/zones`),
+  createZone: (cameraId: string, body: ZoneCreate) =>
+    request<Zone>(`/cameras/${cameraId}/zones`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  deleteZone: (cameraId: string, zoneId: string) =>
+    request<void>(`/cameras/${cameraId}/zones/${zoneId}`, { method: "DELETE" }),
+  detectionPoints: (cameraId: string) =>
+    request<DetectionPoint[]>(`/cameras/${cameraId}/detection-points`),
   demoFeed: () => request<DemoFeed>("/demo/own-feed"),
 
   /**

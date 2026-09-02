@@ -133,6 +133,36 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/cameras/{camera_id}/detection-points": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Detection Points
+         * @description Recent vehicle-box centroids on this camera, for drawing a zone against.
+         *
+         *     Drawing a polygon on an empty rectangle is guesswork: an operator has no way to
+         *     know which part of the frame vehicles actually pass through, and a zone drawn over
+         *     the sky alerts on nothing while looking perfectly reasonable. Plotting where
+         *     detections have genuinely landed turns zone drawing into something answerable from
+         *     evidence -- the same principle as the coverage report deriving gaps from queries
+         *     that really ran rather than from a model.
+         *
+         *     These are the same pixel coordinates the containment test uses, so what an operator
+         *     draws around is exactly what will be tested against.
+         */
+        get: operations["detection_points_cameras__camera_id__detection_points_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/cameras": {
         parameters: {
             query?: never;
@@ -972,6 +1002,20 @@ export interface components {
             /** Corrections */
             corrections: Record<string, never>[];
         };
+        /**
+         * DetectionPoint
+         * @description Where one vehicle was, in this camera's frame.
+         */
+        DetectionPoint: {
+            /** X */
+            x: number;
+            /** Y */
+            y: number;
+            /** Plate */
+            plate: string | null;
+            /** Observed At Utc */
+            observed_at_utc: string;
+        };
         /** DistrictCoverage */
         DistrictCoverage: {
             /** District */
@@ -1693,6 +1737,39 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    detection_points_cameras__camera_id__detection_points_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                camera_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DetectionPoint"][];
+                };
             };
             /** @description Validation Error */
             422: {

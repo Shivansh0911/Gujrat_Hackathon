@@ -1,3 +1,4 @@
+import { mediaUrl } from "../lib/api";
 import { useEffect, useRef, useState } from "react";
 import Hls from "hls.js";
 
@@ -24,7 +25,13 @@ export default function HlsPlayer({
   const [detail, setDetail] = useState<string>("");
 
   useEffect(() => {
-    if (!url || !videoRef.current) return;
+    // Resolve against the API, not the console. The API returns media paths
+    // root-relative -- correct behind nginx, and wrong on a split-origin deployment
+    // where the browser resolves them against the console's own origin and Netlify's
+    // catch-all answers with index.html at HTTP 200. The player then reports "clip
+    // could not be opened", which reads as a broken camera rather than a wrong host.
+    const src = mediaUrl(url);
+    if (!src || !videoRef.current) return;
     const video = videoRef.current;
     setState("loading");
     setDetail("");
@@ -42,10 +49,10 @@ export default function HlsPlayer({
     // MP4 served directly by the API, and hls.js cannot play one -- handing it a
     // progressive file produces a manifest-parse error that reads as "the camera is
     // down". The element plays MP4 natively, with range requests for seeking.
-    const isHls = /\.m3u8(\?|$)/i.test(url);
+    const isHls = /\.m3u8(\?|$)/i.test(src);
 
     if (!isHls) {
-      video.src = url;
+      video.src = src;
       video.addEventListener("loadedmetadata", () => {
         if (cancelled) return;
         setState("playing");
@@ -56,7 +63,7 @@ export default function HlsPlayer({
       video.addEventListener("error", () => fail("clip could not be opened"));
     } else if (Hls.isSupported()) {
       hls = new Hls({ manifestLoadingMaxRetry: 1, levelLoadingMaxRetry: 1, fragLoadingMaxRetry: 1 });
-      hls.loadSource(url);
+      hls.loadSource(src);
       hls.attachMedia(video);
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
         if (cancelled) return;
@@ -71,7 +78,7 @@ export default function HlsPlayer({
         fail(status ? `upstream returned HTTP ${status}` : `${data.type}: ${data.details}`);
       });
     } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
-      video.src = url;
+      video.src = src;
       video.addEventListener("loadedmetadata", () => !cancelled && setState("playing"));
       video.addEventListener("error", () => fail("stream could not be opened"));
     } else {
