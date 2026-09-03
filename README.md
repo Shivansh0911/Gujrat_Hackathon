@@ -209,9 +209,98 @@ filter, not a complete one, and the confidence floor is what now stops that clas
 
 ---
 
+## How it is used
+
+Three jobs, in the order a police force actually meets them. Every screenshot below was
+captured against the live deployment with the data that is in it — none is a mock-up.
+
+### Job 1 — Trace a vehicle
+
+*An FIR is filed. The registration is known. Where has the vehicle been?*
+
+**Watchlist** → the vehicle is entered with the **authority** that listed it, the **case
+reference**, and an **expiry**. Expiry is a required field with no default: an entry
+without one is a permanent record about a citizen, created by forgetting. This screen is
+where the authorisation to look for a vehicle is written down, before any looking happens.
+
+**Alert Desk** → the moment any camera reads that plate, an alert appears carrying the
+crop, the camera, the time, the read confidence, and the watchlist entry it matched.
+An operator acknowledges or resolves it.
+
+**Journey** → registration, time window, and a **purpose**, which is written to the
+tamper-evident ledger *before* the search runs. The result is the route: which camera,
+at what time, how far apart — and where the gaps were.
+
+**Export** → a signed PDF with the evidence photographs, for the case file.
+
+![Journey](docs/screenshots/04-journey.png)
+
+Two things in that screenshot are deliberate and worth naming, because they are what
+separates a route a court can use from one it cannot. *"8 cameras excluded from this
+search: no coordinate on record"* — a camera we cannot place is declared, not quietly
+dropped. And *"24 cameras on this route produced no detection — a coverage gap, not an
+absence of the vehicle"* — the dashed line is an admission, not a claim. **Only cameras
+that actually saw the vehicle become hops.** The line between them is never inferred.
+
+### Job 2 — Watch a place
+
+*A godown, a toll plaza, a gate. Nothing should enter it after dark.*
+
+**Zones** → draw a region on that camera's view. The camera's own picture sits behind the
+drawing surface, and every place a vehicle has previously been detected is plotted on it,
+so the region is placed against evidence rather than guesswork. A vehicle whose bounding
+box **centres** inside the region raises an alert.
+
+![Zones](docs/screenshots/13-zones.png)
+
+**This is the analytic that works on the government estate today**, because it needs a
+vehicle box rather than a readable plate — see limitation 12.
+
+**Control Room** → up to six cameras at once, each labelled by whose feed it is.
+
+![Control Room](docs/screenshots/12-control-room.png)
+
+### Job 3 — Plan and account for the estate
+
+*A senior officer asking what exists, what works, and who did what.*
+
+**GIS Map** — every camera, its department, its status. A camera that can only be placed
+to a district is drawn as a **circle**, not a pin, because a false pin produces an
+authoritative-looking route that is wrong.
+
+**Coverage** — which districts are thin, which cameras have no position, grouped by the
+remedy rather than by severity: dropping a pin and procuring a camera do not belong on
+one scale.
+
+**Health** — declared frame rate against measured, reconnects, transport in use. One
+click produces the organiser's §2.5 fault-report payload.
+
+**System** — the audit ledger, verifiable on demand. Who searched for what, when, and
+under what stated purpose. It is hash-chained, so an entry cannot be altered after the
+fact without the chain failing.
+
+That ledger is not decoration. While capturing the screenshots on this page, a stray zone
+appeared on `cam02` that nobody had deliberately created. The chain answered the question
+exactly: `seq=862 CREATE_ZONE`, `seq=863 DELETE_ZONE` eight seconds later, `seq=899
+CREATE_ZONE` again — an automated capture script whose click had landed on the drawing
+surface. The zone was removed through the audited endpoint. A system that can tell you
+that about itself is the point of the feature.
+
+### Who can do what
+
+**Control Room Operator** — view cameras, trace vehicles, work the alert desk.
+**System Administrator** — all of that, plus camera onboarding, watchlist and zone
+management.
+
+The split is not cosmetic. Authorising surveillance and conducting it are different
+responsibilities, and the API enforces it rather than the UI hiding buttons: an operator
+sending a valid watchlist create is answered `403 adding a watchlist entry requires admin`.
+
+---
+
 ## The console
 
-Eight screens, all on real API data. No mocked components — a screen without a real
+Ten screens, all on real API data. No mocked components — a screen without a real
 backing endpoint does not ship, and no endpoint ships without a screen.
 
 ### GIS Map — camera registry
@@ -240,7 +329,7 @@ explicitly, and the watchlist authority and case reference. Confusion-aware fuzz
 matching surfaces vehicles an exact-match system misses entirely.
 
 ### Control Room — multi-camera video wall
-![Government tile](docs/screenshots/gateway-tile.png)
+![Control Room](docs/screenshots/12-control-room.png)
 
 Up to six tiles, chosen from the registry, each labelled **Government feed** or
 **Own feed** so nobody has to remember which is which. Cameras with recorded
@@ -256,6 +345,7 @@ the registry entry and its recorded detections are unaffected. A blank rectangle
 would leave an operator unable to tell a dead camera from a dead console.
 
 ### Zones — intrusion detection areas
+![Zones](docs/screenshots/13-zones.png)
 
 A polygon drawn over one camera's view, in that camera's own frame pixels. Real
 detection centroids from that camera are plotted on the drawing surface, so a zone
@@ -271,6 +361,7 @@ box, not a readable plate, which is why they work on this estate today when jour
 and watchlist do not.
 
 ### Demo — the own-feed clip, frame-aligned
+![Demo](docs/screenshots/14-demo.png)
 
 The clip that the accuracy figures are scored against, played beside the reads it
 produced, aligned by presentation timestamp so a reviewer can watch a plate arrive
