@@ -76,6 +76,7 @@ def test_a_cold_session_gets_more_than_one_chance(monkeypatch) -> None:  # type:
 
     class S:
         gateway_access_code = "code"
+        gateway_email = ""  # the estate's sign-in grew this field on 2026-09-03
         gateway_scheme = "https"
         gateway_host = "example.invalid"
         gateway_login_path = "/auth/login"

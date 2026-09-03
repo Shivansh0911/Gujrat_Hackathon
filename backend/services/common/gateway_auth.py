@@ -85,7 +85,12 @@ def login(settings: Settings | None, timeout: float = 20.0) -> bool:
         return False
     url = f"{settings.gateway_scheme}://{settings.gateway_host}{settings.gateway_login_path}"
     log.info("gateway requires authentication; signing in")
-    resp = session().post(url, data={"password": settings.gateway_access_code}, timeout=timeout)
+    # The sign-in grew an email field on 2026-09-03. It is sent only when configured,
+    # because an estate whose form has one field rejects a POST carrying two.
+    form: dict[str, str] = {"password": settings.gateway_access_code}
+    if settings.gateway_email:
+        form["email"] = settings.gateway_email
+    resp = session().post(url, data=form, timeout=timeout)
     resp.raise_for_status()
     return True
 

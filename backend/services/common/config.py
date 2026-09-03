@@ -9,6 +9,7 @@ from pydantic import Field, ValidationInfo, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from services.common.paths import ENV_FILE
+from urllib.parse import quote
 
 
 class Settings(BaseSettings):
@@ -55,6 +56,12 @@ class Settings(BaseSettings):
     #: then every poll fails with a redirect that looks like an outage, whereas a code
     #: lets the client re-authenticate itself. Secret, and redacted like every other.
     gateway_access_code: str = ""
+
+    #: The estate added an email field to its sign-in on 2026-09-03, and locked RTSP
+    #: behind credentials at the same time. Before that a bare access code was enough
+    #: for HTTP and RTSP needed nothing at all, so both are optional: an estate that
+    #: does not ask for an email still works with this unset.
+    gateway_email: str = ""
 
     #: Path the access code is posted to, and the form field it goes in.
     gateway_login_path: str = "/auth/login"
@@ -103,7 +110,19 @@ class Settings(BaseSettings):
         return f"{self.gateway_scheme}://{self.gateway_host}{path}"
 
     def rtsp_url(self, external_id: str) -> str:
-        return f"rtsp://{self.media_host}:{self.gateway_rtsp_port}/stream/{external_id}"
+        """The RTSP URL, carrying credentials only when the estate asks for them.
+
+        Open until 2026-09-03, when the same change that added an email to the web
+        sign-in also made `DESCRIBE` answer `401 Unauthorized`. Credentials are
+        url-quoted because an access code is punctuated (`XXXX-XXXX-XXXX`) and an email
+        contains an `@`, either of which would otherwise corrupt the authority section.
+        """
+        auth = ""
+        if self.gateway_email and self.gateway_access_code:
+            auth = (
+                f"{quote(self.gateway_email, safe='')}:{quote(self.gateway_access_code, safe='')}@"
+            )
+        return f"rtsp://{auth}{self.media_host}:{self.gateway_rtsp_port}/stream/{external_id}"
 
     def whep_url(self, external_id: str) -> str:
         return f"http://{self.media_host}:{self.gateway_whep_port}/stream/{external_id}/whep"
