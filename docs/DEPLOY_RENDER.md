@@ -172,6 +172,7 @@ would rather not copy from a terminal.
    SETU_CATALOGUE_PATH=/cameras.json
    SETU_HLS_PATH_TEMPLATE=/{id}/index.m3u8
    SETU_GATEWAY_ACCESS_CODE=<the code from the feed-access form>
+   SETU_GATEWAY_EMAIL=<the address the feed access was registered to>
    ```
 
    > **The gateway moved on 2 September 2026, and the shape of it changed.** Four of
@@ -184,6 +185,7 @@ would rather not copy from a terminal.
    > | `SETU_GATEWAY_MEDIA_HOST` | RTSP and WebRTC, on a bare public IP. A CDN cannot proxy either, so the estate publishes them separately — and RTSP is the transport ANPR should use |
    > | `SETU_CATALOGUE_PATH` | `/api/ingest` became `/cameras.json` |
    > | `SETU_HLS_PATH_TEMPLATE` | `/live/stream/{id}/index.m3u8` became `/{id}/index.m3u8` |
+   > | `SETU_GATEWAY_EMAIL` | **Added 2026-09-03.** The estate's sign-in grew a second field that morning, and the same change made RTSP answer `401 Unauthorized`. Without it the login posts half a form, is answered with the sign-in page, and every catalogue and playlist request follows it — the console reports the gateway unreachable on an estate that is up. Sent only when set, and url-quoted into the RTSP URL |
    > | `SETU_GATEWAY_ACCESS_CODE` | **Secret.** The catalogue and every playlist now sit behind a password. Without it, requests return the sign-in page with HTTP 200, and the client reports a format error rather than a missing credential |
    >
    > The access code is a credential: it belongs in Render's environment and in the
@@ -447,6 +449,7 @@ database from a laptop instead.
 | All free services suddenly suspended | The workspace exceeded 750 instance-hours | Wait for the next calendar month, or move a second service to another workspace |
 | **UptimeRobot reports a continuous outage, `405 Method Not Allowed`, while the site works** | The monitor probes with `HEAD`, and FastAPI does not add `HEAD` to a route declared with `.get()` | Fixed on `main`: `/` and `/healthz` now answer both. On an older build, set the monitor's method to `GET` instead. Note the 405 still reached the server, so the keep-alive was working the whole time — only the reporting was wrong |
 | **Every government tile in Control Room says `Live feed unavailable, upstream returned HTTP 502`, while gateway ingest works** | The estate refuses its media plane to non-browser clients (`403 browser required`), and our proxy sent a library user-agent. RTSP is a different host with no such gate, which is why ingest was unaffected and the fault looked like an outage | Fixed on `main`. If it recurs, confirm `SETU_HLS_PATH_TEMPLATE` is `/{id}/index.m3u8` — the older `/live/stream/{id}/...` returns 404, which surfaces as the same 502 |
+| **Health says the gateway is unreachable, and the log shows `403` or the sign-in page on `/cameras.json`** | The estate requires an email as well as the access code since 2026-09-03 | Set `SETU_GATEWAY_EMAIL` to the address the feed access was registered to, and redeploy. Verified: with both, login returns a `sentinel` cookie, the catalogue returns JSON and RTSP delivers frames; with the code alone, neither does |
 | `POST /auth/login` returns 503 | `SETU_ADMIN_PASSWORD` / `SETU_OPERATOR_PASSWORD` unset | The API refuses to issue tokens rather than fall back to a default credential. Set them |
 
 ### Evidence crops and the free tier — stated plainly

@@ -42,3 +42,26 @@ def test_backoff_envelope_must_be_ordered():
 def test_transport_rejects_anything_but_tcp_or_udp():
     with pytest.raises(ValidationError):
         _s(rtsp_transport="quic")
+
+
+def test_rtsp_carries_credentials_only_when_the_estate_asks():
+    """RTSP was open until 2026-09-03, then began answering `401 Unauthorized`.
+
+    Credentials are therefore optional: an estate that does not want them must not be
+    sent a URL containing an empty `:@`, which is not a valid authority.
+    """
+    assert _s().rtsp_url("cam01") == "rtsp://example.test:8554/stream/cam01"
+
+    url = _s(gateway_email="team@example.ac.in", gateway_access_code="AAAA-BBBB-CCCC").rtsp_url(
+        "cam01"
+    )
+    # The `@` in an address and the dashes in a code both have meaning inside a URL's
+    # authority, so they are quoted rather than pasted in.
+    assert "team%40example.ac.in:AAAA-BBBB-CCCC@example.test:8554" in url, url
+    assert url.endswith("/stream/cam01")
+
+
+def test_an_access_code_without_an_email_is_not_put_in_the_url():
+    """Half a credential is not a credential, and would break the authority section."""
+    s = _s(gateway_access_code="AAAA-BBBB-CCCC")
+    assert "@" not in s.rtsp_url("cam01").split("//", 1)[1].split("/", 1)[0]
