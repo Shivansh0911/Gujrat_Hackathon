@@ -108,12 +108,19 @@ again on **2026-09-02**, over RTSP, writing to the deployed database:
 | Cameras catalogued | 30 |
 | Cameras that produced frames | **22** |
 | Cameras that produced none | 8 — `no frames within budget` |
-| Frames decoded | 2,150 |
-| Plate regions detected | 9 |
-| Records published | 1 |
-| Grammar-valid registrations | **0** |
+| Frames decoded | 3,938 |
+| Plate regions detected | 18 |
+| Records published | 4 |
+| Grammar-valid registrations | **1** — `GJ09BM3641` |
 
-The one published record is not a vehicle. It is the caption the camera burns into its
+One published record **is** a vehicle: `cam22` returned `GJ09BM3641` at confidence
+0.757 on 3 September, and the enlarged crop is unmistakably a real Gujarat plate. It is
+the first grammar-valid registration this estate has produced, and it flowed the whole
+way through untouched — persisted, matched against that camera's intrusion zone, and
+raised as an alert on the Alert Desk. The digit after `GJ` is legible as either `8` or
+`9` and we do not claim to have settled which.
+
+The others are not vehicles. It is the caption the camera burns into its
 own frame — `O.N.G.C. Office BS-103_B1`, read as `0ACCO` — and the committed crop shows
 that plainly. A new host and a new estate produced the same answer as the old one:
 twenty-two live cameras and two thousand frames contain no plate a recogniser can read.
@@ -555,15 +562,16 @@ submission.
    resolution invalidates its zones — the frame size a zone was drawn against is stored
    with it so that can be detected rather than silently mis-evaluated. Turning a CCTV
    frame into ground coordinates needs camera calibration this estate does not publish.
-8. **The deployed instance carries three government-feed detections; one is a real
-   number plate and two are not.** Sweeps on 2026-09-02 wrote three records, and all
-   three crops were opened and looked at: `cam03` is the camera's own on-screen caption,
-   `cam02` is a dark building facade with no plate in it, and **`cam22` is a genuine
-   yellow commercial plate** read as `AZ9072`. None satisfies Indian plate grammar, so
-   none becomes a registration — which on `cam22` is the filter working correctly on a
-   real plate rather than on noise. The plate is two-line and our recogniser reads one
-   line, so even a sharper image of it would not produce a complete registration; see
-   DISCOVERY finding 20. All three are left in place. It is left in place: deleting a real output because it is unflattering
+8. **Four government-feed detections; two are real plates and two are not.** Every crop
+   was opened and looked at rather than trusted from its filename. `cam03` is the
+   camera's own on-screen caption, read as `0ACCO`. `cam02` is a dark building facade
+   with no plate in it, read as `CIE115`. `cam22` produced two: a yellow commercial
+   plate read as `AZ9072`, which is genuinely a plate but two-line — our recogniser
+   reads one line, so no complete registration is possible from it even sharpened — and
+   on 3 September **`GJ09BM3641`**, the estate's first grammar-valid registration. The
+   two non-plates are left in place: deleting a real output because it is unflattering
+   makes the error rate look better than it is, and both crops are committed so anyone
+   can see what happened. It is left in place: deleting a real output because it is unflattering
    would make the error rate look better than it is, and the crop is committed so
    anyone can see what happened. Note this is the same class of record as the twelve
    `REPLAY-` misreads already in the database — of 21 detections, 8 are grammar-valid
@@ -598,14 +606,21 @@ submission.
    placed at a guess. Every resolved position carries its provenance and a confidence
    radius that route reconstruction consumes as its tolerance, which is why one bad
    geocode was caught and downgraded; see DISCOVERY finding 19.
-12. **Every legible plate on the deployed instance came from our own footage.** It is
-   live at https://setu-gujrat.netlify.app and passes 10/10 deployment checks. The
-   government gateway has been ingested against the deployed database and contributed
-   exactly one record, the caption described in limitation 8 — so route reconstruction,
-   watchlist matching and speed flagging all still rest on own-feed and `REPLAY-`
-   material. Intrusion zones are the exception: they need a vehicle box rather than a
-   readable plate. A zone drawn over the near carriageway of `cam22` — a live
-   government camera — raises a real `zone_intrusion` alert on that camera's own
-   detection, so the bonus feature is demonstrated on the government feed and not only
-   on the replay harness. Six zone alerts stand alongside the six watchlist ones. The console labels the source of every hop and alert so this is
-   visible rather than assumed. See [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) §4.
+12. **Route reconstruction still rests on own-feed material, though the estate has now
+   given us one registration.** The console is live at https://setu-gujrat.netlify.app
+   and passes its deployment checks. The government gateway has contributed four
+   detections to the deployed database, one of which — `GJ09BM3641` on `cam22`,
+   3 September — is a grammar-valid Gujarat registration. **One plate on one camera is
+   not a route.** Journey needs the same vehicle at two or more placed cameras, and
+   watchlist matching needs it to be a vehicle somebody has listed, so both continue to
+   be demonstrated on own-feed and `REPLAY-` material; speed flagging needs two real
+   cameras and remains silent by design.
+
+   Intrusion zones are the exception and always were, because they need a vehicle box
+   rather than a readable plate. The zone over the near carriageway of `cam22` has now
+   raised alerts on both of that camera's detections, including `GJ09BM3641` — so the
+   bonus feature runs end to end on the government feed: live ingest, persisted
+   detection, classifier, alert on the desk, with nothing tuned for it. Seven zone
+   alerts stand alongside six watchlist ones. The console labels the source of every hop
+   and alert so all of this is visible rather than assumed. See
+   [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) §4.

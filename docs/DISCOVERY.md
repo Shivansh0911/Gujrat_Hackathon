@@ -577,6 +577,53 @@ field a department-scoped access-control model exists to protect. Per-camera cod
 resolution and frame rate *are* recoverable, because they can be measured from the
 decoded stream, and now are.
 
+## Finding 22 - the estate produced a Gujarat registration, on the fourth try at the ceiling
+
+**2026-09-03.** Three preprocessing ideas had been measured and rejected; a fourth was
+run, and then a live ingest returned something none of them could have.
+
+**Crop preprocessing does not help. Measured, six ways, on the own-feed clip** (40
+frames, scored on grammar-valid reads and on whether the one plate the clip contains
+survives):
+
+| variant | valid reads | distinct | `KA25AB1542` found |
+|---|---:|---:|:--|
+| **none** | **8** | **5** | **yes** |
+| CLAHE | 3 | 3 | yes |
+| histogram equalisation | 0 | 0 | no |
+| sharpen | 5 | 5 | **no** |
+| bilateral denoise | 8 | 6 | yes |
+| CLAHE + sharpen | 1 | 1 | no |
+
+Nothing beats leaving the crop alone. Histogram equalisation destroys the read
+entirely and sharpening loses the correct plate. Denoise ties on count while producing
+one *more* distinct plate from a clip containing one vehicle -- which is a loss, not a
+tie, by the same argument that rejected tiling: an extra distinct plate here is an
+extra fabricated registration.
+
+So the pipeline is at its ceiling for this footage, and the ceiling is pixels on the
+plate. That is now four measured attempts -- tiling (18), upscaling (20), preprocessing
+(here) -- and four rejections.
+
+**And then the estate gave us one.** A live ingest of four cameras on 3 September,
+30 seconds each, returned from `cam22`: 148 frames, 9 plate regions, one fused record,
+`GJ09BM3641` at confidence 0.757 -- **the first grammar-valid registration this
+government estate has produced**. The crop was enlarged and read by eye: it is
+unmistakably a real Gujarat plate. The digit after `GJ` is legible enough to be `8` or
+`9` and we do not claim to have settled which, so the read is *plausible and possibly
+one character wrong*, exactly as `GJ32AG0344` was on 2 September.
+
+It flowed the whole way through without anything being tuned for it: persisted to the
+deployed database, matched by the zone classifier against the `Near carriageway`
+polygon on that camera, and raised as a `zone_intrusion` alert visible on the Alert
+Desk. The README's "zero grammar-valid registrations from the government feed" has been
+corrected to one.
+
+The honest reading is not that the ceiling moved. 3,938 frames across 25 live cameras
+have now yielded 18 plate regions and **one** registration. What changed is that the
+claim "this estate cannot produce a readable plate" was too strong, and a single
+counter-example is enough to require saying so.
+
 ## Local evaluation hardware
 
 Python 3.12.5, Docker 29.7.2, Node 20.14, **NVIDIA RTX 4050 Laptop, 6 GB VRAM**.

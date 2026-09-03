@@ -183,9 +183,13 @@ def main() -> int:
         A("")
     A("### The finding that matters")
     A("")
+    # The count was hard-coded plural, which read as "1 grammar-valid registrations" the
+    # first time this estate produced one. A generated report that cannot count to one
+    # invites the reader to check the rest of the arithmetic too.
+    noun = "registration" if len(valid) == 1 else "registrations"
     A(
         f"{frames} frames across {len(ok)} live cameras yielded {boxes} plate regions and "
-        f"**{len(valid)} grammar-valid registrations**. That is not a pipeline fault: the "
+        f"**{len(valid)} grammar-valid {noun}**. That is not a pipeline fault: the "
         "recogniser reads what is legible, and at the resolution and framing these "
         "cameras publish, very little is. The evidence crops are committed, and the "
         "unreadable ones are unreadable to a human reviewer too."
