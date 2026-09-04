@@ -50,10 +50,13 @@ def _walk(camera: Camera, target: CameraStatus) -> None:
     if can_transition(current, target):
         camera.status = target.value
         return
+    # PROBING is checked, not written. Assigning it here and overwriting it on the next
+    # line would look like a recorded intermediate state and be nothing of the kind --
+    # only the final value is ever flushed. What the check buys is real: it refuses a
+    # target that is unreachable even via a probe, so DECOMMISSIONED stays terminal.
     if can_transition(current, CameraStatus.PROBING) and can_transition(
         CameraStatus.PROBING, target
     ):
-        camera.status = CameraStatus.PROBING.value
         camera.status = target.value
         return
     log.debug("leaving camera=%s at %s; %s is not reachable", camera.camera_ref, current, target)
