@@ -148,7 +148,52 @@ catalogue contains only an id and a name.
 
 ---
 
-## 6. What this system does not do
+## 6. Technology, and why each piece was chosen
+
+Nothing here is load-bearing by accident. Where a choice was forced by a measurement
+rather than a preference, the measurement is named.
+
+### AI models
+
+| Model | Role | Why this one |
+|---|---|---|
+| **YOLOv9-t**, 384×384, ONNX | Licence-plate detection | Small enough to run on a shared CPU with no GPU, which is the operating point a statewide rollout has to survive at the edge. Full-resolution frames are handed to it, never downscaled copies — verified, because a downscaled frame is the single easiest way to lose a plate silently |
+| **CCT-S-v2-global** via `fast-plate-ocr`, ONNX | Plate character recognition | Emits ten character slots with per-character confidences, which is what makes multi-frame fusion possible. An earlier recogniser could not emit a ten-character plate at all, and that defect alone held accuracy at 0% |
+
+Both run locally through **ONNX Runtime**. **No external AI API is called** — no
+frames, crops or registrations leave the deployment. For a system processing public
+surveillance footage that is a privacy property, not a cost decision.
+
+Everything before the models matters as much as the models. A **motion gate** drops
+frames with no scene change so the detector is not run on an empty road; an **Indian
+registration grammar filter** rejects reads that cannot be a plate; and **multi-frame
+fusion** votes character-by-character across a track, aligned per observation rather
+than assumed right-aligned — a fix made after fusing three reads of one plate produced
+something worse than the best single read.
+
+### Platform
+
+| Layer | Choice | Why |
+|---|---|---|
+| **Backend** | Python 3.12, **FastAPI**, Uvicorn | One language from stream decode to HTTP response; OpenAPI 3.1 is generated from the code, and the frontend's types are generated from that, so an API change that breaks the console fails at compile time |
+| **Database** | **PostgreSQL 16** with **PostGIS**, TimescaleDB, pgvector, pg_trgm | PostGIS does the spatial work route reconstruction depends on — distance, containment, uncertainty radii — in the database rather than in application code. Row-level security lives here too, which is why department scoping survives an application bug |
+| **ORM / migrations** | SQLAlchemy 2, **Alembic** | Every migration has a working downgrade, because a schema you cannot reverse is a schema you cannot deploy carefully |
+| **Video** | OpenCV + FFmpeg, RTSP forced over TCP, **hls.js** in the browser | RTSP/TCP for inference per the integration guide's first rule; HLS for viewing, through our own authenticated proxy so the estate credential never reaches a browser |
+| **Frontend** | **React 18**, TypeScript, Vite, Tailwind, **MapLibre GL** | MapLibre renders the registry and routes from real geometry; no map-provider account is required, so the console runs in an air-gapped deployment |
+| **Evidence** | ReportLab, **Ed25519** signatures, HMAC-signed media URLs | An exported route becomes a document in a case file, so it is signed, and the manifest commits to the photographs as well as the text |
+| **Hosting** | Render (API + PostgreSQL), Netlify (console), Docker Compose for on-premise | The same containers run on a laptop, on a free tier, or inside a government data centre. Nothing in the code knows which |
+
+### Engineering discipline
+
+`pytest` (319 tests), `Ruff`, `mypy --strict`, `gitleaks` secret scanning and a
+declared-FPS guard all run in GitHub Actions on every commit. The FPS guard is worth
+naming: §2.2 of the integration guide says never to trust a camera's reported frame
+rate, so a CI step counts the reads of that property and fails if a second one appears.
+It is a rule enforced by the build rather than by a code review.
+
+---
+
+## 7. What this system does not do
 
 1. **It cannot yet trace a vehicle across the government cameras.** 3,938 frames across
    25 live cameras have produced one grammar-valid registration. Route reconstruction
@@ -171,7 +216,7 @@ catalogue contains only an id and a name.
 
 ---
 
-## 7. Evidence you can check without trusting us
+## 8. Evidence you can check without trusting us
 
 - `reports/evidence/` — dated ingest records and output reports, one estate per report
 - `data/seed/anpr_ground_truth.csv` — the annotations the accuracy figure is scored against
@@ -189,7 +234,7 @@ catalogue contains only an id and a name.
 
 ---
 
-## 8. Repository map
+## 9. Repository map
 
 ```
 backend/services/analytics/    ANPR pipeline, zone and speed classifiers, matcher
