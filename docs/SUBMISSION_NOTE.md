@@ -205,10 +205,14 @@ It is a rule enforced by the build rather than by a code review.
    that rejected it.
 2. **ANPR accuracy is 29.6%, and we report it rather than rounding it.** It was 0% until
    three defects were found by measurement. Resolution still bounds it.
-3. **Department attribution is unavailable.** All five departments are seeded and
-   row-level security enforces the scoping, but the estate's catalogue publishes no
-   department, so 29 of 30 cameras sit at the default. Inventing it would mean
-   fabricating the one field a department-scoped access-control model exists to protect.
+3. **Department attribution is almost entirely unavailable.** All five departments are
+   seeded and row-level security enforces the scoping, but the estate's catalogue
+   publishes no department — checked three ways: `/api/ingest`, the estate's own
+   `cameras.json`, and its dashboard HTML all carry an id and a name and nothing else.
+   One camera states its department in its own label and is filed accordingly
+   (`cam19` → Panchayat); the other twenty-nine sit at the default. Assigning them would
+   mean fabricating the one field a department-scoped access-control model exists to
+   protect.
 4. **Speed flagging raises nothing today, by design.** It requires one plate at two
    genuinely different, positioned, non-replay cameras. The exclusion is a `WHERE` clause
    with a test that fails if it is removed.

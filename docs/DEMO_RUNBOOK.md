@@ -1,7 +1,12 @@
 # SETU — demonstration runbook
 
-Everything here works with the government gateway unreachable, which is the state it
-has been in for most of development and the state to plan for on the day.
+**Updated 2026-09-05.** The government gateway is reachable again and the figures below
+are the current ones — the estate moved host on 1 September and added an email to its
+sign-in on 3 September, so anything you remember from an earlier read of this file is
+probably out of date.
+
+Everything in section 2 still works with the gateway unreachable, which is the state to
+plan for: it went down twice during the build and once mid-session.
 
 ---
 
@@ -284,11 +289,12 @@ it produces, not the numbers below.
 
 | # | Show | Say | Time |
 |---|---|---|---|
-| 1 | **Health screen**, sorted by drift | *"Twenty-five of thirty cameras deliver frames. Two return HTTP 500, three time out. We report that per camera, because a camera's own `live` flag is a claim, not a health signal."* | 40 s |
-| 2 | Same screen, declared vs measured | *"Five of the eight cameras that declare a frame rate are wrong about it — this one declares 12.5 and delivers 5.4. That is why nothing in our pipeline reads a declared frame rate. Every timestamp comes from stream PTS."* | 30 s |
-| 3 | **Map**, gateway cameras | *"These are the live government cameras, placed where we can place them and drawn as a confidence circle where we can only place them to a district."* | 20 s |
-| 4 | **Alert Desk / detections**, camera 7 crop | *"Nine thousand frames across twenty-five live cameras. Thirty plate regions. Three crops with a plate a human can read — all the same vehicle, on camera 7. Here it is."* | 40 s |
-| 5 | The `GJ14AK5333` crop, enlarged | *"Our system read this as GJ14AK533 at confidence 0.94. It dropped a digit. We know that because we annotated every crop by hand and scored it: plate-level precision is zero, character error rate 39.8%."* | 40 s |
+| 1 | **Health screen** | *"Twenty-five of thirty cameras deliver frames. We report that per camera, because a camera's own live flag is a claim, not a health signal."* | 40 s |
+| 2 | Same screen, measured frame rate | *"Every one of these rates was measured by decoding the stream. The catalogue publishes none — it is 1,373 bytes for thirty cameras, an id and a name. Nothing in our pipeline reads a declared frame rate; every timestamp comes from stream PTS."* | 30 s |
+| 3 | **Map**, gateway cameras | *"Twenty-four of the thirty placed, and drawn as a confidence circle wherever we can only place them to a district. Six resolve to nothing and are shown as having no position rather than guessed."* | 25 s |
+| 4 | **Alert Desk**, the `cam22` crop | *"Three thousand nine hundred frames across twenty-five live cameras. Eighteen plate regions. One grammar-valid registration — GJ09BM3641, here it is, and here is the crop it came from."* | 40 s |
+| 5 | The same alert, showing it is an intrusion | *"That plate arrived through a zone we drew on that camera's own view. Live ingest, stored detection, classifier, alert — nothing tuned for it. Intrusion detection is the analytic that works on this estate today, because it needs a vehicle box rather than a readable plate."* | 40 s |
+| 5b | The `cam03` and `cam02` crops | *"And these two are not vehicles at all — a camera's own caption, and a building facade. We left them in. Deleting the outputs that embarrass you is how an error rate stops meaning anything."* | 30 s |
 | 6 | **Coverage** | *"So the finding we would give Gujarat Police is not 'our recogniser needs tuning'. It is that this estate publishes below the resolution at which any recogniser can read a plate. That is a procurement and placement finding, and it is the argument for processing at the edge where full resolution still exists."* | 30 s |
 
 ### Why lead with the failure
@@ -305,9 +311,15 @@ architecture. Say that too.
 
 ---
 
-## 3. If the gateway is 502 on the day
+## 3. If the gateway is refusing you on the day
 
-It probably will be. **Nothing in section 2 depends on it**, and the platform now says
+It has done so twice, in two different ways, and neither was a 502 in the end. On
+31 August the origin returned Cloudflare 502s on every endpoint. On 3 September the
+estate added an email field to its sign-in and locked RTSP behind credentials in the
+same change — the symptom was our own console reporting the gateway unreachable while
+the estate was perfectly healthy. **If the feed is refusing you, check the Health
+screen's gateway card first: it records what the last error actually was and when
+contact was lost.** **Nothing in section 2 depends on it**, and the platform now says
 so on screen rather than leaving you to explain it.
 
 ### What is actually measured
@@ -315,13 +327,16 @@ so on screen rather than leaving you to explain it.
 Do not describe this vaguely — the numbers are recorded and they make the point better
 than an apology does:
 
-| Date | Cameras producing frames | Valid registrations read |
-|---|---:|---:|
-| 2026-08-27 | 25 of 30 | 2 |
-| 2026-08-30 | 18 of 30 | 0 |
-| 2026-08-31 | **0 of 30** — Cloudflare 502 on every endpoint | — |
+| Date | Estate | Cameras producing frames | Valid registrations read |
+|---|---|---:|---:|
+| 2026-08-27 | `live.corp8.cloud` | 25 of 30 | 2 |
+| 2026-08-30 | `live.corp8.cloud` | 18 of 30 | 0 |
+| 2026-08-31 | `live.corp8.cloud` | **0 of 30** — Cloudflare 502 on every endpoint | — |
+| 2026-09-02 | `cctv.corp8.cloud` | 22 of 30 | 0 |
+| 2026-09-03 | `cctv.corp8.cloud` | 25 of 30 | **1** — `GJ09BM3641` |
 
-Same pipeline on all three days. The only thing that changed was the feed.
+Same pipeline on all five days, across two different estates. The only thing that
+changed was the feed.
 
 ### What to say, in about twenty seconds
 
@@ -386,7 +401,9 @@ front tends to trust the rest.
 1. **ANPR plate-level accuracy is 29.6% precision and recall**, 26.9% character error
    rate, measured against a by-eye annotation of every evidence crop
    (`data/seed/anpr_ground_truth.csv`). Four of the seven government-feed crops from
-   camera 7 are read exactly right.
+   camera 7 are read exactly right — that camera belonged to the estate retired on
+   1 September and has no equivalent in the current one, so quote it as history rather
+   than as something a judge can go and look at.
 
    It was **0%** when first measured. Three defects were found by measuring rather
    than by reading code: a nine-slot recogniser when Indian plates have ten

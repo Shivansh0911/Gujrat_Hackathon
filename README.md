@@ -589,7 +589,10 @@ submission.
    the live estate. The lesson is recorded because the failure looked exactly like an
    outage on the organiser's side, and was not.
 10. **The estate publishes no department attribution, so 29 of 30 government cameras
-   sit under Home by default.** All five departments the problem statement names are
+   sit under Home by default.** The one exception is `cam19`, filed under Panchayat
+   because its own label reads `19 KHAPARIA GRAM PANCHAYAT , TALUKA GANDEVI, DISTRICT
+   NAVSARI` — reading a camera's printed name is evidence; assigning the other
+   twenty-nine would be invention. All five departments the problem statement names are
    seeded, the registry is department-scoped, and row-level security enforces that
    scoping — but the catalogue carries only `id` and `name`, verified by fetching it:
    1,373 bytes for thirty cameras, two keys. Exactly one camera states its department
