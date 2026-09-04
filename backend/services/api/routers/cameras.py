@@ -570,17 +570,27 @@ async def bulk_import_cameras(
         accepted_rows.append(row)
 
     created = updated = unset = 0
+    unknown_departments: set[str] = set()
     for row in accepted_rows:
         ref = row["camera_ref"].strip()
         camera = session.execute(
             select(Camera).where(Camera.camera_ref == ref)
         ).scalar_one_or_none()
 
+        # The row may say which department owns the camera, and until now this endpoint
+        # ignored it and filed everything under the default -- in an import whose whole
+        # premise is a departmental spreadsheet. An unknown code is not a reason to
+        # reject an otherwise good row, so it falls back to the default and is reported.
+        code = (row.get("department_code") or "").strip().upper()
+        department = departments.get(code) if code else None
+        if code and department is None:
+            unknown_departments.add(code)
+
         if camera is None:
             camera = Camera(
                 camera_ref=ref,
                 name=(row.get("name") or f"Camera {ref}").strip(),
-                department_id=default_department.id,
+                department_id=(department or default_department).id,
                 source_type=SourceType.GATEWAY.value,
                 # DRAFT, not ACTIVE: onboarded, nothing verified yet. A camera becomes
                 # ACTIVE once it has actually been probed.
@@ -591,6 +601,10 @@ async def bulk_import_cameras(
             created += 1
         else:
             updated += 1
+            # Only on an explicit code: an import that omits the column must not
+            # silently move every existing camera into the default department.
+            if department is not None:
+                camera.department_id = department.id
 
         location = (row.get("location_text") or "").strip()
         if location:
@@ -653,6 +667,12 @@ async def bulk_import_cameras(
         updated=updated,
         unset_coordinates=unset,
         rejections=rejections,
+        note=(
+            "unknown department code(s) ignored, cameras filed under the default: "
+            + ", ".join(sorted(unknown_departments))
+            if unknown_departments
+            else None
+        ),
     )
 
 

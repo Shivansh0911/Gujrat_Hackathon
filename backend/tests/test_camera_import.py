@@ -324,3 +324,28 @@ def test_the_import_is_written_to_the_audit_ledger(client) -> None:
     assert latest is not None
     assert latest["actor_role"] == "admin"
     assert latest["detail"]["accepted"] == 1
+
+
+def test_a_department_column_is_read_rather_than_ignored():
+    """The import calls itself a departmental spreadsheet and used to file every row
+    under the default, discarding the one column that says whose camera it is."""
+    import inspect
+
+    from services.api.routers import cameras as mod
+
+    src = inspect.getsource(mod.bulk_import_cameras)
+    assert 'row.get("department_code")' in src, "the column is not read"
+    assert "unknown_departments" in src, "an unrecognised code is not reported back"
+
+
+def test_an_omitted_department_does_not_move_existing_cameras():
+    """Silence is not an instruction. An import without the column must leave every
+    existing camera where it is, rather than sweeping the estate into the default."""
+    import inspect
+
+    from services.api.routers import cameras as mod
+
+    src = inspect.getsource(mod.bulk_import_cameras)
+    body = src[src.index("            updated += 1") :]
+    guarded = "if department is not None:" in body[: body.index("location =")]
+    assert guarded, "department is reassigned on update without checking it was given"
