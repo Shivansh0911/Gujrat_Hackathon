@@ -87,14 +87,38 @@ export function websocketUrl(path: string): string {
 
 /**
  * The access token lives in a module variable, never in localStorage.
- * localStorage is readable by any script on the origin, so a single XSS turns into
- * a stolen session that outlives the tab. In memory it dies with the page.
+ * localStorage is readable by any script on the origin, so a single XSS turns into a
+ * stolen session that outlives the tab -- and survives closing the browser entirely.
+ * sessionStorage is readable by the same script, but the window it opens closes when
+ * the tab does, which is the property that was actually being protected.
+ *
+ * Memory alone was the first answer, and it was too strict to be usable: refreshing
+ * the page signed you out, so a reviewer who pressed F5 on the map lost their session
+ * and had to sign in again. That is not a security control anybody experiences as one;
+ * it is a bug they experience as one.
  */
-let accessToken: string | null = null;
+const TOKEN_KEY = "setu.token";
+
+function readStored(): string | null {
+  try {
+    return sessionStorage.getItem(TOKEN_KEY);
+  } catch {
+    // Storage can throw outright in a private window or with site data blocked.
+    return null;
+  }
+}
+
+let accessToken: string | null = readStored();
 let onUnauthorised: (() => void) | null = null;
 
 export function setToken(token: string | null) {
   accessToken = token;
+  try {
+    if (token) sessionStorage.setItem(TOKEN_KEY, token);
+    else sessionStorage.removeItem(TOKEN_KEY);
+  } catch {
+    // A session that cannot be persisted still works for this tab's lifetime.
+  }
 }
 export function getToken() {
   return accessToken;
@@ -125,7 +149,9 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const res = await fetch(`${BASE}${path}`, { ...init, headers });
 
   if (res.status === 401) {
-    accessToken = null;
+    // Clear the stored copy too, or a refresh would restore the token the server has
+    // just rejected and bounce the user straight back out.
+    setToken(null);
     onUnauthorised?.();
     throw new ApiError(401, "session expired");
   }
