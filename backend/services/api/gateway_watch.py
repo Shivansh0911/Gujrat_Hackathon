@@ -39,8 +39,13 @@ log = logging.getLogger(__name__)
 #: enough that "since when" is accurate to the minute during a demonstration.
 POLL_INTERVAL_S = 60.0
 
-#: Bounded so a hung connection cannot stall the poll loop behind it.
-PROBE_TIMEOUT_S = 15.0
+#: Bounded so a hung connection cannot stall the poll loop behind it, but not so tight
+#: that a slow answer is reported as an outage. This estate has been measured serving a
+#: 211 KB playlist in 25 seconds from a fast client, and the deployed instance sits a
+#: long way from it: at 15 seconds the card flipped to "unreachable" on an estate that
+#: answered this machine in under two. A health probe that cries wolf is worse than a
+#: slow one, and 40 seconds still fits comfortably inside the 60-second poll interval.
+PROBE_TIMEOUT_S = 40.0
 
 
 @dataclass
