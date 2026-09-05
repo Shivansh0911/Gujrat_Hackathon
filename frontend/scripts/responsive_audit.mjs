@@ -21,7 +21,7 @@
  * which is codec-independent.
  *
  *   node scripts/responsive_audit.mjs
- *   SETU_CONSOLE_URL=https://setu-gujrat.netlify.app node scripts/responsive_audit.mjs
+ *   SETU_CONSOLE_URL=https://setu-gujarat.netlify.app node scripts/responsive_audit.mjs
  */
 import { chromium } from "playwright";
 import { mkdirSync, readFileSync } from "node:fs";

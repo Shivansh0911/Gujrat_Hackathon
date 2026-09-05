@@ -5,7 +5,11 @@ code as it stands today, rather than against what an earlier session believed wh
 wrote the sentence. Same rule as `DISCOVERY.md`: a number here was produced by running
 something, and where a document disagreed with the measurement, the document changed.
 
-Deployment audited: **https://setu-gujrat.netlify.app** (console) against
+> **Note, 2026-09-05.** The console was renamed from `setu-gujrat.netlify.app` to
+> `setu-gujarat.netlify.app`. The URLs in the dated entries below have been updated to
+> the current one so they still resolve; the deployment they describe is the same one.
+
+Deployment audited: **https://setu-gujarat.netlify.app** (console) against
 **https://setu-api-ai7z.onrender.com** (API), Render Postgres in Singapore.
 
 ---
@@ -83,7 +87,7 @@ submission cites both and the range.
 Second pass. The 2026-08-30 entry above stands unchanged; this appends what changed
 today rather than rewriting it.
 
-Deployment audited: **https://setu-gujrat.netlify.app** against
+Deployment audited: **https://setu-gujarat.netlify.app** against
 **https://setu-api-ai7z.onrender.com**.
 
 ## The gateway, measured again
@@ -202,7 +206,7 @@ registration number and sees that vehicle's route across the network on a map, w
 timestamps, evidence photographs and honest gaps where it was not seen. A watchlisted
 vehicle appearing on a feed raises an alert within seconds.
 
-Live at **https://setu-gujrat.netlify.app** (Render API, Netlify console, Render
+Live at **https://setu-gujarat.netlify.app** (Render API, Netlify console, Render
 Postgres in Singapore), passing **10 of 10** deployment checks at close-out.
 
 | | |
@@ -386,7 +390,7 @@ Everything above is now confirmed against the live deployment, not a reconstruct
 | Check | Result |
 |---|---|
 | CI on `73d8d5b` | success — run 33419686501, all three jobs |
-| Responsive audit vs `setu-gujrat.netlify.app` | **32/32 pass**, 8 pages × 375/390/768/1024 px |
+| Responsive audit vs `setu-gujarat.netlify.app` | **32/32 pass**, 8 pages × 375/390/768/1024 px |
 | Coverage @ 375 px, screenshot read | map renders with gap circles, panel below it full-width, stat cards in two columns, nothing clipped |
 | Journey @ 375 px, screenshot read | form stacks, all five purpose presets fit, map fully visible, no overlapping cards |
 | Gap-analysis PDF, live end to end | HTTP 200, `application/pdf`, 3 pages, 8,093 bytes, 34 cameras / 10 districts / 28 gaps matching the console |

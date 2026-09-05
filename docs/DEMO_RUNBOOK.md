@@ -17,7 +17,7 @@ deployed instance is already running and already seeded.
 
 | | |
 |---|---|
-| **Console** | https://setu-gujrat.netlify.app |
+| **Console** | https://setu-gujarat.netlify.app |
 | **API docs** | https://setu-api-ai7z.onrender.com/docs |
 | **Accounts** | `admin` (System Administrator) · `operator` (Control Room Operator) |
 | **Passwords** | in the gitignored `deploy-secrets.env` at the repository root |

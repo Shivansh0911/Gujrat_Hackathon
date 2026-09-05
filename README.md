@@ -11,7 +11,7 @@ seconds.
 Built for the Gujarat Police Innovation Challenge 2026 (CCTV Integration Hackathon),
 Category 1.
 
-**Live:** [setu-gujrat.netlify.app](https://setu-gujrat.netlify.app) · API and interactive
+**Live:** [setu-gujarat.netlify.app](https://setu-gujarat.netlify.app) · API and interactive
 docs at [setu-api-ai7z.onrender.com/docs](https://setu-api-ai7z.onrender.com/docs) ·
 credentials are supplied with the submission. The console runs on a free tier that
 sleeps when idle, so the first page load can take up to a minute.
@@ -641,7 +641,7 @@ submission.
    radius that route reconstruction consumes as its tolerance, which is why one bad
    geocode was caught and downgraded; see DISCOVERY finding 19.
 12. **Route reconstruction still rests on own-feed material, though the estate has now
-   given us one registration.** The console is live at https://setu-gujrat.netlify.app
+   given us one registration.** The console is live at https://setu-gujarat.netlify.app
    and passes its deployment checks. The government gateway has contributed four
    detections to the deployed database, one of which — `GJ09BM3641` on `cam22`,
    3 September — is a grammar-valid Gujarat registration. **One plate on one camera is
