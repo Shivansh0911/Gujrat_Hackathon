@@ -11,6 +11,19 @@ seconds.
 Built for the Gujarat Police Innovation Challenge 2026 (CCTV Integration Hackathon),
 Category 1.
 
+**Live:** [setu-gujrat.netlify.app](https://setu-gujrat.netlify.app) · API and interactive
+docs at [setu-api-ai7z.onrender.com/docs](https://setu-api-ai7z.onrender.com/docs) ·
+credentials are supplied with the submission. The console runs on a free tier that
+sleeps when idle, so the first page load can take up to a minute.
+
+![Journey](docs/screenshots/04-journey.png)
+
+*One registration number in, a route out: four cameras, 413 km, every hop timestamped
+and carrying the plate crop it came from — and the two lines that matter most, printed
+without being asked. Eight cameras excluded for having no coordinate on record, and
+twenty-four that saw nothing declared as a coverage gap rather than an absence of the
+vehicle.*
+
 ---
 
 ## Solution model
@@ -106,8 +119,8 @@ again on **2026-09-02**, over RTSP, writing to the deployed database:
 | | Result |
 |---|---:|
 | Cameras catalogued | 30 |
-| Cameras that produced frames | **22** |
-| Cameras that produced none | 8 — `no frames within budget` |
+| Cameras that produced frames | **25** |
+| Cameras that produced none | 5 — `no frames within budget` |
 | Frames decoded | 3,938 |
 | Plate regions detected | 18 |
 | Records published | 4 |
@@ -120,9 +133,16 @@ way through untouched — persisted, matched against that camera's intrusion zon
 raised as an alert on the Alert Desk. The digit after `GJ` is legible as either `8` or
 `9` and we do not claim to have settled which.
 
-The others are not vehicles. It is the caption the camera burns into its
-own frame — `O.N.G.C. Office BS-103_B1`, read as `0ACCO` — and the committed crop shows
-that plainly. A new host and a new estate produced the same answer as the old one:
+The other three are not registrations, and every crop was opened and looked at rather
+than trusted from its filename. `cam03` is the caption the camera burns into its own
+frame — `O.N.G.C. Office BS-103_B1`, read as `0ACCO`. `cam02` is a dark building facade
+with no plate in it. `cam22` also produced `AZ9072`, which *is* a genuine yellow
+commercial plate but a two-line one, and our recogniser reads a single line, so no
+complete registration can come from it however sharp the image. All three are left in
+the database: deleting the outputs that embarrass you is how an error rate stops meaning
+anything.
+
+Otherwise a new host and a new estate produced the same answer as the old one:
 twenty-two live cameras and two thousand frames contain no plate a recogniser can read.
 
 One real plate was seen, and it is worth stating because it cuts the other way: an
@@ -414,11 +434,20 @@ vanishing from a third-party feed for ten minutes is not authority to delete its
 identity, its history or its evidence.
 
 ### Login
+![Login](docs/screenshots/01-login.png)
+
 Two roles — **Control Room Operator** and **System Administrator** — with passwords
 issued from the deployment environment. No self-registration, no default credential,
 no consumer identity provider: `POST /auth/login` returns 503 rather than falling back
-to a known password if none is configured. The JWT is held in memory, never in
-`localStorage`, so a single XSS cannot steal a session that outlives the tab.
+to a known password if none is configured.
+
+The JWT is held in `sessionStorage`, never in `localStorage`. The distinction is the
+one that matters: both are readable by any script on the origin, but the window
+`sessionStorage` opens closes when the tab does, so a stolen session cannot outlive it.
+Memory alone was the first answer and was too strict to be usable — refreshing the page
+signed you out, which is a bug an operator experiences long before an attacker does.
+The token is the only thing stored; role and username are read back out of its payload,
+because two copies of one fact can disagree and the server acts on the token.
 
 **Google sign-in is deliberately absent.** For a closed law-enforcement system,
 unscoped consumer OAuth would let anyone with a Gmail account reach the authenticated
@@ -475,6 +504,8 @@ variable, what breaks without it, and why the startup order is what it is:
 | Signed evidence | Ed25519 detached signature over a canonical manifest; verifiable without SETU |
 | Mandatory purpose | Written to the audit ledger *before* a journey query executes |
 | Watchlist expiry | `NOT NULL` — an entry without one becomes a permanent shadow record |
+| Browser session | JWT in `sessionStorage`, so a stolen session dies with the tab; a 401 clears the stored copy as well as the in-memory one |
+| Login rate limit | Sliding window on the one unauthenticated endpoint that burns CPU by design — unbounded bcrypt is a denial-of-service primitive |
 
 No face recognition. It stays unbuilt until all four governance controls fit; an
 ungoverned biometric feature is worse than none in front of this jury.
