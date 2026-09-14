@@ -87,7 +87,15 @@ function Shell() {
             Gujarat CCTV Integration
           </div>
         </div>
-        <nav className="flex-1 p-2 space-y-1">
+        {/*
+          `min-h-0` is the load-bearing class, and its absence is why the drawer was
+          broken on a phone. A flex child defaults to `min-height: auto`, which refuses
+          to shrink below its content, so ten nav items at 672 px pushed the footer off
+          the bottom of an 812 px screen: sign out sat at y=840, unreachable, with
+          nothing to scroll because the nav overflowed visibly rather than scrolling.
+          On a laptop the sidebar is taller than its contents, so it never showed.
+        */}
+        <nav className="flex-1 min-h-0 overflow-y-auto p-2 space-y-1">
           {NAV.map((item) => (
             <NavLink
               key={item.to}
