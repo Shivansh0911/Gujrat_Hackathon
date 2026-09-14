@@ -575,3 +575,67 @@ with the measurement behind it, including the optimisations that were measured a
 rejected.
 
 ---
+
+---
+
+## What a shift actually looks like
+
+It is 2 a.m. and an FIR comes in for a stolen vehicle. Today that means logging into
+five departmental systems, requesting footage from each, and correlating it by hand —
+and by the time anyone has an answer the vehicle has left the district.
+
+With SETU it is one screen. The registration goes on the watchlist with the authority
+that listed it and the case it belongs to. The moment any camera in the federation reads
+that plate, an alert reaches the desk with the photograph, the camera, the second it
+happened and the listing that authorised the match. The officer types the registration
+into Journey, states why they are looking, and gets the route — where it was seen, when,
+how far apart, and where the network could not see it at all. One button turns that into
+a signed PDF for the case file.
+
+Minutes, not days. And every step of it is in a ledger that says who asked, when, and
+under what authority.
+
+## Why we think this stands apart
+
+**Because the numbers in this document are measurements, not claims.** Every figure
+here was read from the running system, and the ones that are unflattering are here too.
+ANPR reads 29.6%. The government estate yielded one registration across 3,938 frames.
+Four optimisations — detector tiling, crop upscaling, six preprocessing variants,
+full-resolution inference — were built, measured, and thrown away because the data said
+they made things worse. That work is in `docs/DISCOVERY.md` with the numbers that killed
+it, because a team that only reports what worked has not told you how it decides.
+
+**Because the hard parts are the ones nobody demos.** Row-level security in the database
+rather than the UI, so a bug in the application cannot route around it. A hash-chained
+ledger that is verifiable by any authenticated actor, not only by the role that can alter
+records. Evidence signed with Ed25519 so a document can be checked without us. A purpose
+written before a search runs, not after. None of it photographs well. All of it is what
+separates a surveillance platform a state can defend from one it merely owns.
+
+**Because it tells the truth when things break.** When the upstream estate goes dark, the
+console names the minute contact was lost and says that recorded evidence is unaffected —
+so an operator knows whether the fault is theirs. When a route crosses cameras that saw
+nothing, the map draws a dashed line labelled *a coverage gap, not an absence of the
+vehicle*. When a camera's position is uncertain, it is a circle, not a pin. A system that
+overstates what it knows is worse than one that knows less, because a court will find the
+overstatement first.
+
+And once, the ledger caught us. A zone appeared on a camera that nobody had deliberately
+created, and the chain answered exactly: created at entry 862, deleted eight seconds
+later, created again at 899 — an automated screenshot script whose click had landed on
+the drawing surface. A tamper-evident record that has never told you anything you did not
+already know is a claim. Ours has now earned the name.
+
+## What it is built to become
+
+Nothing here assumes this estate. The registry is the control plane, the adapter layer is
+how it reaches heterogeneous reality, and both were written so that a new vendor is a new
+implementation of one interface rather than a new integration project. Thirty cameras or
+eighty thousand, the shape does not change — only how many machines run it, and where
+they sit. `docs/EDGE_OPTIMISATION.md` argues, from the resolution effect we measured
+rather than from a diagram, why the inference belongs near the camera.
+
+The plates will come. Cameras get replaced on their own schedule, and the day one of them
+publishes a legible plate at two positions, route reconstruction across the government
+estate starts working with nothing changed in this repository. The pipeline is already
+waiting for it.
