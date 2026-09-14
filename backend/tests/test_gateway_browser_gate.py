@@ -83,3 +83,63 @@ def test_a_cold_session_gets_more_than_one_chance(monkeypatch) -> None:  # type:
 
     out = gateway_auth.get(S(), "https://example.invalid/cam01/index.m3u8")  # type: ignore[arg-type]
     assert not gateway_auth.looks_like_login(out)  # type: ignore[arg-type]
+
+
+class _Resp:
+    """Enough of a response for the refusal checks."""
+
+    def __init__(self, status: int, ctype: str, body: str = "") -> None:
+        self.status_code = status
+        self.headers = {"Content-Type": ctype}
+        self.text = body
+
+    def raise_for_status(self) -> None:
+        if self.status_code >= 400:
+            raise AssertionError("raise_for_status should not be reached for a quota refusal")
+
+
+def test_a_watch_time_refusal_is_not_a_lapsed_session() -> None:
+    """The estate meters viewing per account and refuses the sign-in itself once spent.
+
+    Signing in again is the right answer to a lapsed session and the exactly wrong one
+    here: every retry spends more of a budget that is already empty.
+    """
+    from services.common import gateway_auth
+
+    quota = _Resp(403, "text/plain", "watch time limit reached - please wait for your cooldown")
+    assert gateway_auth.looks_exhausted(quota)
+    assert gateway_auth.looks_like_login(quota) is False
+
+    # An ordinary 403 still means "sign in".
+    plain = _Resp(403, "text/html", "<html>forbidden</html>")
+    assert gateway_auth.looks_exhausted(plain) is None
+    assert gateway_auth.looks_like_login(plain) is True
+
+
+def test_a_quota_refusal_is_not_retried(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    """Retrying spends more of the thing that has run out."""
+    from services.common import gateway_auth
+
+    logins = []
+
+    class FakeSession:
+        headers: dict[str, str] = {}
+
+        def get(self, url: str, timeout: float = 0) -> _Resp:
+            return _Resp(403, "text/plain", "watch time limit reached, cooldown")
+
+        def post(self, url: str, data: dict[str, str], timeout: float = 0) -> _Resp:
+            logins.append(url)
+            return _Resp(200, "text/html")
+
+    monkeypatch.setattr(gateway_auth, "session", lambda: FakeSession())
+
+    class S:
+        gateway_access_code = "code"
+        gateway_email = ""
+        gateway_scheme = "https"
+        gateway_host = "example.invalid"
+        gateway_login_path = "/auth/login"
+
+    gateway_auth.get(S(), "https://example.invalid/cameras.json")  # type: ignore[arg-type]
+    assert logins == [], f"signed in {len(logins)} times against an exhausted quota"

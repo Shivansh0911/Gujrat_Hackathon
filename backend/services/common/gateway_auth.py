@@ -37,6 +37,12 @@ log = logging.getLogger(__name__)
 #: against infrastructure we do not own.
 _LOGIN_ATTEMPTS = 2
 
+#: Why the last sign-in was refused, when the estate gave a reason worth repeating.
+#: The refusal arrives on the login itself while the original request comes back as an
+#: ordinary sign-in page, so without carrying it the caller only ever sees "not signed
+#: in" and reports an outage.
+_last_refusal: str | None = None
+
 _LOCK = threading.Lock()
 _SESSION: requests.Session | None = None
 
@@ -64,15 +70,39 @@ def session() -> requests.Session:
         return _SESSION
 
 
+#: The estate meters viewing per account and refuses everything, catalogue included,
+#: once the budget is spent. It says so in a plain-text body behind a 403.
+_QUOTA_MARKERS = ("watch time limit", "cooldown")
+
+
+def looks_exhausted(resp: requests.Response) -> str | None:
+    """The estate's watch-time quota message, or None.
+
+    Worth separating from a sign-in failure because the two call for opposite
+    responses. Signing in again is the right move when a session has lapsed and the
+    exactly wrong one here: the quota is per account, so every retry spends more of a
+    budget that is already empty, and the caller is told "unreachable" about an estate
+    that is working and simply metering us.
+    """
+    if resp.status_code != 403:
+        return None
+    ctype = (resp.headers.get("Content-Type") or "").lower()
+    if "text/plain" not in ctype:
+        return None
+    body = (resp.text or "")[:200]
+    low = body.lower()
+    return body.strip() if any(m in low for m in _QUOTA_MARKERS) else None
+
+
 def looks_like_login(resp: requests.Response) -> bool:
     """True when a response is a sign-in page rather than the thing that was asked for.
 
-    A 401 or 403 is unambiguous. The awkward case is the 200: the gateway serves its
-    login form with a success status, so the only tell is that HTML came back where a
-    JSON document or a playlist was expected.
+    A 401 or 403 usually is, with one exception that costs real money: a 403 carrying
+    the estate's watch-time message is a quota refusal, not a lapsed session, and
+    treating it as one sends us back to the login form to spend more quota.
     """
     if resp.status_code in (401, 403):
-        return True
+        return looks_exhausted(resp) is None
     if resp.status_code != 200:
         return False
     ctype = (resp.headers.get("Content-Type") or "").lower()
@@ -91,8 +121,24 @@ def login(settings: Settings | None, timeout: float = 20.0) -> bool:
     if settings.gateway_email:
         form["email"] = settings.gateway_email
     resp = session().post(url, data=form, timeout=timeout)
+    # A sign-in refused for quota is not a sign-in failure to raise about: the estate
+    # meters viewing per account and refuses the login itself once the budget is spent.
+    # Raising here buried the message under a bare 403 and sent the caller looking for
+    # a fault that does not exist.
+    global _last_refusal
+    spent = looks_exhausted(resp)
+    if spent:
+        log.warning("gateway refused the sign-in: %s", spent)
+        _last_refusal = spent
+        return False
     resp.raise_for_status()
+    _last_refusal = None
     return True
+
+
+def last_refusal() -> str | None:
+    """The estate's reason for the most recent refused sign-in, if it gave one."""
+    return _last_refusal
 
 
 def get(settings: Settings | None, url: str, timeout: float = 20.0) -> requests.Response:
@@ -104,6 +150,12 @@ def get(settings: Settings | None, url: str, timeout: float = 20.0) -> requests.
     """
     resp = session().get(url, timeout=timeout)
     for _ in range(_LOGIN_ATTEMPTS):
+        spent = looks_exhausted(resp)
+        if spent:
+            # Nothing to retry. Say it once, at a level an operator will see, and hand
+            # the response back so the caller can report the real reason.
+            log.warning("gateway refused: %s", spent)
+            break
         if not looks_like_login(resp) or not login(settings, timeout):
             break
         resp = session().get(url, timeout=timeout)

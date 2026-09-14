@@ -140,6 +140,14 @@ def parse_catalogue(
     return cameras
 
 
+class GatewayQuotaExhausted(RuntimeError):
+    """The estate is up and refusing us because our viewing budget is spent.
+
+    A distinct type because the caller's response differs: there is nothing to retry,
+    nothing to fix, and no fault to report -- only a cooldown to wait out.
+    """
+
+
 def fetch_catalogue(settings: Settings, timeout: float = 20.0) -> list[CameraDescriptor]:
     """GET the catalogue and parse it, authenticating if the estate requires it.
 
@@ -148,5 +156,15 @@ def fetch_catalogue(settings: Settings, timeout: float = 20.0) -> list[CameraDes
     exactly the same three things and a second implementation would drift.
     """
     resp = gateway_auth.get(settings, settings.catalogue_url, timeout)
+    # `raise_for_status` would render the estate's watch-time refusal as a bare
+    # "403 Client Error: Forbidden", and that is what the health card then showed --
+    # an outage, on an estate that was working and simply metering us. The message it
+    # actually sent is the useful one, because it tells an operator to wait rather than
+    # to go looking for a fault.
+    spent = gateway_auth.looks_exhausted(resp) or (
+        gateway_auth.last_refusal() if gateway_auth.looks_like_login(resp) else None
+    )
+    if spent:
+        raise GatewayQuotaExhausted(spent)
     resp.raise_for_status()
     return parse_catalogue(resp.json(), settings)
