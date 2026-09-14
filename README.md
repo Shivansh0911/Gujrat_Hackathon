@@ -26,6 +26,29 @@ vehicle.*
 
 ---
 
+## Walk it yourself, in five minutes
+
+Sign in at [setu-gujarat.netlify.app](https://setu-gujarat.netlify.app). Each step below
+names what you should see, so nothing here has to be taken on trust.
+
+| | Do this | You should see |
+|---|---|---|
+| **1** | Open **GIS Map** | The camera registry. A camera we can place only to a district is drawn as a **circle**, not a pin |
+| **2** | **Journey** → `KA25AB1542`, dates covering August–September, any purpose, *Trace vehicle* | **4 hops, 413 km.** Read the two lines the page prints unasked: cameras excluded for having no coordinate, and cameras that saw nothing, labelled *a coverage gap, not an absence of the vehicle* |
+| **3** | Press **Export signed evidence (PDF)** | The same reconstruction re-run server-side, signed, with the evidence crops embedded |
+| **4** | **Alert Desk** | Watchlist matches and zone intrusions together — each with the crop, camera, time, confidence, and the listing that authorised it |
+| **5** | **Zones** → select `REPLAY-01` | A polygon drawn on that camera's own view, with real past detections plotted on it |
+| **6** | **System** → verify the audit chain | Your search from step 2 is in it, with the purpose you typed |
+| **7** | Sign out, sign in as **operator**, try to add a watchlist entry | `403 adding a watchlist entry requires admin`. The API refuses it; the interface is not merely hiding a button |
+
+Step 7 is the one worth doing. Authorising surveillance and conducting it are different
+responsibilities, and this is where you can check that the separation is real.
+
+> The console runs on a free tier that sleeps when idle, so the first page load can take
+> up to a minute. Every request after that is normal speed.
+
+---
+
 ## Solution model
 
 **Hybrid**: Model 1 (centralised registry and GIS — mandatory) + Model 3 (federation
@@ -280,12 +303,26 @@ box **centres** inside the region raises an alert.
 
 ![Zones](docs/screenshots/13-zones.png)
 
+*The green polygon is drawn over the carriageway of that camera's own view, and the blue
+dots are places a vehicle has actually been detected — so the region is placed against
+evidence rather than a guess. The frame size beside it, 2560×1440, is read from what the
+pipeline measured on this camera rather than typed, because a wrong reference size does
+not fail loudly: it silently places every corner against the wrong frame.*
+
 **This is the analytic that works on the government estate today**, because it needs a
 vehicle box rather than a readable plate — see limitation 12.
 
 **Control Room** → up to six cameras at once, each labelled by whose feed it is.
 
 ![Control Room](docs/screenshots/12-control-room.png)
+
+*This capture happens to show the more useful case. The government estate was
+unreachable at the moment it was taken, and the console says so precisely — naming the
+time contact was lost, stating that live tiles for those cameras will not play, and
+adding the sentence that matters to an investigator: **recorded evidence is unaffected,
+because it is already in our own records.** An outage on infrastructure we do not own is
+not the same event as our platform failing, and a control room that cannot tell an
+operator which one is happening is a control room that gets ignored.*
 
 ### Job 3 — Plan and account for the estate
 
