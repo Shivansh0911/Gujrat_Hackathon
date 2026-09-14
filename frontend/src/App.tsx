@@ -1,62 +1,18 @@
-import { Suspense, lazy, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { NavLink, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "./lib/auth";
 import { ThemeToggle } from "./lib/theme";
-import { Spinner } from "./components/ui";
 import Login from "./pages/Login";
-
-/**
- * Screens load when they are opened, not when the console does.
- *
- * Importing all ten eagerly put MapLibre and hls.js into the first bundle, so signing
- * in meant downloading 1.5 MB of JavaScript — around 4.6 seconds on a normal
- * connection — including a map renderer and a video player for a login form that needs
- * neither. Splitting them leaves the shell small and charges each library to the screen
- * that actually uses it.
- *
- * `Login` stays eager on purpose: it is the first thing every visitor sees, and a
- * loading state on the way to a password box is a worse trade than the few kilobytes.
- */
-const MapPage = lazy(() => import("./pages/MapPage"));
-const JourneyPage = lazy(() => import("./pages/JourneyPage"));
-const AlertsPage = lazy(() => import("./pages/AlertsPage"));
-const HealthPage = lazy(() => import("./pages/HealthPage"));
-const GapsPage = lazy(() => import("./pages/GapsPage"));
-const WatchlistPage = lazy(() => import("./pages/WatchlistPage"));
-const SystemPage = lazy(() => import("./pages/SystemPage"));
-const ControlRoomPage = lazy(() => import("./pages/ControlRoomPage"));
-const DemoPage = lazy(() => import("./pages/DemoPage"));
-const ZonesPage = lazy(() => import("./pages/ZonesPage"));
-
-/**
- * Fetch a screen's code before anyone asks for it, using time already being spent.
- *
- * Splitting the bundle moved the cost rather than removing it: signing in now lands on
- * the map, which pulls MapLibre's 785 kB at exactly the moment the operator is waiting
- * to see something. But they spend seconds on the login form first, and that time is
- * free. Warming the map there, and the video player once the console is up, spends idle
- * time instead of the operator's.
- *
- * Deliberately failure-tolerant and unawaited. A warm-up that cannot complete must
- * never be visible: the lazy route will simply fetch the chunk itself, exactly as it
- * did before this existed.
- */
-export function warmScreens(which: "map" | "video"): void {
-  const jobs =
-    which === "map"
-      ? [() => import("./pages/MapPage")]
-      : [
-          () => import("./pages/ControlRoomPage"),
-          () => import("./pages/ZonesPage"),
-          () => import("./pages/DemoPage"),
-        ];
-  const run = () => {
-    for (const job of jobs) job().catch(() => {});
-  };
-  const idle = (window as { requestIdleCallback?: (cb: () => void) => void }).requestIdleCallback;
-  if (idle) idle(run);
-  else window.setTimeout(run, 1200);
-}
+import MapPage from "./pages/MapPage";
+import JourneyPage from "./pages/JourneyPage";
+import AlertsPage from "./pages/AlertsPage";
+import HealthPage from "./pages/HealthPage";
+import GapsPage from "./pages/GapsPage";
+import WatchlistPage from "./pages/WatchlistPage";
+import SystemPage from "./pages/SystemPage";
+import ControlRoomPage from "./pages/ControlRoomPage";
+import DemoPage from "./pages/DemoPage";
+import ZonesPage from "./pages/ZonesPage";
 
 const NAV = [
   { to: "/map", label: "GIS Map", hint: "Camera registry" },
@@ -81,12 +37,6 @@ function Shell() {
   // Close on navigation. A drawer left open over the page the operator just chose is
   // the single most irritating thing a mobile menu can do.
   useEffect(() => setNavOpen(false), [location.pathname]);
-
-  // Three screens play video and share one 388 kB player. Fetch it once the console is
-  // up, so the first tile does not wait for the library and the frame at the same time.
-  useEffect(() => {
-    if (authenticated) warmScreens("video");
-  }, [authenticated]);
 
   if (!authenticated) return <Login />;
 
@@ -166,13 +116,6 @@ function Shell() {
       </aside>
 
       <main className="flex-1 min-w-0 overflow-hidden">
-        <Suspense
-          fallback={
-            <div className="p-6">
-              <Spinner />
-            </div>
-          }
-        >
         <Routes>
           <Route path="/map" element={<MapPage />} />
           <Route path="/journey" element={<JourneyPage />} />
@@ -186,7 +129,6 @@ function Shell() {
           <Route path="/demo" element={<DemoPage />} />
           <Route path="*" element={<Navigate to="/map" replace />} />
         </Routes>
-        </Suspense>
       </main>
     </div>
   );

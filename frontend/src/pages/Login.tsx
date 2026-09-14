@@ -1,7 +1,6 @@
-import { FormEvent, useState, useEffect } from "react";
+import { FormEvent, useState } from "react";
 import { useAuth } from "../lib/auth";
 import { ThemeToggle } from "../lib/theme";
-import { warmScreens } from "../App";
 
 /**
  * The two roles, named as an officer would recognise them.
@@ -29,10 +28,6 @@ const ROLES = [
 ];
 
 export default function Login() {
-  // The console lands on the map after sign-in, and its renderer is the
-  // heaviest chunk we ship. Fetch it while the password is being typed.
-  useEffect(() => warmScreens("map"), []);
-
   const { signIn } = useAuth();
   const [username, setUsername] = useState("admin");
   const [password, setPassword] = useState("");
