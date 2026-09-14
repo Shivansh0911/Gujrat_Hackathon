@@ -639,3 +639,30 @@ The plates will come. Cameras get replaced on their own schedule, and the day on
 publishes a legible plate at two positions, route reconstruction across the government
 estate starts working with nothing changed in this repository. The pipeline is already
 waiting for it.
+
+---
+
+## Thank you
+
+To **Gujarat Police** and the Home Department, for opening a real estate to students and
+letting us fail against it in public. Almost everything worth knowing in this repository
+came from something that did not work on the first attempt — a recogniser that could not
+emit a ten-character plate, a fusion step that voted misaligned characters against each
+other, a health probe that called a slow estate a dead one, four optimisations that had
+to be measured before they could be rejected. None of that could have been learned
+against a tidy dataset. It needed a live feed that answers differently on a Tuesday than
+it did on a Monday, and you gave us one.
+
+Thank you also for the constraint that shaped this submission most: cameras that publish
+below the resolution ANPR needs. It would have been easier to be handed footage that made
+us look good. What we were handed instead forced a decision on every screen about whether
+to state what we actually knew or to imply more — and that decision is the reason this
+platform declares its gaps, draws a circle where it cannot justify a pin, and records why
+someone looked before it shows them anything.
+
+To the other teams: we hope you found your own version of that problem, and we would
+rather read your honest numbers than beat your optimistic ones.
+
+**May the best team win.**
+
+— Team SETU
