@@ -494,6 +494,63 @@ Postgres row-level security. See `docs/SETU_High_Level_Design.md` §8.4.
 
 ---
 
+---
+
+## Beyond the mandatory brief
+
+The challenge lists bonus consideration for capability shown beyond the required ANPR.
+Each of these is built, running on the deployed instance, and checkable there.
+
+### Two additional analytics, and one of them runs on the government feed
+
+**Intrusion zones.** A polygon drawn over a camera's own view, alerting when a vehicle's
+bounding box *centres* inside it. This is the analytic that works on the government
+estate today, because it needs a vehicle box rather than a readable plate: the zone over
+the near carriageway of `cam22` has raised alerts on that camera's own detections,
+including `GJ09BM3641`. Live ingest, persisted detection, classifier, alert on the desk —
+with nothing tuned for it. **Thirteen intrusion alerts** stand alongside six watchlist
+matches.
+
+**Implied-speed flagging**, which is complete, covered by tests, and correctly silent.
+A speed is computed only between two sightings of one plate at two genuinely different,
+positioned, non-`REPLAY` cameras — enforced as a `WHERE` clause with a test that fails
+if the clause is removed. A journey hop carries its `REPLAY` label where a viewer can
+see it; "travelling at 150 km/h" carries no such label into wherever it gets quoted, so
+deriving one from a simulated distance would be fabricating a capability. It begins
+working the moment the estate yields one plate at two real cameras, with nothing in this
+repository needing to change.
+
+### A console an operator can actually work in
+
+**Light and dark, and the viewer's own choice.** A control room runs dim and a field
+officer's phone runs bright; both are real operating conditions. Every colour is a CSS
+custom property, so the two themes are one implementation rather than two, the choice
+persists, and the first visit follows the operating system. The theme is stamped before
+the first paint, because a light-mode user seeing a full-screen flash of dark on every
+load is a defect they will report.
+
+**Responsive from a 375 px phone to a desktop.** Not asserted — measured, by a script in
+this repository. `frontend/scripts/responsive_audit.mjs` drives the deployed console
+across **ten screens × four widths × both themes** and fails on horizontal overflow,
+content clipped by a container, navigation dominating a phone screen, a broken image or
+video, or any text run below 3:1 contrast. It passes.
+
+### The parts that never photograph well
+
+Hash-chained tamper-evident audit ledger, verifiable on demand by any authenticated
+actor rather than only by the role that can alter records. PostgreSQL row-level security,
+so department scoping survives an application bug. Ed25519-signed evidence exports,
+checkable without us. HMAC-signed short-lived media URLs. An SSRF guard with 45
+adversarial tests. A rate limiter on the one unauthenticated endpoint that burns CPU by
+design. A stated purpose written to the ledger *before* a search runs.
+
+Feed diagnostics an operator can act on: declared versus measured frame rate per camera,
+reconnect counts, transport in use, and one click that produces the organiser's §2.5
+fault-report payload verbatim. OpenAPI 3.1 with the console's types generated from it,
+so an API change that would break the interface fails at compile time.
+
+---
+
 ## Quickstart
 
 ```bash
@@ -534,7 +591,7 @@ variable, what breaks without it, and why the startup order is what it is:
 | Three-level tenant isolation | Gateway policy, scoped accessors, **and Postgres RLS** — 9 tests issue raw SQL that bypasses the application entirely |
 | Unprivileged database role | `setu_app` is NOSUPERUSER/NOBYPASSRLS with table-scoped grants; a superuser would ignore every RLS policy |
 | Append-only audit ledger | `entry_hash = SHA256(prev_hash ‖ canonical_json(entry))`. The application holds no UPDATE on it |
-| SSRF defence | Scheme and port allowlists, DNS checks, connect-time re-verification against rebinding, redirects refused, size cap — 44 adversarial tests |
+| SSRF defence | Scheme and port allowlists, DNS checks, connect-time re-verification against rebinding, redirects refused, size cap — 45 adversarial tests |
 | `alg=none` rejection | Explicitly, before verification; proven with a forged token |
 | Credential redaction | Formatter-level, so a credential cannot reach a log sink even if interpolated |
 | Signed evidence | Ed25519 detached signature over a canonical manifest; verifiable without SETU |
