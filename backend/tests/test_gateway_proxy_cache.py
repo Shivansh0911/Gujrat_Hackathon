@@ -194,3 +194,36 @@ def test_an_expired_playlist_is_dropped_rather_than_kept(monkeypatch: pytest.Mon
     gp._remember_playlist("camBB__index.m3u8", "#EXTM3U\n")
     assert "camAA__index.m3u8" not in gp._playlists
     assert "camBB__index.m3u8" in gp._playlists
+
+
+def _playlist(n: int) -> str:
+    body = ["#EXTM3U", "#EXT-X-TARGETDURATION:8"]
+    for i in range(n):
+        body += ["#EXTINF:8,", f"seg{i:05d}.ts"]
+    body.append("#EXT-X-ENDLIST")
+    return "\n".join(body) + "\n"
+
+
+def test_an_untrimmed_playlist_is_unchanged_in_length() -> None:
+    """The Control Room still asks for the whole thing; nothing may shorten it."""
+    out = gp._rewrite_playlist(_playlist(500), "cam01", "k")
+    assert sum(1 for line in out.splitlines() if line.startswith("/media/")) == 500
+
+
+def test_a_trimmed_playlist_keeps_only_the_window() -> None:
+    """A 16-hour recording is 7,200 entries, and a backdrop needs a picture not a day."""
+    out = gp._rewrite_playlist(_playlist(7200), "cam01", "k", 30)
+    segs = [line for line in out.splitlines() if line.startswith("/media/")]
+    assert len(segs) == 30
+    assert out.startswith("#EXTM3U"), "the header must survive the trim"
+    # Without ENDLIST a media playlist is a live one, and a player will keep asking for
+    # segments that are never coming.
+    assert out.rstrip().endswith("#EXT-X-ENDLIST")
+    assert len(out) < len(gp._rewrite_playlist(_playlist(7200), "cam01", "k")) / 50
+
+
+def test_the_trim_is_capped() -> None:
+    """The parameter is not signed, so it is clamped rather than trusted."""
+    assert gp._MAX_WINDOW <= 120
+    out = gp._rewrite_playlist(_playlist(500), "cam01", "k", gp._MAX_WINDOW)
+    assert sum(1 for line in out.splitlines() if line.startswith("/media/")) == gp._MAX_WINDOW

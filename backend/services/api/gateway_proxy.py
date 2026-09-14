@@ -248,14 +248,27 @@ def _upstream_url(feed: FeedSettings, camera_ref: str, filename: str) -> str:
     return f"{base}{directory}/{filename}"
 
 
-def _rewrite_playlist(body: str, camera_ref: str, secret: str) -> str:
+#: Largest trim a caller may ask for. Bounded because the parameter is not signed: it
+#: cannot change *which* camera is served, only how much of it, and a cap keeps that
+#: true whatever a caller sends.
+_MAX_WINDOW = 120
+
+
+def _rewrite_playlist(body: str, camera_ref: str, secret: str, window: int | None = None) -> str:
     """Point every segment and key reference back at this proxy.
 
     Untouched, the playlist names `seg00000.ts` and `URI="/enc.key"`, which the browser
     resolves against *our* origin and we do not serve -- and even if it resolved them
     upstream, it has no session to fetch them with.
+
+    `window` keeps only the first N segments. These are VOD recordings of roughly sixteen
+    hours, so a full playlist is 732 KB across 7,200 entries, and every client that opens
+    a tile downloads and parses all of it before a frame appears. A backdrop behind a
+    drawing surface needs a picture, not a seekable day. Left as None the playlist passes
+    through whole, which is what the Control Room continues to ask for.
     """
     out: list[str] = []
+    kept = 0
     for line in body.splitlines():
         stripped = line.strip()
 
@@ -274,10 +287,17 @@ def _rewrite_playlist(body: str, camera_ref: str, secret: str) -> str:
 
         # A media line. Take the bare name; the upstream builder decides the directory.
         name = stripped.rsplit("/", 1)[-1].split("?", 1)[0]
-        if _FILE.match(name):
-            out.append(signed_proxy_url(camera_ref, name, secret))
-        else:
+        if not _FILE.match(name):
             log.warning("dropping unexpected playlist entry %r", stripped[:60])
+            continue
+        if window is not None and kept >= window:
+            # Enough. Close the playlist rather than truncating it: a media playlist
+            # without ENDLIST is a live one, and a player will keep asking for segments
+            # that are never coming.
+            out.append("#EXT-X-ENDLIST")
+            break
+        out.append(signed_proxy_url(camera_ref, name, secret))
+        kept += 1
     return "\n".join(out) + "\n"
 
 
@@ -288,8 +308,13 @@ def _rewrite_playlist(body: str, camera_ref: str, secret: str) -> str:
 # reporting a four-day outage on a healthy service; it recurs because each
 # route decides for itself.
 @router.api_route("/media/gateway/{token}", methods=["GET", "HEAD"], include_in_schema=False)
-def gateway_media(token: str, exp: int = 0, sig: str = "") -> Response:
-    """One playlist, segment or key from the gateway, with our session in front."""
+def gateway_media(token: str, exp: int = 0, sig: str = "", window: int = 0) -> Response:
+    """One playlist, segment or key from the gateway, with our session in front.
+
+    `window` optionally trims a playlist to its first N segments. It is not part of the
+    signature, and does not need to be: it cannot change which camera is served, only
+    how much of it, and it is clamped either way.
+    """
     api_settings = get_api_settings()
     if not verify_media_name(token, exp, sig, api_settings.jwt_secret):
         # 404 rather than 403: an unsigned request should not learn that the camera
@@ -299,10 +324,15 @@ def gateway_media(token: str, exp: int = 0, sig: str = "") -> Response:
     camera_ref, filename = _split(token)
     feed = get_feed_settings()
     is_playlist = filename.endswith(".m3u8")
+    trim = min(window, _MAX_WINDOW) if window > 0 else None
+    # The trim is part of the identity of what gets cached. Keyed on the token alone, a
+    # short playlist fetched for a zone backdrop would be served to the Control Room,
+    # which asked for the whole thing.
+    cache_key = f"{token}#{trim}" if is_playlist else token
 
     if is_playlist:
         with _cache_lock:
-            hit = _playlists.get(token)
+            hit = _playlists.get(cache_key)
         if hit is not None and time.monotonic() - hit[0] < _PLAYLIST_TTL_S:
             return Response(
                 content=hit[1],
@@ -345,8 +375,8 @@ def gateway_media(token: str, exp: int = 0, sig: str = "") -> Response:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="gateway error")
 
     if is_playlist:
-        rewritten = _rewrite_playlist(upstream.text, camera_ref, api_settings.jwt_secret)
-        _remember_playlist(token, rewritten)
+        rewritten = _rewrite_playlist(upstream.text, camera_ref, api_settings.jwt_secret, trim)
+        _remember_playlist(cache_key, rewritten)
         return Response(
             content=rewritten,
             media_type="application/vnd.apple.mpegurl",

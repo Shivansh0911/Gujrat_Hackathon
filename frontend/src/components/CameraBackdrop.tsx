@@ -28,7 +28,16 @@ export default function CameraBackdrop({
   const [ok, setOk] = useState(false);
 
   useEffect(() => {
-    const src = mediaUrl(url);
+    // Ask the proxy for a short playlist. These are sixteen-hour VOD recordings, so the
+    // full document is 732 KB across 7,200 entries and every one of them is parsed
+    // before a frame appears. A backdrop needs a picture, not a seekable day: thirty
+    // segments is about four minutes, which is far longer than anyone spends drawing a
+    // polygon. The Control Room still asks for the whole playlist.
+    const base = mediaUrl(url);
+    const src =
+      base && /\.m3u8(\?|$)/i.test(base)
+        ? `${base}${base.includes("?") ? "&" : "?"}window=30`
+        : base;
     if (!src || !videoRef.current) {
       setOk(false);
       onReady?.(false);
