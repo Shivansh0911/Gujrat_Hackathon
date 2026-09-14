@@ -87,6 +87,14 @@ _LOOKAHEAD = 4
 #: segment this holds roughly two minutes of video per camera.
 _SEG_CACHE_MAX_BYTES = 24 * 1024 * 1024
 
+#: The playlist cache needs a bound for the same reason, and for a while did not have
+#: one. A rewritten playlist is not small -- 732 KB for cam01 and 1.5 MB for cam06 --
+#: entries were never removed even after expiring, and an estate of thirty cameras would
+#: have sat on tens of megabytes of documents nobody could still use. The segment cache
+#: was given a budget and this one was overlooked, which is the ordinary way a leak gets
+#: written: the hard case is handled and the easy one is assumed to be free.
+_PLAYLIST_CACHE_MAX_BYTES = 8 * 1024 * 1024
+
 _SEG_NAME = re.compile(r"^(?P<stem>[A-Za-z0-9_-]*?)(?P<num>\d+)\.ts$")
 
 _cache_lock = threading.Lock()
@@ -118,6 +126,27 @@ def _cache_put(token: str, data: bytes) -> None:
         while _segments_bytes > _SEG_CACHE_MAX_BYTES and _segments:
             _, evicted = _segments.popitem(last=False)
             _segments_bytes -= len(evicted)
+
+
+def _remember_playlist(token: str, body: str) -> None:
+    """Cache a rewritten playlist, dropping what has expired and what does not fit.
+
+    Expired entries are purged first because they are pure waste: past its TTL a cached
+    playlist will never be served, and the signatures inside it are heading for expiry
+    too. Whatever is still live is then trimmed oldest-first to stay inside the budget.
+    """
+    now = time.monotonic()
+    with _cache_lock:
+        _playlists[token] = (now, body)
+        for stale in [k for k, (t, _) in _playlists.items() if now - t >= _PLAYLIST_TTL_S]:
+            del _playlists[stale]
+        total = sum(len(v) for _, v in _playlists.values())
+        if total <= _PLAYLIST_CACHE_MAX_BYTES:
+            return
+        for k, _ in sorted(_playlists.items(), key=lambda kv: kv[1][0]):
+            if total <= _PLAYLIST_CACHE_MAX_BYTES or k == token:
+                break
+            total -= len(_playlists.pop(k)[1])
 
 
 def _prefetch(camera_ref: str, filename: str) -> None:
@@ -317,8 +346,7 @@ def gateway_media(token: str, exp: int = 0, sig: str = "") -> Response:
 
     if is_playlist:
         rewritten = _rewrite_playlist(upstream.text, camera_ref, api_settings.jwt_secret)
-        with _cache_lock:
-            _playlists[token] = (time.monotonic(), rewritten)
+        _remember_playlist(token, rewritten)
         return Response(
             content=rewritten,
             media_type="application/vnd.apple.mpegurl",

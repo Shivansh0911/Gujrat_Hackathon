@@ -168,3 +168,29 @@ def test_a_request_waits_for_a_prefetch_instead_of_duplicating_it(
 
     assert got == [b"prefetched"], "the waiter should get the prefetched bytes"
     assert fetches.count("seg00001.ts") == 1, "seg00001 was fetched more than once"
+
+
+def test_the_playlist_cache_stays_inside_its_budget() -> None:
+    """It shared an instance with two ONNX models and had no bound at all.
+
+    A rewritten playlist runs to 1.5 MB on this estate, so thirty cameras is tens of
+    megabytes — and entries were never removed even once expired.
+    """
+    big = "x" * (1024 * 1024)
+    for i in range(20):
+        gp._remember_playlist(f"cam{i:02d}__index.m3u8", big)
+    total = sum(len(v) for _, v in gp._playlists.values())
+    assert total <= gp._PLAYLIST_CACHE_MAX_BYTES, f"{total} bytes cached"
+    # The entry just written must survive its own eviction pass.
+    assert "cam19__index.m3u8" in gp._playlists
+
+
+def test_an_expired_playlist_is_dropped_rather_than_kept(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Past its TTL a cached playlist can never be served, so holding it is pure waste."""
+    gp._remember_playlist("camAA__index.m3u8", "#EXTM3U\n")
+    with gp._cache_lock:
+        t, body = gp._playlists["camAA__index.m3u8"]
+        gp._playlists["camAA__index.m3u8"] = (t - gp._PLAYLIST_TTL_S - 1, body)
+    gp._remember_playlist("camBB__index.m3u8", "#EXTM3U\n")
+    assert "camAA__index.m3u8" not in gp._playlists
+    assert "camBB__index.m3u8" in gp._playlists
