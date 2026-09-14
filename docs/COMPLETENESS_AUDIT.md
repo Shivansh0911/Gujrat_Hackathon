@@ -569,3 +569,57 @@ obvious way would have passed on both the broken and the fixed code.
 | `mypy --strict` | clean but for the 19 pre-existing numpy-drift errors in `anpr.py`, `scene_cut.py`, `stream_client.py` |
 | CI | green on `8360d16` |
 | Deployed API | gateway `reachable: true`, 30 cameras in catalogue, audit chain valid |
+
+---
+
+# Final verification — 2026-09-14
+
+The last check before submission, run against the live deployment rather than against
+what any document claims. Console: **https://setu-gujarat.netlify.app** · API:
+**https://setu-api-ai7z.onrender.com**.
+
+## Requirements — 23 of 23
+
+| Area | Result |
+|---|---|
+| Model 1 — registry | 65 cameras, 30 government |
+| Model 1 — GIS with provenance | 24 of 30 placed: 17 geocoded, 7 district centroid, 6 honestly unset |
+| Model 1 — measured properties | 24 × H.264, 6 × H.265, five distinct resolutions |
+| Model 1 — gap analysis | 10 districts, 34 gaps, PDF export 8,833 B |
+| Model 1 — onboarding | bulk CSV, manual and API, all audited |
+| Model 1 — audit trail | 1,124 entries, chain verified valid |
+| Viewing — gateway health | reachable, 30 catalogued |
+| Viewing — live and recorded | HTTP 200 |
+| Test case — vehicle traced | 4 hops, 413 km, every hop timestamped |
+| Test case — gaps declared | 24, as gaps rather than absences |
+| Test case — signed evidence | PDF, 30,589 B |
+| Alerts | 19 — 13 intrusion, 6 watchlist, each with its crop |
+| Bonus — intrusion on a government camera | `cam22`, on `GJ09BM3641` and `AZ9072` |
+| Bonus — speed flagging | silent, correctly: needs one plate at two real placed cameras |
+| RBAC | operator refused a *valid* watchlist create and a *valid* zone create, 403 both; can trace and work alerts |
+| Demos | own-feed clip with 20 aligned reads; 5 government-feed detections |
+
+## The console, walked in a real browser
+
+Signing in, a refresh that keeps the session, a live trace returning 4 hops and
+413.4 km, every screen rendering its own data, and 19 of 19 evidence crops loading
+cross-origin from the API host.
+
+Control Room was then left alone rather than clicked through: **four of four government
+tiles playing within ten seconds**. Two earlier runs reported failed requests on this
+page and on the map, and both were artefacts of the test navigating away while fragment
+and tile requests were still in flight — the proxy serves a playlist in 0.3–0.5 s and a
+segment in 0.2 s from cache, checked directly.
+
+## Build
+
+266 tests passing, ruff clean, CI green on `b667a27`, working tree clean, nothing
+unpushed.
+
+## Known state at submission
+
+The estate meters viewing per account. The first access code reached its watch-time
+limit and was replaced; the platform now distinguishes that refusal from a lapsed
+session, never retries it, and reports the estate's own wording rather than a bare 403.
+Viewing budget is finite, so it should not be spent on sweeps in the hours before a
+demonstration.
