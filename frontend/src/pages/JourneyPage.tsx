@@ -211,7 +211,12 @@ export default function JourneyPage() {
     };
 
     if (map.isStyleLoaded()) draw();
-    else map.once("load", draw);
+    // `styledata`, not `load`. `load` fires once for the lifetime of the map, so if the
+    // data arrives after it — which is the normal case now that the map's renderer is a
+    // lazily-loaded chunk — `once("load")` waits for an event that has already happened
+    // and the layer is never drawn. The map then renders its basemap with nothing on it,
+    // which is exactly as wrong as a blank page and much easier to miss.
+    else map.once("styledata", draw);
   }, [result]);
 
   async function exportEvidence() {
