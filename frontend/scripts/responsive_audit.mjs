@@ -301,7 +301,38 @@ async function measure(page, pageName, vp) {
       }
     }
 
+    // Controls the viewport cannot reach. Geometry and contrast both passed while the
+    // sidebar's sign-out button sat 28 px below an 812 px screen with nothing to
+    // scroll, because every check here asked how things were laid out and none asked
+    // whether a person could get to them.
+    const unreachable = [];
+    for (const el of document.querySelectorAll(
+      "aside button, aside a, header button",
+    )) {
+      const r = el.getBoundingClientRect();
+      if (r.width === 0 && r.height === 0) continue;          // deliberately hidden
+      if (getComputedStyle(el).visibility === "hidden") continue;
+      // Inside something that scrolls, being below the fold is not being unreachable.
+      let scrollable = false;
+      for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
+        const oy = getComputedStyle(p).overflowY;
+        if ((oy === "auto" || oy === "scroll") && p.scrollHeight > p.clientHeight) {
+          scrollable = true;
+          break;
+        }
+      }
+      if (scrollable) continue;
+      if (r.bottom > window.innerHeight + 1 || r.top < -1) {
+        const label = (el.textContent || el.getAttribute("aria-label") || el.tagName)
+          .replace(/\s+/g, " ")
+          .trim()
+          .slice(0, 28);
+        unreachable.push(`${label} at y=${Math.round(r.top)}`);
+      }
+    }
+
     return {
+      unreachable: [...new Set(unreachable)].slice(0, 4),
       lowContrast: [...new Set(lowContrast)].slice(0, 6),
       brokenVideos: brokenVideos.slice(0, 4),
       scrollWidth: doc.scrollWidth,
@@ -358,6 +389,14 @@ async function measure(page, pageName, vp) {
   if (navTooWide) {
     problems.push(
       `${tag}: navigation occupies ${(metrics.navShare * 100).toFixed(0)}% of the viewport`,
+    );
+  }
+
+  const outOfReach = metrics.unreachable.length > 0;
+  if (outOfReach) {
+    problems.push(
+      `${tag}: ${metrics.unreachable.length} control(s) outside the viewport with no ` +
+        `scroll to reach them — ${metrics.unreachable.join("; ")}`,
     );
   }
 
