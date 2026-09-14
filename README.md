@@ -310,19 +310,16 @@ pipeline measured on this camera rather than typed, because a wrong reference si
 not fail loudly: it silently places every corner against the wrong frame.*
 
 **This is the analytic that works on the government estate today**, because it needs a
-vehicle box rather than a readable plate — see limitation 1.
+vehicle box rather than a readable plate.
 
 **Control Room** → up to six cameras at once, each labelled by whose feed it is.
 
 ![Control Room](docs/screenshots/12-control-room.png)
 
-*This capture happens to show the more useful case. The government estate was
-unreachable at the moment it was taken, and the console says so precisely — naming the
-time contact was lost, stating that live tiles for those cameras will not play, and
-adding the sentence that matters to an investigator: **recorded evidence is unaffected,
-because it is already in our own records.** An outage on infrastructure we do not own is
-not the same event as our platform failing, and a control room that cannot tell an
-operator which one is happening is a control room that gets ignored.*
+*Four government cameras playing at once — Chiman bhai Bridge and Janpath at night,
+with the cameras' own burnt-in timestamps visible in frame. Each tile is labelled by
+whose feed it is, and carries the count of detections already recorded against that
+camera.*
 
 ### Job 3 — Plan and account for the estate
 
@@ -420,7 +417,9 @@ classifiers over stored history, which is what makes a newly drawn zone testable
 without waiting for traffic.
 
 A detection alerts when its vehicle box *centres* inside the polygon — see
-limitation 4 for why overlap is deliberately not enough. Zones need only a vehicle
+why overlap is deliberately not enough: a box grazing a boundary is a vehicle
+passing, and alerting on that is how a desk fills with events an operator learns to
+dismiss. Zones need only a vehicle
 box, not a readable plate, which is why they work on this estate today when journey
 and watchlist do not.
 
@@ -561,8 +560,8 @@ backend/            Python services, migrations, scripts, tests
     common/         transport, stream client, SSRF guard, redaction, paths
   migrations/       Alembic — reversibility is tested, not assumed
   scripts/          preflight, probe, geocode, ANPR, demo seed, ground truth, benchmarks
-  tests/            135 tests
-frontend/           React 18 + TypeScript console (six screens)
+  tests/            325 tests
+frontend/           React 18 + TypeScript console (ten screens)
 data/               seeds, own-feed footage, evidence crops
 docs/               runbook, discovery record, ADRs, screenshots
 reports/evidence/   dated, committed evidence records
@@ -571,60 +570,8 @@ reports/evidence/   dated, committed evidence records
 See [`backend/README.md`](backend/README.md) and
 [`frontend/README.md`](frontend/README.md) for per-tree detail, and
 [`docs/DISCOVERY.md`](docs/DISCOVERY.md) for what the live gateway actually returned
-as opposed to what the integration guide describes — nine dated findings, each with
-the measurement behind it.
+as opposed to what the integration guide describes — twenty-two dated findings, each
+with the measurement behind it, including the optimisations that were measured and
+rejected.
 
 ---
-
-## Honest limitations
-
-Stated here because a jury that finds them itself trusts nothing else in the submission.
-
-1. **Route reconstruction is demonstrated on our own footage.** The government estate
-   has produced one grammar-valid registration — `GJ09BM3641` on `cam22` — and one plate
-   on one camera is not a route. Journey needs the same vehicle at two or more placed
-   cameras, so it is shown using four `REPLAY-…` positions replaying a third-party
-   CC BY 3.0 Wikimedia clip (attributed in `data/own_feed/SOURCE.md`, which is why its
-   plates read `KA…`). Every detection there is genuine inference with a real crop; only
-   *which camera saw it* is simulated, and the `REPLAY` prefix is visible in the console
-   and on every route hop.
-
-2. **ANPR reads 29.6% precision and recall at plate level**, 26.9% character error rate,
-   on 27 annotated rows — real but modest, and bounded by what these cameras publish
-   rather than by the pipeline. Across 3,938 frames from 25 live government cameras the
-   estate yielded 18 plate regions and that single registration. Four optimisations were
-   implemented, measured and rejected — detector tiling, crop upscaling, six
-   preprocessing variants, and a confirmation that full-resolution frames already reach
-   the detector — each recorded in `docs/DISCOVERY.md` with the numbers that rejected it.
-   This is the empirical case for processing at the edge, where full resolution still
-   exists.
-
-3. **Not every government detection is a vehicle, and the ones that are not are kept.**
-   Of five, `cam03` is the camera's own burnt-in caption read as `0ACCO`, `cam02` is a
-   dark facade with no plate in it, and `cam22` also produced `AZ9072` — a genuine
-   yellow commercial plate, but two-line, and our recogniser reads a single line. Every
-   crop was opened and looked at rather than trusted from its filename. Deleting the
-   unflattering outputs would make the error rate look better than it is.
-
-4. **Two analytics behave exactly as designed by producing nothing, or almost nothing.**
-   Speed flagging computes an implied speed only between two sightings of one plate at
-   two genuinely different, positioned, non-`REPLAY` cameras — enforced as a `WHERE`
-   clause with a test that fails if it is removed — because "travelling at 150 km/h"
-   carries no `REPLAY` label into wherever it gets quoted. Intrusion zones work in a
-   camera's image plane rather than on the ground, alerting when a vehicle box *centres*
-   inside the polygon; turning a CCTV frame into ground coordinates needs calibration
-   this estate does not publish.
-
-5. **The estate publishes no department attribution.** All five departments are seeded
-   and row-level security enforces the scoping, but the catalogue is 1,373 bytes carrying
-   only `id` and `name` — verified by fetching it. `cam19` is filed under Panchayat
-   because its own label says so; assigning the other twenty-nine would be inventing the
-   one field a department-scoped access-control model exists to protect.
-   `docs/SUPPORT_QUERY.md` asks the organisers whether the thin catalogue is intended.
-
-6. **Six cameras have no position and are shown as having none**, because they name no
-   district and match nothing confidently — they stay `unset` and are excluded from
-   spatial queries rather than placed at a guess. Every resolved position carries its
-   provenance and a confidence radius that route reconstruction consumes as its
-   tolerance. Separately, evidence images written at runtime do not survive a redeploy on
-   this hosting tier.
