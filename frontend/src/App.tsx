@@ -28,6 +28,36 @@ const ControlRoomPage = lazy(() => import("./pages/ControlRoomPage"));
 const DemoPage = lazy(() => import("./pages/DemoPage"));
 const ZonesPage = lazy(() => import("./pages/ZonesPage"));
 
+/**
+ * Fetch a screen's code before anyone asks for it, using time already being spent.
+ *
+ * Splitting the bundle moved the cost rather than removing it: signing in now lands on
+ * the map, which pulls MapLibre's 785 kB at exactly the moment the operator is waiting
+ * to see something. But they spend seconds on the login form first, and that time is
+ * free. Warming the map there, and the video player once the console is up, spends idle
+ * time instead of the operator's.
+ *
+ * Deliberately failure-tolerant and unawaited. A warm-up that cannot complete must
+ * never be visible: the lazy route will simply fetch the chunk itself, exactly as it
+ * did before this existed.
+ */
+export function warmScreens(which: "map" | "video"): void {
+  const jobs =
+    which === "map"
+      ? [() => import("./pages/MapPage")]
+      : [
+          () => import("./pages/ControlRoomPage"),
+          () => import("./pages/ZonesPage"),
+          () => import("./pages/DemoPage"),
+        ];
+  const run = () => {
+    for (const job of jobs) job().catch(() => {});
+  };
+  const idle = (window as { requestIdleCallback?: (cb: () => void) => void }).requestIdleCallback;
+  if (idle) idle(run);
+  else window.setTimeout(run, 1200);
+}
+
 const NAV = [
   { to: "/map", label: "GIS Map", hint: "Camera registry" },
   { to: "/journey", label: "Journey", hint: "Route reconstruction" },
@@ -51,6 +81,12 @@ function Shell() {
   // Close on navigation. A drawer left open over the page the operator just chose is
   // the single most irritating thing a mobile menu can do.
   useEffect(() => setNavOpen(false), [location.pathname]);
+
+  // Three screens play video and share one 388 kB player. Fetch it once the console is
+  // up, so the first tile does not wait for the library and the frame at the same time.
+  useEffect(() => {
+    if (authenticated) warmScreens("video");
+  }, [authenticated]);
 
   if (!authenticated) return <Login />;
 
