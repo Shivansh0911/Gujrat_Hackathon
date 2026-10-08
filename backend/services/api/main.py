@@ -22,6 +22,7 @@ from services.api.routers import (
     analytics,
     auth,
     cameras,
+    candidates,
     demo,
     gaps,
     journey,
@@ -100,6 +101,7 @@ app.include_router(cameras.router)
 app.include_router(system.router)
 app.include_router(alerts.router)
 app.include_router(journey.router)
+app.include_router(candidates.router)
 app.include_router(analytics.router)
 app.include_router(demo.router)
 app.include_router(gateway_proxy.router)
