@@ -17,6 +17,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from services.analytics.anomalies import find_cloned_plates, find_convoys, find_dwells
+from services.analytics.corridors import corridor_report
 from services.analytics.scale_planner import CONSTANTS as SCALE_CONSTANTS
 from services.analytics.scale_planner import ScaleInputs
 from services.analytics.scale_planner import plan as scale_plan_model
@@ -307,3 +308,62 @@ def anomalies(
         dwells=[f.as_dict() for f in find_dwells(session, from_=from_, to=to)],
         limits=dict(_ANOMALY_LIMITS),
     )
+
+
+class CorridorOut(BaseModel):
+    name: str
+    camera_refs: list[str]
+    window_start: datetime
+    window_end: datetime
+    legs: list[dict[str, Any]]
+    total_transits: int
+    note: str
+
+
+@router.get("/corridor", response_model=CorridorOut)
+def corridor(
+    session: SessionDep,
+    actor: CurrentActor,
+    cameras: str = Query(
+        description="ordered, comma-separated camera_refs; direction matters",
+        min_length=3,
+    ),
+    from_: datetime = Query(alias="from"),
+    to: datetime = Query(),
+    name: str = Query(default="Corridor", max_length=120),
+) -> CorridorOut:
+    """Median transit time along an ordered sequence of cameras.
+
+    The corridor is given as an ordered list rather than stored, because a corridor is a
+    question an operator asks rather than an entity the estate owns: the same cameras
+    make different corridors depending on which way you read them, and persisting one
+    ordering would make the other feel unsupported.
+    """
+    if to <= from_:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="'to' must be after 'from'",
+        )
+    if to - from_ > MAX_WINDOW:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"window exceeds the {MAX_WINDOW.days}-day maximum",
+        )
+
+    refs = [part.strip() for part in cameras.split(",") if part.strip()]
+    if len(refs) < 2:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="a corridor needs at least two cameras",
+        )
+
+    try:
+        report = corridor_report(session, name=name, camera_refs=refs, from_=from_, to=to)
+    except ValueError as exc:
+        # Refused rather than silently shortened: dropping an unknown camera would
+        # change which road is being measured without saying so.
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
+        ) from exc
+
+    return CorridorOut(**report.as_dict())
