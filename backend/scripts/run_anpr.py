@@ -89,8 +89,15 @@ def main() -> int:
     if args.persist:
         from services.analytics.persistence import DetectionWriter
         from services.api.db import get_sessionmaker
+        from services.api.tenancy import set_admin_context
 
         session = get_sessionmaker()()
+        # Row-level security fails closed, so a connection carrying no identity sees
+        # no cameras at all and every record is dropped as "unknown camera" -- silently,
+        # because a dropped record is a counted result rather than an error. An ingest
+        # worker legitimately spans departments; it writes for whichever camera it is
+        # reading. This is exactly what set_admin_context documents itself as being for.
+        set_admin_context(session)
         writer = DetectionWriter(session)
 
     records = []
