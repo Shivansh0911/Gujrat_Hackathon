@@ -624,6 +624,140 @@ have now yielded 18 plate regions and **one** registration. What changed is that
 claim "this estate cannot produce a readable plate" was too strong, and a single
 counter-example is enough to require saying so.
 
+## Finding 23 - `detection.vehicle_bbox` holds a plate box, not a vehicle box
+
+**2026-10-09.** The Phase 2 brief scoped appearance-based identity on the premise that
+"`Detection.vehicle_bbox` already exists -- the vehicle box is already being captured
+alongside the plate box." It is not, and the column name is why the premise was
+believed.
+
+The chain, traced rather than assumed:
+
+* `persistence.py:100` writes `PlateDetectionRecord.bbox` into `vehicle_bbox`.
+* `anpr.py:580` sets that field from `track.bbox`, where `track` is a `PlateTrack`.
+* `PlateTracker` associates **plate** boxes by IoU between plate boxes.
+* The only detector in the project is `yolo-v9-t-384-license-plate-end2end`.
+* `vehicle_counting.py`'s own docstring states it outright: "a detection is a *plate
+  read*, not a vehicle."
+
+So the platform had no vehicle box anywhere and no detector that could produce one. The
+practical consequence is larger than a naming defect: the pipeline only ever learned a
+vehicle existed when its plate was legible, which on this estate is one grammar-valid
+read per ~3,900 frames (finding 22). Appearance matching had nothing to fingerprint.
+
+Closing it needed a second detector, not a column rename. YOLOX-tiny (Apache-2.0,
+Megvii) ships: 20 MB ONNX on the `onnxruntime` already present, 80 COCO classes of which
+four are vehicles. `ssd_mobilenet_v1` and `tiny-yolov3` from the ONNX Model Zoo were
+considered and rejected on small-object performance, which is the whole problem at a
+median 27 px vehicle. Ultralytics remains excluded on licence grounds (ADR 0003).
+
+Megvii's release is exported **without** `decode_in_inference`, so its single
+`[1, 3549, 85]` output is grid-relative and log-scale -- 3549 = 52² + 26² + 13² anchors
+over strides 8/16/32. Feeding it straight through puts every box near the origin, which
+reads as a weak model rather than a missing step. The decode is ours and is unit-tested
+against hand-built tensors.
+
+**Measured on the own-feed clip:** 302 frames decoded, 52 analysed at 5 analytic fps, 74
+vehicle detections, **11 sightings** emitted (one per pass, not per frame), all 11
+fingerprinted. For comparison, the ANPR pipeline's yield on the government estate is one
+registration per 3,938 frames.
+
+Whether YOLOX-tiny finds a 27 px vehicle on the government feed is **not measured here**
+and is not claimed.
+
+## Finding 24 - a CIELAB histogram used the obvious way is worse than RGB would have been
+
+**2026-10-09.** The appearance descriptor was specified as "colour histogram in CIELAB
+(perceptually uniform, so 'same colour under different streetlight' is a small distance
+-- RGB is not)". The reasoning is correct. The obvious implementation of it is not.
+
+The first version binned all three channels into one 4×4×4 cube. On a synthetic pair it
+measured **backwards**:
+
+| pair | cosine distance |
+|---|---:|
+| same vehicle, dimmer light | **0.333** |
+| plainly different vehicle | **0.119** |
+
+Lightness occupies a third of a joint cube, so dimming a crop migrates most of its mass
+into different bins and the distance explodes, while two unrelated vehicles that happen
+to share a brightness profile land close together. The joint cube reintroduces exactly
+the illumination sensitivity Lab was chosen to remove.
+
+Splitting the axes and weighting them separately fixes it -- chroma (a, b) at 8×8 and
+full weight, lightness at 4 bins and weight 0.30, edge orientation at 8 bins and weight
+0.50:
+
+| pair | cosine distance |
+|---|---:|
+| same vehicle, dimmer light | **0.035** |
+| different vehicle (red) | 0.514 |
+| different vehicle (blue) | 0.553 |
+
+The lesson is not about Lab. It is that "use a perceptually uniform colour space" is a
+property of the *space*, and collecting the benefit is a property of how the space is
+*binned and weighted*. The test that catches this is the first one in
+`test_appearance_descriptor.py` rather than an afterthought.
+
+## Finding 25 - appearance separates vehicles, but far too weakly to assert identity
+
+**2026-10-09.** The capability was measured in the same pass as it was built, using the
+tracker's own association as ground truth: two views inside one track are the same
+vehicle seen at different scales, poses and lighting as it crosses the frame; two views
+in different tracks are different vehicles. No hand labelling and nothing simulated.
+
+1,070 same-vehicle pairs against 24,581 different-vehicle pairs, from the own-feed clip:
+
+| | cosine distance |
+|---|---:|
+| same vehicle, median | **0.0162** |
+| same vehicle, p90 | 0.1123 |
+| different vehicles, p10 | 0.0654 |
+| different vehicles, median | **0.1911** |
+
+There is real separation -- the medians differ by 12× -- and the tails overlap badly:
+
+| gate | recall | false-link rate | precision |
+|---:|---:|---:|---:|
+| 0.05 | 0.704 | **0.055** | 0.356 |
+| 0.10 | 0.861 | 0.213 | 0.149 |
+| 0.20 | 0.980 | 0.526 | 0.075 |
+| 0.39 | 0.993 | **0.834** | 0.049 |
+
+**The gate the scorer's weighting originally admitted was 0.39.** It would have linked
+five of every six pairs it proposed to the wrong vehicle. It was set by reasoning about
+what the weights ought to mean, it was wrong by an order of magnitude, and only the
+measurement found it. The shipped gate is **0.05**, chosen on the same principle as the
+ANPR publish floor: a wrong answer sends an investigator somewhere else entirely, while
+nothing at least prompts them to look again.
+
+**Precision at the shipped gate is 0.356.** On this footage roughly two of every three
+proposed links would be wrong. That number belongs in front of a jury unprompted, and it
+is the entire reason an appearance match is rendered as `CANDIDATE` and never in the
+style of a plate read.
+
+**Quality gating does not help.** The brief expected it to; it was measured and it does
+not. Raising the minimum crop quality from 0.0 to 0.6 moved the false-link rate at a
+0.20 gate from 0.526 to **0.556** -- the wrong way, consistently, on both clips. Quality
+is therefore kept as a *weight* on the composite score, where it demonstrably helps rank
+a solid pair above a lucky noise match, and is **not** used as a filter.
+
+Three caveats, all of which cut against flattering the figures:
+
+* The footage is a BRTS bus depot -- a fleet in one livery -- so the different-vehicle
+  set is adversarially similar. It is also a realistic policing case (a road of white
+  hatchbacks), so it is not discounted.
+* `demo_clip.mp4` is an excerpt of `commons_traffic_clip.mp4`. Running the measurement on
+  both returned near-identical distributions, which is **not** independent corroboration
+  and is not presented as such.
+* The deployed search additionally requires a *different camera* and physical
+  reachability under `speed.py`'s bound, neither of which this measurement models. The
+  operational false-link rate should therefore be lower than 0.055. It has not been
+  measured, so it is not claimed.
+
+The honest summary: this is a search aid that narrows thousands of sightings to a handful
+a human then adjudicates, with both crops shown side by side. It is not an identification.
+
 ## Local evaluation hardware
 
 Python 3.12.5, Docker 29.7.2, Node 20.14, **NVIDIA RTX 4050 Laptop, 6 GB VRAM**.
