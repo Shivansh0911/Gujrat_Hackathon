@@ -291,6 +291,10 @@ class VehicleSighting(Base):
             "(appearance_vector IS NOT NULL AND appearance_kind IS NOT NULL)",
             name="ck_sighting_vector_kind_paired",
         ),
+        CheckConstraint(
+            "last_pts_ms >= pts_ms AND frames_seen >= 0 AND track_displacement_px >= 0",
+            name="ck_sighting_pass_extent",
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), default=uuid.uuid4, primary_key=True)
@@ -330,7 +334,22 @@ class VehicleSighting(Base):
     quality_score: Mapped[float] = mapped_column(Float, nullable=False)
 
     crop_path: Mapped[str | None] = mapped_column(Text)
+
+    #: Stream position of the first and last frame of the pass. The extent is what
+    #: dwell and abandonment detection asks about, and it is kept in the stream's own
+    #: timebase because wall clock on a live feed is an estimate while PTS is exact.
     pts_ms: Mapped[float] = mapped_column(Float, nullable=False)
+    last_pts_ms: Mapped[float] = mapped_column(Float, nullable=False)
+
+    #: How many analytic frames the pass was observed in. Distinct from quality_score,
+    #: which says how good the best crop was rather than how much evidence there is.
+    frames_seen: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    #: How far the box centre moved between the first and last frame, in frame pixels.
+    #: Pixels rather than metres: converting needs calibration this estate does not
+    #: publish, the same reason camera_zone polygons live in the image plane.
+    track_displacement_px: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+
     clock_confidence: Mapped[float] = mapped_column(Float, nullable=False, default=1.0)
     ingested_at_utc: Mapped[datetime] = _utcnow()
 

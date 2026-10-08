@@ -77,12 +77,13 @@ _INSERT = text(
         id, camera_id, observed_at_utc, vehicle_bbox, vehicle_class,
         vehicle_class_confidence, track_id, plate_detection_id, plate_detection_at,
         appearance_vector, appearance_kind, aspect_ratio, rel_area, rel_cx, rel_cy,
-        quality_score, pts_ms, clock_confidence, ingested_at_utc
+        quality_score, pts_ms, last_pts_ms, frames_seen, track_displacement_px,
+        clock_confidence, ingested_at_utc
     ) VALUES (
         :id, :cam, now(), CAST(:bbox AS jsonb), :cls,
         :cls_conf, :track, :plate_id, :plate_at,
         CAST(:vec AS vector), :kind, 1.25, 0.04, 0.5, 0.6,
-        :quality, 1000, 1.0, now()
+        :quality, 1000, :last_pts, :frames, :displacement, 1.0, now()
     )
     """
 )
@@ -151,6 +152,9 @@ def _insert(session: Session, cam_id: uuid.UUID, **over: Any) -> uuid.UUID:
         "vec": _ZERO_VECTOR,
         "kind": APPEARANCE_KIND,
         "quality": 0.6,
+        "last_pts": 4200.0,
+        "frames": 6,
+        "displacement": 180.0,
     }
     params.update(over)
     session.execute(_INSERT, params)

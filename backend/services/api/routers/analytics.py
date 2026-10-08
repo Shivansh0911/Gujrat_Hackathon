@@ -16,6 +16,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from services.analytics.anomalies import find_cloned_plates, find_convoys, find_dwells
 from services.analytics.scale_planner import CONSTANTS as SCALE_CONSTANTS
 from services.analytics.scale_planner import ScaleInputs
 from services.analytics.scale_planner import plan as scale_plan_model
@@ -232,4 +233,77 @@ def scale_plan(
     return ScalePlanOut(
         **result.as_dict(),
         constants=[ScaleConstantOut(**c.as_dict()) for c in SCALE_CONSTANTS],
+    )
+
+
+class AnomaliesOut(BaseModel):
+    """Three findings, each with the evidence behind it and its own honest limits.
+
+    Returned together because a control room asks "what is unusual" once, not three
+    times, and because the limits of each are easier to read side by side than apart.
+    """
+
+    window_start: datetime
+    window_end: datetime
+
+    cloned_plates: list[dict[str, Any]]
+    convoys: list[dict[str, Any]]
+    dwells: list[dict[str, Any]]
+
+    #: What each detector will and will not find, carried in the response rather than
+    #: left to documentation. A result read without them invites conclusions none of
+    #: these three can support.
+    limits: dict[str, str]
+
+
+_ANOMALY_LIMITS = {
+    "cloned_plates": (
+        "A plate observed at two cameras no vehicle could travel between. Both "
+        "hypotheses are returned -- a cloned registration, or one read being wrong -- "
+        "because the platform cannot distinguish them; only comparing the two crops can. "
+        "Harness (REPLAY-) cameras and cameras with no position are excluded."
+    ),
+    "convoys": (
+        "Pairs of registrations repeatedly seen together across three or more cameras. "
+        "Plate reads only. Appearance-based convoy detection is deliberately not offered: "
+        "it would need two independent appearance links, which at the measured 0.356 "
+        "precision compound to roughly 0.13. Where the estate yields no plates it yields "
+        "no convoys."
+    ),
+    "dwells": (
+        "A vehicle that stayed in one camera's view without moving. Needs no plate and no "
+        "cross-camera identity, so it is the most reliable of the three and the only one "
+        "that works unchanged on a camera that cannot read plates. Drift is judged "
+        "relative to the vehicle's own box, because no camera calibration is available to "
+        "convert pixels to metres."
+    ),
+}
+
+
+@router.get("/anomalies", response_model=AnomaliesOut)
+def anomalies(
+    session: SessionDep,
+    actor: CurrentActor,
+    from_: datetime = Query(alias="from"),
+    to: datetime = Query(),
+) -> AnomaliesOut:
+    """Cloned plates, convoys and dwelling vehicles in one window."""
+    if to <= from_:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="'to' must be after 'from'",
+        )
+    if to - from_ > MAX_WINDOW:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"window exceeds the {MAX_WINDOW.days}-day maximum",
+        )
+
+    return AnomaliesOut(
+        window_start=from_,
+        window_end=to,
+        cloned_plates=[f.as_dict() for f in find_cloned_plates(session, from_=from_, to=to)],
+        convoys=[f.as_dict() for f in find_convoys(session, from_=from_, to=to)],
+        dwells=[f.as_dict() for f in find_dwells(session, from_=from_, to=to)],
+        limits=dict(_ANOMALY_LIMITS),
     )

@@ -65,7 +65,8 @@ _INSERT = text(
         vehicle_class_confidence, track_id, plate_detection_id, plate_detection_at,
         appearance_vector, appearance_kind, dominant_colour_lab,
         aspect_ratio, rel_area, rel_cx, rel_cy, quality_score,
-        crop_path, pts_ms, clock_confidence, ingested_at_utc
+        crop_path, pts_ms, last_pts_ms, frames_seen, track_displacement_px,
+        clock_confidence, ingested_at_utc
     )
     SELECT CAST(:id AS uuid), CAST(:camera_id AS uuid),
            CAST(:observed_at_utc AS timestamptz),
@@ -84,6 +85,9 @@ _INSERT = text(
            CAST(:quality_score AS double precision),
            CAST(:crop_path AS text),
            CAST(:pts_ms AS double precision),
+           CAST(:last_pts_ms AS double precision),
+           CAST(:frames_seen AS integer),
+           CAST(:displacement_px AS double precision),
            CAST(:clock_confidence AS double precision),
            now()
     WHERE NOT EXISTS (
@@ -171,6 +175,11 @@ class SightingWriter:
                 "quality_score": appearance.quality_score if appearance else 0.0,
                 "crop_path": rec.crop_path,
                 "pts_ms": float(rec.first_pts_ms),
+                # max() rather than trusting the record: the CHECK requires
+                # last >= first, and a one-frame pass can round the other way.
+                "last_pts_ms": max(float(rec.first_pts_ms), float(rec.last_pts_ms)),
+                "frames_seen": int(rec.frames_seen),
+                "displacement_px": max(0.0, float(rec.displacement_px)),
                 "clock_confidence": max(0.0, min(1.0, float(rec.clock_confidence))),
             }
             result = cast(CursorResult[Any], self._session.execute(_INSERT, params))

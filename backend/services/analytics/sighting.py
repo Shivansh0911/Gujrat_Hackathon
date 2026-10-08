@@ -78,6 +78,9 @@ class VehicleTrack:
     observed_at_utc: datetime
     frames_seen: int = 1
     misses: int = 0
+    #: The box the track opened on, kept so displacement across the pass can be
+    #: measured at close without retaining every frame's box.
+    first_bbox: Box = (0, 0, 0, 0)
     #: Best crop of the pass, and the score that won it. See `_crop_score`.
     best_crop: NDArray[Any] | None = None
     best_crop_score: float = 0.0
@@ -107,6 +110,9 @@ class VehicleSightingRecord:
     crop: NDArray[Any] | None
     crop_path: str | None
     appearance: AppearanceDescriptor | None
+    #: Distance the box centre travelled across the pass, in frame pixels. A long
+    #: pass with near-zero displacement is a vehicle that stayed put.
+    displacement_px: float = 0.0
 
     @property
     def rel_area(self) -> float:
@@ -261,6 +267,7 @@ class VehicleTracker:
                 last_pts_ms=pts_ms,
                 session_id=session_id,
                 observed_at_utc=observed_at_utc,
+                first_bbox=detection.bbox,
                 class_votes={detection.vehicle_class: detection.confidence},
             )
             self._tracks[self._next_id] = track
@@ -412,6 +419,12 @@ class SightingPipeline:
             cv2.imwrite(str(self._crop_dir / name), track.best_crop)
             crop_path = name
 
+        # Displacement between the first and last box of the pass. Measured centre to
+        # centre: a vehicle approaching the camera grows without moving, and comparing
+        # corners would read that growth as travel.
+        (fx, fy), (lx, ly) = centre(track.first_bbox), centre(track.bbox)
+        displacement = float(((fx - lx) ** 2 + (fy - ly) ** 2) ** 0.5)
+
         return VehicleSightingRecord(
             camera_ref=source.camera_ref,
             # Namespaced by session: tracker ids restart after a scene cut, and a bare
@@ -430,6 +443,7 @@ class SightingPipeline:
             crop=track.best_crop,
             crop_path=crop_path,
             appearance=appearance,
+            displacement_px=round(displacement, 2),
         )
 
 
