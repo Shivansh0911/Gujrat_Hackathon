@@ -172,6 +172,83 @@ class EvidenceType(StrEnum):
     APPEARANCE_REID = "appearance_reid"  # T2.3; always a lower grade than a plate read
 
 
+class EvidenceTier(StrEnum):
+    """The three grades a claim about vehicle identity can carry.
+
+    `EvidenceType` records *how* a link was established; this records *how much it is
+    worth*, which is the thing the console renders and an officer acts on. They are
+    deliberately separate: two different mechanisms can land in the same tier, and a
+    future mechanism must be assigned a tier explicitly rather than inheriting one.
+
+    The mapping is one-way and total -- see `tier_for_evidence`.
+
+    Why a tier exists at all
+    ------------------------
+    The government estate yields one grammar-valid registration per ~3,900 frames
+    (DISCOVERY finding 22), so most of what the platform can say about a vehicle is
+    inferred from appearance rather than read off a plate. An inference is useful; an
+    inference presented as a reading is not, because an officer cannot tell the
+    difference after the fact and will act on both identically.
+
+    `CANDIDATE` must never be rendered in the `CONFIRMED` style anywhere in the
+    console. That is the one UI rule the credibility of appearance matching rests on.
+    """
+
+    CONFIRMED = "confirmed"
+    PROBABLE = "probable"
+    CANDIDATE = "candidate"
+
+
+#: Evidentiary strength, ascending. Use for comparisons rather than string equality so
+#: a new tier cannot be silently ordered wrong.
+TIER_RANK: dict[EvidenceTier, int] = {
+    EvidenceTier.CANDIDATE: 0,
+    EvidenceTier.PROBABLE: 1,
+    EvidenceTier.CONFIRMED: 2,
+}
+
+
+def tier_for_evidence(evidence: EvidenceType) -> EvidenceTier:
+    """The tier an evidence type always carries.
+
+    Exhaustive on purpose: a new `EvidenceType` raises here rather than defaulting to
+    a flattering tier. Defaulting is how an appearance match would come to be drawn
+    like a plate read.
+    """
+    match evidence:
+        case EvidenceType.ANPR_EXACT:
+            return EvidenceTier.CONFIRMED
+        case EvidenceType.ANPR_FUZZY:
+            return EvidenceTier.PROBABLE
+        case EvidenceType.APPEARANCE_REID:
+            # Appearance alone is the weakest claim the platform makes. A strong
+            # appearance match with corroborating attributes is promoted to PROBABLE
+            # by the scorer, explicitly and with its reasons -- never by default here.
+            return EvidenceTier.CANDIDATE
+
+
+class VehicleClass(StrEnum):
+    """Body type of a sighted vehicle.
+
+    `AUTO_RICKSHAW` is listed because it is a large share of Indian urban traffic and
+    the brief names it. It is **not** a COCO class, so whichever general detector ships
+    will report one as `car`, `truck` or `motorcycle` depending on angle. Until a
+    detector that distinguishes it is measured and adopted, nothing may write this
+    value -- see DISCOVERY. Keeping the member and leaving it unwritten is deliberate:
+    the alternative is silently relabelling autos as cars with no record that the
+    distinction was lost.
+    """
+
+    CAR = "car"
+    TRUCK = "truck"
+    BUS = "bus"
+    MOTORCYCLE = "motorcycle"
+    AUTO_RICKSHAW = "auto_rickshaw"
+    #: The detector found a vehicle but no class above it was confident enough. A
+    #: sighting still counts: the appearance fingerprint does not need the class.
+    UNKNOWN = "unknown"
+
+
 class AlertState(StrEnum):
     RAISED = "RAISED"
     NOTIFIED = "NOTIFIED"

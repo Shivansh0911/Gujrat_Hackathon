@@ -21,6 +21,7 @@ from datetime import datetime
 from typing import Any
 
 from geoalchemy2 import Geography, Geometry
+from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     Boolean,
     CheckConstraint,
@@ -38,6 +39,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
+from services.analytics.model_ids import APPEARANCE_DIM
 from services.registry.enums import (
     AlertState,
     ArchiveMode,
@@ -249,6 +251,88 @@ class Detection(Base):
 
     crop_path: Mapped[str | None] = mapped_column(Text)
     vehicle_bbox: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+
+
+class VehicleSighting(Base):
+    """One vehicle observed on one camera, with or without a readable plate.
+
+    `Detection` is a *plate read* and cannot exist without a plate string. This is a
+    *vehicle*, and it exists whenever the detector found one. On the government estate
+    that distinction is the difference between knowing about one vehicle per ~3,900
+    frames and knowing about all of them -- see migration 0007 for the measurement and
+    for why this is a separate table rather than a nullable column on `Detection`.
+
+    `plate_detection_id` / `plate_detection_at` are a **soft** reference to
+    `detection`'s composite primary key. TimescaleDB does not support foreign keys
+    referencing a hypertable, so there is no constraint behind them; a CHECK enforces
+    that both are set or neither is. Resolve them with care -- a plate read can be
+    deleted in principle, and nothing in the database will null these out.
+    """
+
+    __tablename__ = "vehicle_sighting"
+    __table_args__ = (
+        Index("ix_sighting_camera_time", "camera_id", "observed_at_utc"),
+        Index("ix_sighting_track", "camera_id", "track_id", "observed_at_utc"),
+        CheckConstraint("quality_score >= 0 AND quality_score <= 1", name="ck_sighting_quality"),
+        CheckConstraint(
+            "vehicle_class_confidence >= 0 AND vehicle_class_confidence <= 1",
+            name="ck_sighting_class_conf",
+        ),
+        CheckConstraint(
+            "clock_confidence >= 0 AND clock_confidence <= 1", name="ck_sighting_clock_conf"
+        ),
+        CheckConstraint(
+            "(plate_detection_id IS NULL AND plate_detection_at IS NULL) OR "
+            "(plate_detection_id IS NOT NULL AND plate_detection_at IS NOT NULL)",
+            name="ck_sighting_plate_ref_complete",
+        ),
+        CheckConstraint(
+            "(appearance_vector IS NULL AND appearance_kind IS NULL) OR "
+            "(appearance_vector IS NOT NULL AND appearance_kind IS NOT NULL)",
+            name="ck_sighting_vector_kind_paired",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), default=uuid.uuid4, primary_key=True)
+    observed_at_utc: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, primary_key=True
+    )
+    camera_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("camera.id", ondelete="RESTRICT"), nullable=False
+    )
+
+    #: Frame-pixel box of the vehicle. NOT NULL: a sighting *is* a box.
+    vehicle_bbox: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    vehicle_class: Mapped[str] = mapped_column(String(32), nullable=False)
+    vehicle_class_confidence: Mapped[float] = mapped_column(Float, nullable=False)
+
+    #: Per-camera tracker id grouping the frames of one pass. Never global: trackers
+    #: reset on a scene cut, and a global id would imply continuity across that reset.
+    track_id: Mapped[str] = mapped_column(String(64), nullable=False)
+
+    plate_detection_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    plate_detection_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    #: The appearance fingerprint, and the layout that produced it. Vectors of
+    #: different kinds are never compared -- see `services.analytics.appearance`.
+    appearance_vector: Mapped[list[float] | None] = mapped_column(Vector(APPEARANCE_DIM))
+    appearance_kind: Mapped[str | None] = mapped_column(String(64))
+    dominant_colour_lab: Mapped[dict[str, float] | None] = mapped_column(JSONB)
+
+    #: Framing scalars. Deliberately outside the compared vector: they describe where
+    #: the camera saw the vehicle, not what the vehicle looks like.
+    aspect_ratio: Mapped[float] = mapped_column(Float, nullable=False)
+    rel_area: Mapped[float] = mapped_column(Float, nullable=False)
+    rel_cx: Mapped[float] = mapped_column(Float, nullable=False)
+    rel_cy: Mapped[float] = mapped_column(Float, nullable=False)
+
+    #: How much this fingerprint is worth. Every downstream match multiplies by it.
+    quality_score: Mapped[float] = mapped_column(Float, nullable=False)
+
+    crop_path: Mapped[str | None] = mapped_column(Text)
+    pts_ms: Mapped[float] = mapped_column(Float, nullable=False)
+    clock_confidence: Mapped[float] = mapped_column(Float, nullable=False, default=1.0)
+    ingested_at_utc: Mapped[datetime] = _utcnow()
 
 
 class WatchlistEntry(Base):

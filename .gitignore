@@ -87,3 +87,8 @@ docs/demo-recordings/
 
 # Generated deployment secrets. Never committed.
 deploy-secrets.env
+
+# Vehicle detector ONNX, fetched on first use and checksum-verified against
+# model_ids.VEHICLE_DETECTOR_SHA256. 20 MB of bytes identical to an upstream release
+# does not belong in git; the two ANPR models are acquired the same way.
+data/models/

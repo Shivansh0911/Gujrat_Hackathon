@@ -24,6 +24,9 @@ from typing import TYPE_CHECKING, Any, Iterator, Protocol, cast
 import numpy as np
 from numpy.typing import NDArray
 
+from services.analytics.boxes import centre as box_centre
+from services.analytics.boxes import diagonal as box_diagonal
+from services.analytics.boxes import iou as box_iou
 from services.analytics.model_ids import DETECTOR_MODEL, RECOGNISER_MODEL
 from services.analytics.plate_grammar import NormalisedPlate, PlateAccumulator
 from services.common.cv_env import cv2
@@ -102,27 +105,12 @@ class PlateTrack:
     session_id: str = ""
 
 
-def _iou(a: tuple[int, int, int, int], b: tuple[int, int, int, int]) -> float:
-    ax1, ay1, ax2, ay2 = a
-    bx1, by1, bx2, by2 = b
-    ix1, iy1 = max(ax1, bx1), max(ay1, by1)
-    ix2, iy2 = min(ax2, bx2), min(ay2, by2)
-    iw, ih = max(0, ix2 - ix1), max(0, iy2 - iy1)
-    inter = iw * ih
-    if inter == 0:
-        return 0.0
-    area_a = (ax2 - ax1) * (ay2 - ay1)
-    area_b = (bx2 - bx1) * (by2 - by1)
-    return inter / float(area_a + area_b - inter)
-
-
-def _centre(b: tuple[int, int, int, int]) -> tuple[float, float]:
-    return ((b[0] + b[2]) / 2.0, (b[1] + b[3]) / 2.0)
-
-
-def _diag(b: tuple[int, int, int, int]) -> float:
-    w, h = b[2] - b[0], b[3] - b[1]
-    return float((w * w + h * h) ** 0.5) or 1.0
+# Box geometry moved to `boxes.py` when vehicle tracking arrived needing the same
+# three primitives. The aliases stay so the tuning below -- which is measured against
+# real footage -- keeps reading the way it was written and reviewed.
+_iou = box_iou
+_centre = box_centre
+_diag = box_diagonal
 
 
 class PlateTracker:

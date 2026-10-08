@@ -15,6 +15,10 @@ psycopg[binary]==3.2.3      # LGPL-3.0 for libpq bindings; psycopg3 core is LGPL
                             # dynamically linked, not modified, and not distributed
                             # by us. See docs/adr/0003-licence-review.md.
 geoalchemy2==0.15.2         # MIT
+pgvector==0.5.0             # MIT — SQLAlchemy/Alembic binding for the `vector` type.
+                            # Pulls no dependencies of its own, so it cannot drag the
+                            # numpy pin forward. The extension itself is PostgreSQL
+                            # licence and was already enabled in migration 0001.
 
 # --- API (T0.4) ---
 fastapi==0.141.1            # MIT

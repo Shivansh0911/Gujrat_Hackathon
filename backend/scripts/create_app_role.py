@@ -58,6 +58,7 @@ TABLES = (
     "camera_capability",
     "camera_zone",
     "detection",
+    "vehicle_sighting",
     "watchlist_entry",
     "alert",
     "audit_entry",

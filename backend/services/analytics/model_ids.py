@@ -40,4 +40,60 @@ MODEL_VERSION = (
     f"{ANPR_VERSION} (open-image-models {DETECTOR_MODEL} + fast-plate-ocr {RECOGNISER_MODEL})"
 )
 
-__all__ = ["DETECTOR_MODEL", "RECOGNISER_MODEL", "ANPR_VERSION", "MODEL_VERSION"]
+#: Length of the appearance fingerprint stored in `vehicle_sighting.appearance_vector`.
+#:
+#: Declared here, in the module that imports nothing, for the same reason the model
+#: names are: `services.registry.models` needs it to size the pgvector column, and
+#: reaching into `services.analytics.appearance` to ask would drag OpenCV into the API
+#: process at import time. `appearance.py` imports this value rather than defining its
+#: own, so the column width and the descriptor cannot drift apart.
+#:
+#: 64 chroma bins + 4 lightness bins + 8 edge-orientation bins. Changing it requires a
+#: migration and a new APPEARANCE_KIND -- stored vectors of the old width are not
+#: comparable and must not be silently reinterpreted.
+APPEARANCE_DIM = 76
+
+#: Stamped on every stored vector so two layouts are never compared. See
+#: `services.analytics.appearance` for the layout itself and why it is weighted.
+#:
+#: v1 was a 4x4x4 joint CIELAB cube. It measured a relit crop of one vehicle as further
+#: from itself than from a different vehicle, because lightness occupied a third of the
+#: cube. Nothing was ever persisted under it; the name is burnt rather than reused.
+APPEARANCE_KIND = "ab64-l4-edge8-v2"
+
+#: Vehicle detector. Apache-2.0, from Megvii's own release.
+#:
+#: Ultralytics YOLO is AGPL and excluded (ADR 0003), which rules out the obvious choice.
+#: YOLOX-tiny is the strongest small-object detector available under a permissive
+#: licence at a size a free-tier CPU instance can run. See
+#: `services.analytics.vehicle_detect` for what was considered and rejected.
+VEHICLE_DETECTOR_MODEL = "yolox_tiny"
+VEHICLE_DETECTOR_INPUT = 416
+VEHICLE_DETECTOR_URL = (
+    "https://github.com/Megvii-BaseDetection/YOLOX/releases/download/0.1.1rc0/yolox_tiny.onnx"
+)
+
+#: Verified on every load, not only on download. A model file decides what the platform
+#: reports having seen, so a substituted or truncated one must fail loudly rather than
+#: quietly change the evidence.
+VEHICLE_DETECTOR_SHA256 = "427cc366d34e27ff7a03e2899b5e3671425c262ea2291f88bb942bc1cc70b0f7"
+
+#: Bumped whenever vehicle detection, the appearance descriptor or the candidate scorer
+#: changes in a way that could alter which sightings are linked. Printed alongside
+#: ANPR_VERSION on evidence exports so a disputed journey can be tied to the exact
+#: analytics that produced it.
+SIGHTING_VERSION = "sighting-1.0.0"
+
+__all__ = [
+    "ANPR_VERSION",
+    "APPEARANCE_DIM",
+    "APPEARANCE_KIND",
+    "DETECTOR_MODEL",
+    "MODEL_VERSION",
+    "RECOGNISER_MODEL",
+    "SIGHTING_VERSION",
+    "VEHICLE_DETECTOR_INPUT",
+    "VEHICLE_DETECTOR_MODEL",
+    "VEHICLE_DETECTOR_SHA256",
+    "VEHICLE_DETECTOR_URL",
+]
