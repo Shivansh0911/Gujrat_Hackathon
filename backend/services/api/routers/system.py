@@ -5,8 +5,19 @@ from __future__ import annotations
 from typing import Annotated
 
 from fastapi import APIRouter, Depends
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from services.analytics.readiness import (
+    MIN_PLATE_SAMPLE,
+    MIN_VEHICLE_SAMPLE,
+    PLATE_PX_MARGINAL,
+    PLATE_PX_READABLE,
+    RATIO_ALIGNED,
+    ReadinessGrade,
+    analytics_for,
+    grade_cameras,
+)
 from services.api import audit as audit_mod
 from services.api.db import get_session
 from services.api.schemas import AuditVerifyOut, CameraHealthOut, GatewayStatusOut
@@ -88,3 +99,82 @@ def liveness() -> dict[str, str]:
     half the monitoring world can speak is not doing its job.
     """
     return {"status": "ok"}
+
+
+class ReadinessOut(BaseModel):
+    """One camera's measured ANPR readiness, with the evidence behind the grade.
+
+    The evidence travels with the verdict. A grade of `not_viable` that arrives without
+    the numbers behind it is an opinion, and this one may end up in front of someone
+    deciding whether to spend money on a camera.
+    """
+
+    camera_id: str
+    camera_ref: str
+    camera_name: str
+
+    plate_samples: int
+    plate_px_median: float | None
+    plate_px_p90: float | None
+    vehicle_samples: int
+    vehicle_px_median: float | None
+    plate_to_vehicle_ratio: float | None
+
+    grade: str
+    reasoning: str
+    remedy: str | None
+    #: Which analytics this camera should be asked to run, from its grade (§4.2).
+    analytics: list[str]
+
+
+class ReadinessSummaryOut(BaseModel):
+    counts_by_grade: dict[str, int]
+    #: The fraction of graded cameras that can actually read a plate. This is the input
+    #: the Scale Planner needs and the number the estate's owner does not currently have.
+    anpr_capable_fraction: float | None
+    graded: int
+    ungraded: int
+    thresholds: dict[str, float]
+    cameras: list[ReadinessOut]
+
+
+@router.get("/health/readiness", response_model=ReadinessSummaryOut)
+def camera_readiness(session: SessionDep, actor: CurrentActor) -> ReadinessSummaryOut:
+    """Grade every camera for ANPR readiness, and say what the rest should run instead.
+
+    Recomputed on each call rather than cached. It is cheap -- two grouped aggregates
+    over indexed columns -- and a stale grade is worse than none when it drives a
+    re-aiming or replacement decision.
+    """
+    rows = grade_cameras(session)
+
+    counts: dict[str, int] = {}
+    for row in rows:
+        counts[row.grade.value] = counts.get(row.grade.value, 0) + 1
+
+    graded = sum(
+        count
+        for grade, count in counts.items()
+        if grade != ReadinessGrade.INSUFFICIENT_SAMPLE.value
+    )
+    capable = counts.get(ReadinessGrade.ANPR_CAPABLE.value, 0)
+
+    return ReadinessSummaryOut(
+        counts_by_grade=counts,
+        # None rather than 0.0 when nothing is graded: "no cameras can read plates" and
+        # "we have not measured any camera yet" are different findings, and a Scale
+        # Planner fed the first when the second is true produces a confident wrong answer.
+        anpr_capable_fraction=round(capable / graded, 4) if graded else None,
+        graded=graded,
+        ungraded=counts.get(ReadinessGrade.INSUFFICIENT_SAMPLE.value, 0),
+        thresholds={
+            "plate_px_readable": PLATE_PX_READABLE,
+            "plate_px_marginal": PLATE_PX_MARGINAL,
+            "ratio_aligned": RATIO_ALIGNED,
+            "min_plate_sample": float(MIN_PLATE_SAMPLE),
+            "min_vehicle_sample": float(MIN_VEHICLE_SAMPLE),
+        },
+        cameras=[
+            ReadinessOut(**row.as_dict(), analytics=list(analytics_for(row.grade))) for row in rows
+        ],
+    )
