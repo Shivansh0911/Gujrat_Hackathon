@@ -28,6 +28,7 @@ from services.api.routers import (
     journey,
     keys,
     system,
+    webhooks as webhooks_router,
     zones,
 )
 from services.api.errors import (
@@ -135,6 +136,7 @@ app.include_router(zones.router)
 app.include_router(cameras.router)
 app.include_router(system.router)
 app.include_router(keys.router)
+app.include_router(webhooks_router.router)
 app.include_router(alerts.router)
 app.include_router(journey.router)
 app.include_router(candidates.router)

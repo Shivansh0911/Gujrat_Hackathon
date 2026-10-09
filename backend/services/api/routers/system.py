@@ -194,7 +194,13 @@ class ReadyOut(BaseModel):
     checks: list[DependencyOut]
 
 
-@router.api_route("/readyz", methods=["GET", "HEAD"], include_in_schema=True)
+# GET is documented; HEAD is registered separately and kept out of the schema.
+# One `api_route` carrying both generates two operations with the same id, which
+# FastAPI warns about and which makes the generated TypeScript client ambiguous.
+# Monitors still get their HEAD -- that omission is what had UptimeRobot reading a
+# 405 as a four-day outage.
+@router.get("/readyz", operation_id="readiness")
+@router.head("/readyz", include_in_schema=False)
 def readiness_probe(session: SessionDep, response: Response) -> ReadyOut:
     """Should this instance receive traffic?
 

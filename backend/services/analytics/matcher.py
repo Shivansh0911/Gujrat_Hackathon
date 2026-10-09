@@ -31,7 +31,7 @@ from sqlalchemy.orm import Session
 from services.analytics import speed as speed_module
 from services.analytics import zones as zones_module
 from services.analytics.plate_grammar import confusion_aware_distance
-from services.registry.enums import AlertState
+from services.registry.enums import EvidenceType, tier_for_evidence, AlertState
 from services.registry.models import Alert, Camera, Detection, WatchlistEntry
 
 log = logging.getLogger(__name__)
@@ -249,7 +249,57 @@ def raise_or_update_alert(
     )
     session.add(alert)
     session.flush()
+    _emit_alert_webhook(session, alert, camera)
     return alert, "created"
+
+
+def _emit_alert_webhook(session: Session, alert: Alert, camera: Camera | None) -> None:
+    """Queue this alert for any department that subscribed to alerts.
+
+    Queued, not delivered. Writing a row is cheap and transactional; an HTTP request to
+    somebody else's control room is neither, and doing it inline would put a slow
+    subscriber in the path of the matcher -- which runs per detection.
+
+    Never fails the alert. An alert that exists in the database but was not announced is
+    a degraded notification; an alert that failed to save because a webhook table was
+    locked is lost evidence. The first is recoverable by a dispatcher sweep, the second
+    is not, so the ordering of those two costs is not close.
+    """
+    if camera is None:
+        # No camera means no department, and a webhook is routed by department.
+        # The alert itself is unaffected; there is simply nowhere to send it.
+        return
+
+    try:
+        from services.api.webhooks import enqueue
+
+        enqueue(
+            session,
+            event_type="alert.raised",
+            department_id=camera.department_id,
+            payload={
+                "event": "alert.raised",
+                "alert_id": str(alert.id),
+                "matched_value": alert.matched_value,
+                "match_type": alert.match_type,
+                "match_score": alert.match_score,
+                "priority": alert.priority,
+                "observed_at_utc": alert.observed_at_utc.isoformat()
+                if alert.observed_at_utc
+                else None,
+                "camera_ref": camera.camera_ref,
+                "camera_name": camera.name,
+                # The tier is what a receiving control room acts on, so it travels with
+                # the event rather than being something they infer from match_type.
+                "evidence_tier": tier_for_evidence(
+                    EvidenceType.ANPR_EXACT
+                    if alert.match_type == "anpr_exact"
+                    else EvidenceType.ANPR_FUZZY
+                ).value,
+            },
+        )
+    except Exception:  # noqa: BLE001 -- see the docstring
+        log.warning("could not queue webhook for alert %s", alert.id, exc_info=True)
 
 
 @dataclass
