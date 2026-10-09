@@ -27,6 +27,7 @@ from __future__ import annotations
 import logging
 import uuid
 from datetime import datetime, timezone
+from collections.abc import Sequence
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -147,6 +148,31 @@ _CAVEAT = (
     "0.356 -- roughly two of three proposals are wrong. Each is shown with both crops "
     "so it can be checked by eye. Only a plate read confirms a vehicle."
 )
+
+
+#: Appended when a result is built from the replay harness. Without it the figures
+#: flatter the method badly: all four REPLAY cameras play the same clip, so two
+#: "different cameras" can hold byte-identical frames and the cosine distance between
+#: their descriptors comes out at exactly 0.0000. On footage from genuinely different
+#: cameras it never does. A reviewer who sees a perfect score and only later learns the
+#: inputs were the same file has been misled, whether or not anyone intended it.
+_REPLAY_CAVEAT = (
+    " Note: this result involves REPLAY- cameras, which replay the same recorded clip "
+    "at different places on the map. Two of them can therefore hold identical frames, "
+    "which is why an appearance distance of 0.0000 appears here and would not on "
+    "footage from genuinely different cameras."
+)
+
+
+def _involves_replay(seeds: Sequence[object], candidates: Sequence[Candidate]) -> bool:
+    """Whether any camera in this result is part of the replay harness.
+
+    `getattr` on the seeds because `find_seeds` returns rows rather than a declared
+    type; the candidates are typed, so they are read directly.
+    """
+    refs = [str(getattr(seed, "camera_ref", "") or "") for seed in seeds]
+    refs += [candidate.camera_ref or "" for candidate in candidates]
+    return any(ref.startswith("REPLAY-") for ref in refs)
 
 
 def _crop_url(path: str | None) -> str | None:
@@ -285,7 +311,7 @@ def candidate_journey(
         min_score=MIN_SCORE,
         analytics_version=SIGHTING_VERSION,
         query_ms=round(elapsed_ms, 2),
-        caveat=_CAVEAT,
+        caveat=_CAVEAT + (_REPLAY_CAVEAT if _involves_replay(seeds, candidates) else ""),
     )
 
 

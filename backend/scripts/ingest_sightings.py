@@ -181,6 +181,12 @@ def main() -> int:
         default=0.0,
         help="place the first camera's timeline this many hours in the past",
     )
+    ap.add_argument(
+        "--align-to-reads",
+        action="store_true",
+        help="anchor the timeline to the plate reads already recorded for the first "
+        "camera, so sightings and reads describe the same journey",
+    )
     ap.add_argument("--gateway", action="store_true", help="ingest the government catalogue")
     ap.add_argument("--seconds", type=float, default=30.0, help="wall-clock budget per camera")
     ap.add_argument("--max-frames", type=int, default=900)
@@ -212,19 +218,6 @@ def main() -> int:
     if not args.file and not args.gateway:
         raise SystemExit("give --file (one or more) or --gateway")
 
-    detector = YoloxVehicleDetector(min_score=args.min_score)
-    pipeline = SightingPipeline(detector, crop_dir=CROPS_DIR, analytic_fps=args.analytic_fps)
-
-    base = datetime.now(timezone.utc) - timedelta(hours=args.base_hours_ago)
-    sources = (
-        _gateway_sources(args.seconds)
-        if args.gateway
-        else _file_sources(args.file, args.camera_ref, args.offset_min, base)
-    )
-
-    started = datetime.now(timezone.utc)
-    results: list[dict[str, Any]] = []
-
     session = None if args.no_persist else get_sessionmaker()()
     if session is not None:
         # Without this the registry lookup returns nothing and every sighting is
@@ -234,6 +227,49 @@ def main() -> int:
         # `set_admin_context` exists for. Session-scoped, not transaction-scoped: this
         # job commits more than once.
         set_admin_context(session)
+
+    detector = YoloxVehicleDetector(min_score=args.min_score)
+    pipeline = SightingPipeline(detector, crop_dir=CROPS_DIR, analytic_fps=args.analytic_fps)
+
+    base = datetime.now(timezone.utc) - timedelta(hours=args.base_hours_ago)
+    if args.align_to_reads and args.camera_ref and session is not None:
+        from sqlalchemy import text
+
+        # Anchor to what is already in the database rather than to the clock.
+        #
+        # `seed_demo.py` anchors its plate reads at "now minus seven hours" computed
+        # when *it* starts. Running this script afterwards and asking for the same
+        # offset anchors at "now minus seven hours" computed when *this* starts, and
+        # the two timelines end up as far apart as the gap between the two runs. Plate
+        # linking then finds nothing, the appearance search has no seed, and the two
+        # halves of the Phase 2 story cannot corroborate each other -- which is exactly
+        # what happened, and cost a full re-ingest to notice.
+        anchor = session.execute(
+            text(
+                "SELECT min(d.observed_at_utc) FROM detection d"
+                " JOIN camera c ON c.id = d.camera_id WHERE c.camera_ref = :ref"
+            ),
+            {"ref": args.camera_ref[0]},
+        ).scalar()
+        if anchor is None:
+            log.warning(
+                "--align-to-reads: no plate reads recorded for %s; falling back to the "
+                "clock. Seed the plate reads first.",
+                args.camera_ref[0],
+            )
+        else:
+            base = anchor
+            log.info("aligned to plate reads on %s at %s", args.camera_ref[0], base)
+
+    sources = (
+        _gateway_sources(args.seconds)
+        if args.gateway
+        else _file_sources(args.file, args.camera_ref, args.offset_min, base)
+    )
+
+    started = datetime.now(timezone.utc)
+    results: list[dict[str, Any]] = []
+
     writer = SightingWriter(session) if session is not None else None
     try:
         for index, source in enumerate(sources):
@@ -279,11 +315,46 @@ def main() -> int:
             )
 
             if not args.no_link:
-                # Linking is scoped to the cameras just ingested and to a window around
-                # this run, so it does not grow with the estate.
-                window_start = started - timedelta(hours=1)
-                window_end = datetime.now(timezone.utc) + timedelta(hours=1)
+                # Scope the link to the sightings this run actually wrote, not to the
+                # clock.
+                #
+                # The window used to be [run start - 1h, now + 1h]. That is correct only
+                # when the footage is being ingested as live. An ingest that back-dates
+                # its timeline -- which is exactly what --offset-min and
+                # --align-to-reads exist to do -- writes sightings hours in the past,
+                # and every one of them fell outside the window. Linking then reported
+                # zero links without examining a single row, the appearance search had
+                # no seed, and the headline Phase 2 capability returned an empty list
+                # while looking like it had run.
+                #
+                # Taking the window from the data covers both cases and cannot drift.
                 from sqlalchemy import text
+
+                span = session.execute(
+                    text(
+                        "SELECT min(observed_at_utc), max(observed_at_utc)"
+                        " FROM vehicle_sighting WHERE camera_id = ANY(CAST(:ids AS uuid[]))"
+                    ),
+                    {
+                        "ids": [
+                            str(cid)
+                            for cid in (
+                                session.execute(
+                                    text("SELECT id FROM camera WHERE camera_ref = ANY(:refs)"),
+                                    {"refs": [r["camera_ref"] for r in results if r["ok"]]},
+                                )
+                                .scalars()
+                                .all()
+                            )
+                        ]
+                    },
+                ).first()
+                if span and span[0] is not None:
+                    window_start = span[0] - timedelta(hours=1)
+                    window_end = span[1] + timedelta(hours=1)
+                else:
+                    window_start = started - timedelta(hours=1)
+                    window_end = datetime.now(timezone.utc) + timedelta(hours=1)
 
                 for result in results:
                     if not result["ok"]:

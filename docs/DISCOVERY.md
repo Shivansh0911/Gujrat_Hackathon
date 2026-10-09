@@ -916,6 +916,65 @@ error, which looks like a gateway fault and is not one. `hls_url()` builds its U
 and WHEP, where there is no certificate to check. Probing the IP over HTTPS tests
 nothing but the prober.
 
+## Finding 29 - the appearance search returned nothing, and the matcher was fine
+
+The Phase 2 headline capability returned an empty list on every plate in the
+demonstration database. Nothing in the matcher was wrong. Its input never arrived.
+
+The chain, in the order it was unpicked:
+
+**1. The two halves sat in different weeks.** `seed_demo.py` back-dates its plate reads
+to `now - 7h` and offsets each replay camera by the real travel time between them --
+0, 100, 300 and 340 minutes, which is what makes the seeded route physically plausible
+at roughly 60, 65 and 38 km/h. `ingest_sightings.py` had no equivalent and stamped every
+camera at wall-clock now. The same clip replayed across four cameras hundreds of
+kilometres apart therefore produced observations seconds apart, which `speed.py`
+correctly rejects as impossible. `--offset-min` and `--base-hours-ago` fixed that.
+
+**2. Each script computed its own anchor.** With offsets available, running the two in
+sequence still failed: each resolves `now - 7h` when *it* starts, so the timelines ended
+up as far apart as the gap between the two runs. `--align-to-reads` anchors the sighting
+timeline to the plate reads already recorded for the first camera, so the operator does
+not have to do that arithmetic and cannot get it wrong.
+
+**3. The linking window was anchored to the clock.** This was the real defect, and the
+only one that would have reached production. `ingest_sightings.py` linked plate reads to
+sightings over `[run start - 1h, now + 1h]`. That is correct only when footage is being
+ingested as live. Any back-dated ingest -- which is exactly what the two flags above
+exist to produce -- writes sightings hours in the past, and every one of them fell
+outside the window. The linker reported zero links **without examining a single row**:
+
+```
+before:  REPLAY-01: considered=0  linked=0
+after :  REPLAY-01: considered=5  linked=2  no_container=3
+```
+
+"Considered 0" and "considered 5, linked 2" are completely different findings, and the
+first was being rendered as a quiet, successful-looking zero. The window now derives
+from the sightings the run actually wrote, which covers the live case and the
+back-dated case alike and cannot drift.
+
+With all three fixed, the search works end to end:
+
+```
+KA25A6156: seeds=3  sightings searched=417  candidates=4  (192 ms)
+   REPLAY-03  probable  score 0.97  d 0.0000  bus  60 km/h
+   REPLAY-02  probable  score 0.96  d 0.0000  bus  64 km/h
+```
+
+**The 0.0000 is the replay harness, not the method.** All four REPLAY cameras play the
+same recorded clip, so two of them can hold byte-identical frames and the cosine
+distance between their descriptors is exactly zero. On footage from genuinely different
+cameras it never is -- finding 25 measured 0.035 for the same vehicle and 0.514 for
+different ones. The API response now says this in its own caveat whenever a result
+involves a REPLAY camera, because a reviewer who sees a perfect score and only later
+learns the inputs were the same file has been misled regardless of intent.
+
+The general lesson, which is the same one as finding 23 and finding 27: a zero that
+means "nothing matched" and a zero that means "nothing was looked at" are different
+facts, and code that renders them identically will hide the second one for as long as
+nobody runs the path end to end.
+
 ## Local evaluation hardware
 
 Python 3.12.5, Docker 29.7.2, Node 20.14, **NVIDIA RTX 4050 Laptop, 6 GB VRAM**.
