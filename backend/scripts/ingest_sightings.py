@@ -103,17 +103,41 @@ def _ingest_source(
     return result
 
 
-def _file_sources(paths: list[str], camera_refs: list[str]) -> list[Any]:
+def _file_sources(
+    paths: list[str], camera_refs: list[str], offsets_min: list[float], base: datetime
+) -> list[Any]:
     from services.ingest.file_source import FileSource
 
     if len(camera_refs) not in (1, len(paths)):
         raise SystemExit("--camera-ref must be given once, or once per --file")
+    if offsets_min and len(offsets_min) not in (1, len(paths)):
+        raise SystemExit("--offset-min must be given once, or once per --file")
     refs = camera_refs * len(paths) if len(camera_refs) == 1 else camera_refs
+    if not offsets_min:
+        offsets = [0.0] * len(paths)
+    else:
+        offsets = offsets_min * len(paths) if len(offsets_min) == 1 else offsets_min
+
     # Not looping and not realtime: this is a batch ingest of a finite recording, and
     # replaying it at wall-clock pace would spend thirty minutes to read thirty minutes.
+    #
+    # The epoch matters more than it looks. Without it every camera stamps its
+    # sightings at wall-clock now, so the same clip replayed across four cameras
+    # hundreds of kilometres apart produces observations seconds apart -- which the
+    # journey builder correctly rejects as physically impossible, and which leaves the
+    # appearance search with no plausible pair to propose. `seed_demo.py` already
+    # offsets its plate reads by the real travel time between these cameras; sightings
+    # had no way to sit on the same timeline, so the two halves of the Phase 2 story
+    # could not be demonstrated together.
     return [
-        FileSource(path, camera_ref=ref, realtime=False, loop=False)
-        for path, ref in zip(paths, refs, strict=True)
+        FileSource(
+            path,
+            camera_ref=ref,
+            realtime=False,
+            loop=False,
+            epoch=base + timedelta(minutes=offset),
+        )
+        for path, ref, offset in zip(paths, refs, offsets, strict=True)
     ]
 
 
@@ -141,6 +165,21 @@ def main() -> int:
         action="append",
         default=[],
         help="registry camera_ref for the footage; once, or once per --file",
+    )
+    ap.add_argument(
+        "--offset-min",
+        action="append",
+        type=float,
+        default=[],
+        help="minutes to add to each file's timeline, once or once per --file. Use the "
+        "real travel time between the cameras so the sightings form a journey a "
+        "vehicle could actually have made",
+    )
+    ap.add_argument(
+        "--base-hours-ago",
+        type=float,
+        default=0.0,
+        help="place the first camera's timeline this many hours in the past",
     )
     ap.add_argument("--gateway", action="store_true", help="ingest the government catalogue")
     ap.add_argument("--seconds", type=float, default=30.0, help="wall-clock budget per camera")
@@ -176,10 +215,11 @@ def main() -> int:
     detector = YoloxVehicleDetector(min_score=args.min_score)
     pipeline = SightingPipeline(detector, crop_dir=CROPS_DIR, analytic_fps=args.analytic_fps)
 
+    base = datetime.now(timezone.utc) - timedelta(hours=args.base_hours_ago)
     sources = (
         _gateway_sources(args.seconds)
         if args.gateway
-        else _file_sources(args.file, args.camera_ref)
+        else _file_sources(args.file, args.camera_ref, args.offset_min, base)
     )
 
     started = datetime.now(timezone.utc)

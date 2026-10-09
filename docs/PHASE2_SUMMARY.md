@@ -75,13 +75,31 @@ runbooks.
   is the largest gap between the scale model and the running system.
 - **The ONVIF adapter has not met a physical ONVIF camera.** It is implemented and unit-tested
   against recorded device responses; no device was available.
-- **The gateway media plane is third-party and intermittent.** Nothing in this repository can
-  fix it, and the runbook's first job is to establish that quickly rather than attempt a repair.
+- **The gateway media plane is third-party and intermittent, and its quota is per account.**
+  A newly issued access code restores catalogue access and does not return watch time; the
+  cooldown still has to elapse (`DISCOVERY.md` finding 28). Nothing in this repository can fix
+  that, and the runbook's first job is to establish it quickly rather than attempt a repair.
+  Every screen except the Control Room reads from the database and keeps working through it.
 - **Appearance matching is a search aid, not an identification.** It narrows thousands of
   sightings to a handful a human adjudicates with both crops side by side.
 
+## How this was verified, not just built
+
+A scripted walkthrough signs in and visits all fifteen screens in the order a reviewer
+meets them, asserting the *content* of each rather than that it rendered — a screenshot
+proves a page drew, and an empty panel photographs just as well as a full one. Twenty-three
+assertions, all holding, with the images in `docs/screenshots/phase2/`. A second script
+exercises every section of the brief against the live API and checks the shape of each
+answer: eighteen checks, all passing.
+
+That is also how the Judge Mode defects were found. The button a reviewer presses first
+turned out to pre-fill a registration with no rows in this database, navigate in a way the
+router ignored, lose a race with the guided tour, discard three of its four query
+parameters, and rank its chosen plate by a measure that selected a physically impossible
+route. Each was invisible until the path was actually run.
+
 ## Quality gates
 
-681 automated tests · `mypy --strict` clean · `ruff` clean · declared-FPS guard (exact
+687 automated tests · `mypy --strict` clean · `ruff` clean · declared-FPS guard (exact
 permitted count, not a per-site marker) · WCAG AA contrast check over the theme tokens ·
 reversible migrations · gitleaks over full history · CycloneDX SBOM.

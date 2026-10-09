@@ -136,10 +136,16 @@ tells the truth about how well we know each position.
 
 This is the screen the live test case is judged on. Spend the time here.
 
-> **The plate is `KA25AB1542`, and it is the vehicle's real registration.** Local and
-> deployed instances now ingest the same clip and produce the same reads, so this no
-> longer varies between machines. If you replace the footage, re-read it off the Alert
-> Desk or take it from check 3 of `verify_deployment.py`.
+> **You no longer have to know the plate.** Tick **Judge mode** on the login screen and
+> sign in: the console asks the API which registration *this* database can actually draw
+> a route for, fills in that plate, the window its reads actually fall in, and a purpose,
+> and lands on this screen. One click on **Trace vehicle** produces the route.
+>
+> This replaced a hardcoded plate that was correct for one database and silently wrong
+> for every other — on a differently seeded instance it opened on "plate never seen",
+> which is the worst first screen this console can show. If you want to type one
+> yourself, `KA25AB1542` is the own-feed vehicle's real registration; take the current
+> one off the Alert Desk or from check 3 of `verify_deployment.py`.
 
 **Type plate:** `KA25AB1542`
 **Purpose:** `FIR 123/2026 — vehicle trace requested by Investigating Officer`
