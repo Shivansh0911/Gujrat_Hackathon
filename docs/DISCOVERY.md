@@ -869,6 +869,53 @@ The general shape of this, which is why all three were measured rather than revi
 contrast ratio, a horizontal overflow and a missing webfont are all invisible on the
 machine of the person who built them. Two of the three were wrong.
 
+## Finding 28 - a new access code does not return your watch time
+
+Measured 2026-10-09/10, on a freshly issued gateway access code.
+
+The gateway has two planes and they fail independently. With the new code configured,
+the **control plane answers normally**:
+
+```
+GATEWAY REACHABLE: 30 cameras in the catalogue
+/health/gateway -> reachable=true, consecutive_failures=0, last_error=null
+```
+
+The **media plane does not**. Requesting a camera's HLS manifest returns the gateway's
+own sign-in page rather than a playlist, and performing the session login it asks for
+returns:
+
+```
+gateway refused the sign-in: watch time limit reached
+                             - please wait for your cooldown, then watch again
+```
+
+So the watch-time quota is bound to the **account**, not to the access code. Rotating
+the code re-authorises catalogue access and does nothing at all for watch time; the
+cooldown still has to elapse. This is worth stating plainly because the opposite belief
+is the natural one -- a new credential usually means a clean slate -- and acting on it
+burns the morning before a demonstration.
+
+Two practical consequences, both already how the platform behaves:
+
+The health poller calls `fetch_catalogue`, not a stream. It therefore does **not**
+consume watch time, and a long-running deployment polling once a minute is not what
+exhausts the quota. What exhausts it is watching. The 21,403 checks recorded on the
+deployed instance had not spent a second of it.
+
+Everything except live video keeps working through an exhausted quota, because every
+other screen reads from the database rather than the gateway. Journey, Coverage, Blind
+spots, the Dashboard, the Alert Desk and the audit ledger are all unaffected. The
+demonstration runbook already leads with that, and this finding is why that ordering is
+not merely defensive.
+
+One correction to an earlier reading of this, recorded because the mistake is easy to
+repeat: a direct request to the configured media host IP on port 8889 fails with an SSL
+error, which looks like a gateway fault and is not one. `hls_url()` builds its URL from
+`gateway_host` -- the hostname -- precisely so TLS can verify. The IP is used for RTSP
+and WHEP, where there is no certificate to check. Probing the IP over HTTPS tests
+nothing but the prober.
+
 ## Local evaluation hardware
 
 Python 3.12.5, Docker 29.7.2, Node 20.14, **NVIDIA RTX 4050 Laptop, 6 GB VRAM**.

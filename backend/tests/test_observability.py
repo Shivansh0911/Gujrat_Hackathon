@@ -263,3 +263,35 @@ def test_camera_status_is_one_series_per_status_not_per_camera(session: Session)
     series = [m for m in collect(session) if m.name == f"{NS}_cameras_by_status"]
     assert len(series) <= 8
     assert all(m.labels and set(m.labels) == {"status"} for m in series)
+
+
+def test_build_info_falls_back_to_the_platform_commit(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    """A deployment that stamps nothing still ties its output back to a commit.
+
+    Render injects RENDER_GIT_COMMIT on every deploy. Reading it means the evidence
+    tie-back works on a fresh deployment with no configuration, which is the state a
+    deployment is actually in.
+    """
+    from services.api import buildinfo
+
+    monkeypatch.delenv(buildinfo.COMMIT_ENV, raising=False)
+    monkeypatch.setenv("RENDER_GIT_COMMIT", "abc1234")
+    assert buildinfo._commit() == "abc1234"
+
+
+def test_our_own_stamp_beats_the_platform_one(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    from services.api import buildinfo
+
+    monkeypatch.setenv(buildinfo.COMMIT_ENV, "deadbee")
+    monkeypatch.setenv("RENDER_GIT_COMMIT", "abc1234")
+    assert buildinfo._commit() == "deadbee"
+
+
+def test_an_empty_stamp_is_not_a_commit(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    """An env var set to the empty string is how a misconfigured build presents."""
+    from services.api import buildinfo
+
+    monkeypatch.setenv(buildinfo.COMMIT_ENV, "   ")
+    for name in buildinfo._COMMIT_FALLBACK_ENVS:
+        monkeypatch.delenv(name, raising=False)
+    assert buildinfo._commit() == "unknown"

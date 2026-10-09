@@ -202,6 +202,30 @@ def main() -> int:
             log.info("ingesting %s", getattr(source, "camera_ref", "?"))
             results.append(_ingest_source(source, pipeline, writer, max_frames=args.max_frames))
 
+            # Commit per camera, not once at the end.
+            #
+            # The first version committed after every source had finished, which made a
+            # multi-camera run all-or-nothing: a four-camera pass that died on the
+            # fourth threw away the three that had succeeded. §6.4 asks for restart
+            # safety, and "the work survives being interrupted" is most of what that
+            # means for an ingest worker.
+            #
+            # It also makes a long run observable. Watching a 2400-frame pass over four
+            # cameras, the sighting count sat unchanged for the entire run, so there was
+            # no way to tell progress from a hang without attaching to the process.
+            #
+            # A sighting is an independent observation, so a partial run is partial
+            # evidence rather than inconsistent evidence. The audit chain is unaffected
+            # either way: an interrupted run rolls back cleanly and appends nothing.
+            if writer is not None and session is not None:
+                writer.flush()
+                session.commit()
+                log.info(
+                    "committed %s: %d inserted so far",
+                    getattr(source, "camera_ref", "?"),
+                    writer.stats.inserted,
+                )
+
         if writer is not None and session is not None:
             writer.flush()
             session.commit()

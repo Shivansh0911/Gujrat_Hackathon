@@ -51,6 +51,27 @@ log = logging.getLogger(__name__)
 COMMIT_ENV = "SETU_GIT_COMMIT"
 BUILD_TIME_ENV = "SETU_BUILD_TIME"
 
+#: Platform-provided fallbacks, tried in order after our own variable.
+#:
+#: An evidence export names the analytics versions that produced it, and `/build-info`
+#: is what ties those back to the code. A deployment reporting `commit: unknown` breaks
+#: that chain, and it breaks it silently -- nothing fails, the answer is simply
+#: unverifiable later, which is the worst moment to discover it.
+#:
+#: Render and Netlify both inject the deployed commit without being asked, so reading
+#: theirs means the tie-back works on a fresh deploy with no configuration at all. Ours
+#: still wins when set, because an explicitly stamped build should beat an inferred one.
+_COMMIT_FALLBACK_ENVS = ("RENDER_GIT_COMMIT", "COMMIT_REF", "SOURCE_VERSION", "GIT_COMMIT")
+
+
+def _commit() -> str:
+    for name in (COMMIT_ENV, *_COMMIT_FALLBACK_ENVS):
+        value = os.environ.get(name, "").strip()
+        if value:
+            return value
+    return "unknown"
+
+
 #: The Alembic revision this build expects. Read from the migrations directory rather
 #: than hard-coded, so it cannot drift from the code it ships with.
 _EXPECTED_HEAD_CACHE: str | None = None
@@ -196,7 +217,7 @@ def build_info() -> dict[str, Any]:
         "supported_api_versions": list(SUPPORTED_VERSIONS),
         # `unknown` rather than absent: an ops team scripting against this needs the key
         # to be there, and a missing commit is itself worth seeing.
-        "commit": os.environ.get(COMMIT_ENV, "unknown"),
+        "commit": _commit(),
         "built_at": os.environ.get(BUILD_TIME_ENV, "unknown"),
         "expected_migration_head": expected_migration_head(),
         "python": platform.python_version(),
