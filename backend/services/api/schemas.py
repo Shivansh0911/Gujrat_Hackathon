@@ -211,3 +211,43 @@ class StreamUrlOut(BaseModel):
     transport: str
     url: str
     expires_in_s: int | None = None
+
+
+class ProbeRequest(BaseModel):
+    """A source an operator wants onboarded, before it is a camera."""
+
+    url: str = Field(min_length=7, max_length=2048)
+    #: Grading loads two ONNX models and costs a few seconds. Bulk callers turn it off
+    #: and grade later from real traffic; the Studio leaves it on, because the grade
+    #: with its reasoning is most of what the operator came for.
+    grade_readiness: bool = True
+
+
+class ProbeStepOut(BaseModel):
+    key: str
+    label: str
+    status: str
+    detail: str
+    duration_ms: float | None = None
+    data: dict[str, Any] = Field(default_factory=dict)
+
+
+class ProbeResult(BaseModel):
+    """What a live probe found, step by step, including the steps it never reached."""
+
+    url_scheme: str
+    host: str
+    port: int
+    reachable: bool
+    steps: list[ProbeStepOut]
+    measured_fps: float | None = None
+    declared_fps: float | None = None
+    width: int | None = None
+    height: int | None = None
+    codec: str | None = None
+    #: The decoded first frame, so the operator sees what the camera sees rather than
+    #: a green tick claiming it works.
+    first_frame_jpeg_b64: str | None = None
+    grade: str | None = None
+    grade_reasoning: str | None = None
+    recommended_analytics: list[str] = Field(default_factory=list)

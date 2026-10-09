@@ -34,6 +34,8 @@ export type DetectionPoint = components["schemas"]["DetectionPoint"];
 export type RescanResult = components["schemas"]["RescanResult"];
 export type DemoFeed = components["schemas"]["DemoFeed"];
 export type DemoRead = components["schemas"]["DemoRead"];
+export type ProbeResult = components["schemas"]["ProbeResult"];
+export type ProbeStep = components["schemas"]["ProbeStepOut"];
 
 /**
  * Where the API lives.
@@ -369,6 +371,13 @@ export const api = {
   syncCatalogue: () => request<SyncResult>("/cameras/sync-catalogue", { method: "POST" }),
   createCamera: (body: CameraCreate) =>
     request<Camera>("/cameras", { method: "POST", body: JSON.stringify(body) }),
+  /** Probe a source live. Slow by nature: it opens a stream and decodes frames. */
+  probeSource: (url: string, gradeReadiness = true) =>
+    request<ProbeResult>("/cameras/probe", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url, grade_readiness: gradeReadiness }),
+    }),
   bulkImportCameras: (file: File) => {
     const body = new FormData();
     body.append("file", file);

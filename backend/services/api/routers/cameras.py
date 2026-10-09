@@ -22,6 +22,8 @@ from services.api.schemas import (
     CameraCreate,
     CameraOut,
     GeomPatch,
+    ProbeRequest,
+    ProbeResult,
     StreamUrlOut,
     SyncResult,
 )
@@ -317,6 +319,61 @@ def patch_camera_geom(
     session.flush()
     session.refresh(camera)
     return _to_out(session, camera)
+
+
+@router.post("/probe", response_model=ProbeResult)
+def probe_source(body: ProbeRequest, session: SessionDep, actor: AdminActor) -> ProbeResult:
+    """Probe a camera source live and return every step, in order.
+
+    Admin-only, and audited whatever the outcome. Both of those are deliberate.
+
+    Admin-only because this endpoint makes the server open an outbound connection to a
+    host the caller names. The SSRF guard is what makes that safe, and the authorisation
+    check is what makes it accountable; neither substitutes for the other.
+
+    Audited on failure as well as success because the failures are the operationally
+    interesting half. "This department tried eleven times to onboard a camera that never
+    answered on 554" is a finding worth having, and it only exists if the ledger records
+    the attempts rather than only the cameras that resulted from them.
+
+    The probe does not create anything. An operator reads the steps, looks at the frame,
+    sees the grade, and then decides -- the camera is created through the ordinary create
+    endpoint with the values this returned. Probing and committing are separate because
+    the whole point of showing the working is that the operator can disagree with it.
+    """
+    from services.ingest.onboarding_probe import probe as run_probe
+
+    report = run_probe(body.url, grade_readiness=body.grade_readiness)
+
+    failed = [s.key for s in report.steps if s.status == "fail"]
+    audit.append(
+        session,
+        action="CAMERA_PROBED",
+        subject_type="source",
+        # The host and port, never the URL: an RTSP URL routinely carries credentials
+        # in its authority, and the ledger is read by more people than can see the
+        # camera's sealed credentials.
+        subject_id=f"{report.host}:{report.port}",
+        actor_id=actor.subject,
+        actor_role=actor.role,
+        detail={
+            "scheme": report.url_scheme,
+            "reachable": report.reachable,
+            "failed_steps": failed,
+            "measured_fps": report.measured_fps,
+            "declared_fps": report.declared_fps,
+            "resolution": (
+                f"{report.width}x{report.height}" if report.width and report.height else None
+            ),
+            "grade": report.grade,
+        },
+    )
+    session.flush()
+
+    payload = report.as_dict()
+    # The frame is returned to the operator but is not what the audit entry is about,
+    # and it must not end up in a log line.
+    return ProbeResult.model_validate(payload)
 
 
 @router.post("/sync-catalogue", response_model=SyncResult)

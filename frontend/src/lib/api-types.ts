@@ -243,6 +243,42 @@ export interface paths {
         patch: operations["patch_camera_geom_cameras__camera_id__geom_patch"];
         trace?: never;
     };
+    "/cameras/probe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Probe Source
+         * @description Probe a camera source live and return every step, in order.
+         *
+         *     Admin-only, and audited whatever the outcome. Both of those are deliberate.
+         *
+         *     Admin-only because this endpoint makes the server open an outbound connection to a
+         *     host the caller names. The SSRF guard is what makes that safe, and the authorisation
+         *     check is what makes it accountable; neither substitutes for the other.
+         *
+         *     Audited on failure as well as success because the failures are the operationally
+         *     interesting half. "This department tried eleven times to onboard a camera that never
+         *     answered on 554" is a finding worth having, and it only exists if the ledger records
+         *     the attempts rather than only the cameras that resulted from them.
+         *
+         *     The probe does not create anything. An operator reads the steps, looks at the frame,
+         *     sees the grade, and then decides -- the camera is created through the ordinary create
+         *     endpoint with the values this returned. Probing and committing are separate because
+         *     the whole point of showing the working is that the operator can disagree with it.
+         */
+        post: operations["probe_source_cameras_probe_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/cameras/sync-catalogue": {
         parameters: {
             query?: never;
@@ -2049,6 +2085,68 @@ export interface components {
             active: boolean;
         };
         /**
+         * ProbeRequest
+         * @description A source an operator wants onboarded, before it is a camera.
+         */
+        ProbeRequest: {
+            /** Url */
+            url: string;
+            /**
+             * Grade Readiness
+             * @default true
+             */
+            grade_readiness: boolean;
+        };
+        /**
+         * ProbeResult
+         * @description What a live probe found, step by step, including the steps it never reached.
+         */
+        ProbeResult: {
+            /** Url Scheme */
+            url_scheme: string;
+            /** Host */
+            host: string;
+            /** Port */
+            port: number;
+            /** Reachable */
+            reachable: boolean;
+            /** Steps */
+            steps: components["schemas"]["ProbeStepOut"][];
+            /** Measured Fps */
+            measured_fps?: number | null;
+            /** Declared Fps */
+            declared_fps?: number | null;
+            /** Width */
+            width?: number | null;
+            /** Height */
+            height?: number | null;
+            /** Codec */
+            codec?: string | null;
+            /** First Frame Jpeg B64 */
+            first_frame_jpeg_b64?: string | null;
+            /** Grade */
+            grade?: string | null;
+            /** Grade Reasoning */
+            grade_reasoning?: string | null;
+            /** Recommended Analytics */
+            recommended_analytics?: string[];
+        };
+        /** ProbeStepOut */
+        ProbeStepOut: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /** Status */
+            status: string;
+            /** Detail */
+            detail: string;
+            /** Duration Ms */
+            duration_ms?: number | null;
+            /** Data */
+            data?: Record<string, never>;
+        };
+        /**
          * ReadinessOut
          * @description One camera's measured ANPR readiness, with the evidence behind the grade.
          *
@@ -2943,6 +3041,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CameraOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    probe_source_cameras_probe_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProbeRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProbeResult"];
                 };
             };
             /** @description Validation Error */
