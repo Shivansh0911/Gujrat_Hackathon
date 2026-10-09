@@ -42,6 +42,8 @@ from typing import Any
 from fastapi import Request
 from fastapi.responses import JSONResponse
 
+from services.common import structured_log
+
 log = logging.getLogger(__name__)
 
 #: Header carrying the correlation id on every response, and accepted on a request so a
@@ -210,6 +212,11 @@ async def correlation_middleware(request: Request, call_next: Any) -> Any:
     """Attach a correlation id to every request and echo it on every response."""
     correlation = _sanitise_inbound(request.headers.get(CORRELATION_HEADER)) or new_correlation_id()
     bind_correlation_id(request, correlation)
+    # Also on the logging context, so every line emitted while handling this request
+    # carries the id without any of them having to be passed it. Threading it through
+    # every function that might log is the change that gets half-done, and the half
+    # that was missed is where the interesting failure happens.
+    structured_log.bind(correlation)
     response = await call_next(request)
     response.headers[CORRELATION_HEADER] = correlation
     return response

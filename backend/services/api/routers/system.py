@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Response, status
+from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -20,6 +21,7 @@ from services.analytics.readiness import (
 )
 from services.api import audit as audit_mod
 from services.api.buildinfo import build_info, readiness
+from services.api.metrics import collect, render
 from services.api.versioning import version_info
 from services.api.db import get_session
 from services.api.schemas import AuditVerifyOut, CameraHealthOut, GatewayStatusOut
@@ -235,3 +237,19 @@ def build_information() -> dict[str, Any]:
 def api_version() -> dict[str, Any]:
     """The versioning and deprecation policy, served rather than only documented."""
     return version_info()
+
+
+@router.get("/metrics", response_class=PlainTextResponse, include_in_schema=False)
+def prometheus_metrics(session: SessionDep, actor: CurrentActor) -> str:
+    """Prometheus exposition format.
+
+    Authenticated, unlike a conventional /metrics. The series here include alert
+    volumes and watchlist size, which on this platform are operational facts about
+    policing activity rather than neutral infrastructure counters -- an unauthenticated
+    scrape endpoint would let anyone who can reach the host watch enforcement tempo.
+
+    A scraper uses a service-account key, which is exactly what service accounts are
+    for. Out of the OpenAPI schema because its content type is text, not JSON, and a
+    generated client has no use for it.
+    """
+    return render(collect(session))
