@@ -7,10 +7,16 @@ const KEY = "setu.theme";
 /**
  * Which theme to start in.
  *
- * An explicit choice wins, then the operating system, then dark. Dark is the fallback
- * rather than light because this is a control-room console first: the default should
- * be the one that suits a dim room at three metres, and someone on a bright desk has
- * an OS preference that says so.
+ * An explicit choice wins, then the operating system, then light.
+ *
+ * Light is the fallback, reversed from the original. This is software an officer reads
+ * for an eight-hour shift in a lit control room, and the default should look designed
+ * for that rather than for a product screenshot. Dark remains a genuine first-class
+ * alternative for night shift -- a separately chosen palette, not an inversion -- and
+ * someone who wants it either says so or has an OS preference that does.
+ *
+ * This must agree with the pre-paint script in index.html. A disagreement is a
+ * full-screen flash on every cold load.
  *
  * Reading localStorage is wrapped because a browser with site data blocked throws on
  * access rather than returning null, and a theme preference is not worth a blank page.
@@ -23,17 +29,17 @@ export function initialTheme(): Theme {
     /* private mode, or site data blocked */
   }
   try {
-    if (window.matchMedia("(prefers-color-scheme: light)").matches) return "light";
+    if (window.matchMedia("(prefers-color-scheme: dark)").matches) return "dark";
   } catch {
     /* matchMedia is absent in some embedded webviews */
   }
-  return "dark";
+  return "light";
 }
 
 type Ctx = { theme: Theme; setTheme: (t: Theme) => void; toggle: () => void };
 
 const ThemeContext = createContext<Ctx>({
-  theme: "dark",
+  theme: "light",
   setTheme: () => {},
   toggle: () => {},
 });

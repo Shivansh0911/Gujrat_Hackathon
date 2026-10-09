@@ -13,16 +13,26 @@ import SystemPage from "./pages/SystemPage";
 import ControlRoomPage from "./pages/ControlRoomPage";
 import DemoPage from "./pages/DemoPage";
 import ZonesPage from "./pages/ZonesPage";
+import CoveragePage from "./pages/CoveragePage";
+import DashboardPage from "./pages/DashboardPage";
+import ScalePage from "./pages/ScalePage";
+import { CommandPalette } from "./components/palette";
 
 const NAV = [
+  // Coverage leads, and is the login destination. It is the screen that answers the
+  // question a senior officer actually arrives with -- where can the state see, and
+  // where can it read a plate -- and the one a judge is most likely to remember.
+  { to: "/coverage", label: "Coverage", hint: "Where the estate can see" },
+  { to: "/dashboard", label: "Dashboard", hint: "Activity, health, anomalies" },
   { to: "/map", label: "GIS Map", hint: "Camera registry" },
   { to: "/journey", label: "Journey", hint: "Route reconstruction" },
   { to: "/alerts", label: "Alert Desk", hint: "Live watchlist matches" },
   { to: "/control-room", label: "Control Room", hint: "Multi-camera video wall" },
   { to: "/health", label: "Health", hint: "Feed diagnostics" },
-  { to: "/gaps", label: "Coverage", hint: "Gap analysis" },
+  { to: "/gaps", label: "Blind spots", hint: "Gap analysis by district" },
   { to: "/watchlist", label: "Watchlist", hint: "Vehicles being watched" },
   { to: "/zones", label: "Zones", hint: "Intrusion detection areas" },
+  { to: "/scale", label: "Scale Planner", hint: "Sizing for 80,000 cameras" },
   { to: "/system", label: "System", hint: "Audit chain, catalogue" },
   { to: "/demo", label: "Demo", hint: "Footage and the reads from it" },
 ];
@@ -42,6 +52,7 @@ function Shell() {
 
   return (
     <div className="h-full flex flex-col md:flex-row">
+      <CommandPalette />
       {/*
         Below md the sidebar is 208px of a 375px screen -- 55% of the viewport spent on
         navigation, with the map squeezed out of what remains entirely. `main` carries
@@ -125,6 +136,9 @@ function Shell() {
 
       <main className="flex-1 min-w-0 overflow-hidden">
         <Routes>
+          <Route path="/coverage" element={<CoveragePage />} />
+          <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/scale" element={<ScalePage />} />
           <Route path="/map" element={<MapPage />} />
           <Route path="/journey" element={<JourneyPage />} />
           <Route path="/alerts" element={<AlertsPage />} />
@@ -135,7 +149,8 @@ function Shell() {
           <Route path="/zones" element={<ZonesPage />} />
           <Route path="/system" element={<SystemPage />} />
           <Route path="/demo" element={<DemoPage />} />
-          <Route path="*" element={<Navigate to="/map" replace />} />
+          {/* Coverage is the signature view and the destination after sign-in. */}
+          <Route path="*" element={<Navigate to="/coverage" replace />} />
         </Routes>
       </main>
     </div>

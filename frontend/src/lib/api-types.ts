@@ -401,6 +401,305 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/health/readiness": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Camera Readiness
+         * @description Grade every camera for ANPR readiness, and say what the rest should run instead.
+         *
+         *     Recomputed on each call rather than cached. It is cheap -- two grouped aggregates
+         *     over indexed columns -- and a stale grade is worse than none when it drives a
+         *     re-aiming or replacement decision.
+         */
+        get: operations["camera_readiness_health_readiness_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/readyz": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Readiness Probe
+         * @description Should this instance receive traffic?
+         *
+         *     Distinct from `/healthz`, which answers only "is this process alive". An
+         *     orchestrator reading liveness as failed *restarts* the container, so a liveness
+         *     probe that touched the database would turn a recoverable blip into a restart loop.
+         *     This one touches dependencies and returns 503 when they are unhappy, which is the
+         *     right signal for a load balancer to stop sending traffic here.
+         *
+         *     Deliberately does **not** check the government gateway. It is third-party
+         *     infrastructure that is down for hours at a time, its state is already on
+         *     `/health/gateway`, and failing readiness on it would remove the whole platform from
+         *     the load balancer while journeys, alerts and exports all work perfectly.
+         */
+        get: operations["readiness"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/build-info": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Build Information
+         * @description Version, commit, expected migration head and analytics versions.
+         *
+         *     What an ops team monitors, and what a disputed result is tied back to: an evidence
+         *     export names its analytics versions, and this says which build produced them.
+         */
+        get: operations["build_information_build_info_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api-version": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Api Version
+         * @description The versioning and deprecation policy, served rather than only documented.
+         */
+        get: operations["api_version_api_version_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-keys/scopes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Available Scopes
+         * @description What a key can be granted, in words.
+         *
+         *     Served rather than only documented, because the person deciding which scopes an
+         *     integration needs is often not the person who reads the repository.
+         */
+        get: operations["available_scopes_service_keys_scopes_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-keys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Service Keys
+         * @description Every key, with its usage. Never a token and never a hash.
+         *
+         *     `last_used_at` is the column that makes retirement possible: a key nothing has
+         *     presented in six months is one somebody can safely turn off.
+         */
+        get: operations["list_service_keys_service_keys_get"];
+        put?: never;
+        /**
+         * Create Service Key
+         * @description Issue a key. The token is in this response and nowhere else, ever.
+         */
+        post: operations["create_service_key_service_keys_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/service-keys/{key_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Revoke Service Key
+         * @description Turn a key off. Not a delete -- its audit history must keep resolving.
+         */
+        delete: operations["revoke_service_key_service_keys__key_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/webhooks/event-types": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Event Types
+         * @description What a subscription may ask for. A typo'd type never fires, so the set is closed.
+         */
+        get: operations["event_types_webhooks_event_types_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/webhooks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Subscriptions
+         * @description Subscriptions the caller may see. RLS scopes this to their department.
+         */
+        get: operations["list_subscriptions_webhooks_get"];
+        put?: never;
+        /**
+         * Create Subscription
+         * @description Register an endpoint. The secret is generated here and returned once.
+         */
+        post: operations["create_subscription_webhooks_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/webhooks/{subscription_id}/enable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Enable Subscription
+         * @description Re-enable a subscription disabled by repeated failures.
+         *
+         *     Clearing the failure counter is the point: without it the next failure would
+         *     immediately re-trip the threshold.
+         */
+        post: operations["enable_subscription_webhooks__subscription_id__enable_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/webhooks/{subscription_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Disable Subscription
+         * @description Stop delivering. Queued rows are kept so the history stays readable.
+         */
+        delete: operations["disable_subscription_webhooks__subscription_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/webhooks/deliveries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Deliveries
+         * @description Deliveries, newest first. `state=dead` is the dead-letter view.
+         *
+         *     The full attempt log travels with each row, because the useful question is not "did
+         *     it fail" but "how, and how many times" -- which is what tells a department their
+         *     endpoint is sick rather than this platform being unreliable.
+         */
+        get: operations["list_deliveries_webhooks_deliveries_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/webhooks/deliveries/{delivery_id}/replay": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Replay Delivery
+         * @description Re-queue a dead delivery. Its failure history is kept.
+         */
+        post: operations["replay_delivery_webhooks_deliveries__delivery_id__replay_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/alerts": {
         parameters: {
             query?: never;
@@ -599,6 +898,61 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/journey/candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Candidate Journey
+         * @description Expand a plate read into appearance candidates across the camera network.
+         *
+         *     `purpose` is mandatory and audited before the search runs, for the same reason
+         *     `/journey` does it: a query that returns nothing must be logged exactly like one
+         *     that returns results, or the most sensitive case -- someone searching for a plate
+         *     they should not be -- is the one that leaves no trace.
+         */
+        get: operations["candidate_journey_journey_candidates_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/journey/candidates/adjudicate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Adjudicate Candidate
+         * @description Record an operator accepting or rejecting one candidate.
+         *
+         *     Written to the hash-chained ledger rather than to a mutable column, because the
+         *     value of the record is that it cannot be quietly revised afterwards. A decision that
+         *     sent an investigation one way should still be visible if the investigation later
+         *     went the other way.
+         *
+         *     Nothing about the candidate changes in the database. An accepted candidate is not
+         *     promoted to a confirmed hop, and this endpoint deliberately offers no way to do
+         *     that: only a plate read confirms a vehicle, and an operator agreeing with a
+         *     fingerprint is not a plate read.
+         */
+        post: operations["adjudicate_candidate_journey_candidates_adjudicate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/analytics/vehicle-counts": {
         parameters: {
             query?: never;
@@ -615,6 +969,80 @@ export interface paths {
          *     ANPR pipeline, and this is what that metadata buys afterwards.
          */
         get: operations["vehicle_counts_analytics_vehicle_counts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/analytics/scale-plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Scale Plan
+         * @description Size an estate, and return every constant the answer depends on.
+         *
+         *     The constants travel with the result rather than living in documentation. A
+         *     scaling figure quoted without its inputs cannot be argued with, and the point of
+         *     making this executable was that a judge should be able to argue with it -- change
+         *     the capable fraction, watch the worker count move, and see which numbers behind
+         *     that move were measured and which were assumed.
+         *
+         *     Unauthenticated use is not offered. The estate's size and cost profile is not
+         *     secret, but it is not public either, and every other read here is scoped.
+         */
+        get: operations["scale_plan_analytics_scale_plan_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/analytics/anomalies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Anomalies
+         * @description Cloned plates, convoys and dwelling vehicles in one window.
+         */
+        get: operations["anomalies_analytics_anomalies_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/analytics/corridor": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Corridor
+         * @description Median transit time along an ordered sequence of cameras.
+         *
+         *     The corridor is given as an ordered list rather than stored, because a corridor is a
+         *     question an operator asks rather than an entity the estate owns: the same cameras
+         *     make different corridors depending on which way you read them, and persisting one
+         *     ordering would make the other feel unsupported.
+         */
+        get: operations["corridor_analytics_corridor_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -647,6 +1075,34 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AdjudicationIn */
+        AdjudicationIn: {
+            /**
+             * Sighting Id
+             * Format: uuid
+             */
+            sighting_id: string;
+            /**
+             * Seed Sighting Id
+             * Format: uuid
+             */
+            seed_sighting_id: string;
+            /** Plate */
+            plate: string;
+            /** Accepted */
+            accepted: boolean;
+            /** Purpose */
+            purpose: string;
+            /** Note */
+            note?: string | null;
+        };
+        /** AdjudicationOut */
+        AdjudicationOut: {
+            /** Recorded */
+            recorded: boolean;
+            /** Audit Seq */
+            audit_seq: number | null;
+        };
         /** AlertOut */
         AlertOut: {
             /**
@@ -728,6 +1184,35 @@ export interface components {
             acknowledged_by?: string | null;
             /** Acknowledged At */
             acknowledged_at?: string | null;
+        };
+        /**
+         * AnomaliesOut
+         * @description Three findings, each with the evidence behind it and its own honest limits.
+         *
+         *     Returned together because a control room asks "what is unusual" once, not three
+         *     times, and because the limits of each are easier to read side by side than apart.
+         */
+        AnomaliesOut: {
+            /**
+             * Window Start
+             * Format: date-time
+             */
+            window_start: string;
+            /**
+             * Window End
+             * Format: date-time
+             */
+            window_end: string;
+            /** Cloned Plates */
+            cloned_plates: Record<string, never>[];
+            /** Convoys */
+            convoys: Record<string, never>[];
+            /** Dwells */
+            dwells: Record<string, never>[];
+            /** Limits */
+            limits: {
+                [key: string]: string;
+            };
         };
         /** AuditVerifyOut */
         AuditVerifyOut: {
@@ -946,6 +1431,8 @@ export interface components {
              * @default false
              */
             coordinate_missing: boolean;
+            /** Heading Deg */
+            heading_deg?: number | null;
             /** Status */
             status: string;
             /** Codec */
@@ -970,6 +1457,122 @@ export interface components {
              */
             detection_count: number;
         };
+        /** CandidateJourneyResult */
+        CandidateJourneyResult: {
+            /** Plate */
+            plate: string;
+            /**
+             * Window Start
+             * Format: date-time
+             */
+            window_start: string;
+            /**
+             * Window End
+             * Format: date-time
+             */
+            window_end: string;
+            /** Purpose */
+            purpose: string;
+            /** Requested By */
+            requested_by: string;
+            /** Seeds */
+            seeds: components["schemas"]["SeedOut"][];
+            /** Candidates */
+            candidates: components["schemas"]["CandidateOut"][];
+            /** Sightings Searched */
+            sightings_searched: number;
+            /** Appearance Kind */
+            appearance_kind: string;
+            /** Max Candidate Distance */
+            max_candidate_distance: number;
+            /** Min Score */
+            min_score: number;
+            /** Analytics Version */
+            analytics_version: string;
+            /** Query Ms */
+            query_ms: number;
+            /** Caveat */
+            caveat: string;
+        };
+        /** CandidateOut */
+        CandidateOut: {
+            /**
+             * Sighting Id
+             * Format: uuid
+             */
+            sighting_id: string;
+            /**
+             * Observed At Utc
+             * Format: date-time
+             */
+            observed_at_utc: string;
+            /**
+             * Camera Id
+             * Format: uuid
+             */
+            camera_id: string;
+            /** Camera Ref */
+            camera_ref: string;
+            /** Camera Name */
+            camera_name: string;
+            /** Lat */
+            lat: number;
+            /** Lon */
+            lon: number;
+            /** Vehicle Class */
+            vehicle_class: string;
+            /** Dominant Colour Lab */
+            dominant_colour_lab: {
+                [key: string]: number;
+            } | null;
+            /** Quality Score */
+            quality_score: number;
+            /** Crop Url */
+            crop_url: string | null;
+            /** Seed Crop Url */
+            seed_crop_url: string | null;
+            /**
+             * Seed Sighting Id
+             * Format: uuid
+             */
+            seed_sighting_id: string;
+            /** Appearance Distance */
+            appearance_distance: number;
+            /** Distance M */
+            distance_m: number;
+            /** Seconds From Seed */
+            seconds_from_seed: number;
+            /** Implied Speed Kmph */
+            implied_speed_kmph: number;
+            score: components["schemas"]["ScoreOut"];
+            /** Tier */
+            tier: string;
+            /** Evidence Type */
+            evidence_type: string;
+        };
+        /** CorridorOut */
+        CorridorOut: {
+            /** Name */
+            name: string;
+            /** Camera Refs */
+            camera_refs: string[];
+            /**
+             * Window Start
+             * Format: date-time
+             */
+            window_start: string;
+            /**
+             * Window End
+             * Format: date-time
+             */
+            window_end: string;
+            /** Legs */
+            legs: Record<string, never>[];
+            /** Total Transits */
+            total_transits: number;
+            /** Note */
+            note: string;
+        };
         /** CoverageGap */
         CoverageGap: {
             /** After Seq */
@@ -989,6 +1592,133 @@ export interface components {
             lon: number;
             /** Reason */
             reason: string;
+        };
+        /** CreateKeyIn */
+        CreateKeyIn: {
+            /**
+             * Name
+             * @description How a human will recognise it
+             */
+            name: string;
+            /**
+             * Scopes
+             * @description Any of: read:registry, read:detections, read:alerts, manage:webhooks, write:import
+             */
+            scopes: string[];
+            /**
+             * Department Id
+             * @description Omit for an estate-wide key. Estate-wide keys read every department.
+             */
+            department_id?: string | null;
+            /**
+             * Expires In Days
+             * @description Null for a key that never expires. Prefer rotation over never.
+             * @default 365
+             */
+            expires_in_days: number | null;
+            /** Rate Limit Per Minute */
+            rate_limit_per_minute?: number | null;
+        };
+        /** CreateSubscriptionIn */
+        CreateSubscriptionIn: {
+            /** Name */
+            name: string;
+            /**
+             * Target Url
+             * @description https endpoint that will receive POSTs
+             */
+            target_url: string;
+            /**
+             * Event Types
+             * @description Any of: alert.raised, alert.acknowledged, alert.resolved, detection.created, camera.status_changed
+             */
+            event_types: string[];
+            /**
+             * Department Id
+             * @description Omit for an estate-wide subscription (admin only).
+             */
+            department_id?: string | null;
+        };
+        /**
+         * CreatedKeyOut
+         * @description The only response that ever contains a token.
+         */
+        CreatedKeyOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Token */
+            token: string;
+            /** Key Prefix */
+            key_prefix: string;
+            /** Scopes */
+            scopes: string[];
+            /** Department Id */
+            department_id: string | null;
+            /** Expires At */
+            expires_at: string | null;
+            /** Warning */
+            warning: string;
+        };
+        /** CreatedSubscriptionOut */
+        CreatedSubscriptionOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Target Url */
+            target_url: string;
+            /** Event Types */
+            event_types: string[];
+            /** Secret */
+            secret: string;
+            /** Signature Header */
+            signature_header: string;
+            /** Timestamp Header */
+            timestamp_header: string;
+            /** Event Id Header */
+            event_id_header: string;
+            /** Verification */
+            verification: string;
+            /** Warning */
+            warning: string;
+        };
+        /** DeliveryOut */
+        DeliveryOut: {
+            /** Id */
+            id: string;
+            /** Subscription Id */
+            subscription_id: string;
+            /** Event Type */
+            event_type: string;
+            /** Event Id */
+            event_id: string;
+            /** State */
+            state: string;
+            /** Attempts */
+            attempts: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Delivered At */
+            delivered_at: string | null;
+            /** Next Attempt At */
+            next_attempt_at: string | null;
+            /** Last Status Code */
+            last_status_code: number | null;
+            /** Last Error */
+            last_error: string | null;
+            /** Attempt Log */
+            attempt_log: Record<string, never>[];
         };
         /** DemoFeed */
         DemoFeed: {
@@ -1036,6 +1766,17 @@ export interface components {
             crop_url: string | null;
             /** Corrections */
             corrections: Record<string, never>[];
+        };
+        /** DependencyOut */
+        DependencyOut: {
+            /** Name */
+            name: string;
+            /** Ok */
+            ok: boolean;
+            /** Detail */
+            detail: string;
+            /** Latency Ms */
+            latency_ms: number | null;
         };
         /**
          * DetectionPoint
@@ -1273,6 +2014,102 @@ export interface components {
             /** Cameras Excluded No Coordinate */
             cameras_excluded_no_coordinate: number;
         };
+        /** KeyOut */
+        KeyOut: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Key Prefix */
+            key_prefix: string;
+            /** Department Id */
+            department_id: string | null;
+            /** Scopes */
+            scopes: string[];
+            /** Created By */
+            created_by: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Expires At */
+            expires_at: string | null;
+            /** Revoked At */
+            revoked_at: string | null;
+            /** Revoked By */
+            revoked_by: string | null;
+            /** Last Used At */
+            last_used_at: string | null;
+            /** Use Count */
+            use_count: number;
+            /** Rate Limit Per Minute */
+            rate_limit_per_minute: number;
+            /** Active */
+            active: boolean;
+        };
+        /**
+         * ReadinessOut
+         * @description One camera's measured ANPR readiness, with the evidence behind the grade.
+         *
+         *     The evidence travels with the verdict. A grade of `not_viable` that arrives without
+         *     the numbers behind it is an opinion, and this one may end up in front of someone
+         *     deciding whether to spend money on a camera.
+         */
+        ReadinessOut: {
+            /** Camera Id */
+            camera_id: string;
+            /** Camera Ref */
+            camera_ref: string;
+            /** Camera Name */
+            camera_name: string;
+            /** Plate Samples */
+            plate_samples: number;
+            /** Plate Px Median */
+            plate_px_median: number | null;
+            /** Plate Px P90 */
+            plate_px_p90: number | null;
+            /** Vehicle Samples */
+            vehicle_samples: number;
+            /** Vehicle Px Median */
+            vehicle_px_median: number | null;
+            /** Plate To Vehicle Ratio */
+            plate_to_vehicle_ratio: number | null;
+            /** Grade */
+            grade: string;
+            /** Reasoning */
+            reasoning: string;
+            /** Remedy */
+            remedy: string | null;
+            /** Analytics */
+            analytics: string[];
+        };
+        /** ReadinessSummaryOut */
+        ReadinessSummaryOut: {
+            /** Counts By Grade */
+            counts_by_grade: {
+                [key: string]: number;
+            };
+            /** Anpr Capable Fraction */
+            anpr_capable_fraction: number | null;
+            /** Graded */
+            graded: number;
+            /** Ungraded */
+            ungraded: number;
+            /** Thresholds */
+            thresholds: {
+                [key: string]: number;
+            };
+            /** Cameras */
+            cameras: components["schemas"]["ReadinessOut"][];
+        };
+        /** ReadyOut */
+        ReadyOut: {
+            /** Ready */
+            ready: boolean;
+            /** Checks */
+            checks: components["schemas"]["DependencyOut"][];
+        };
         /** RejectedHop */
         RejectedHop: {
             /** Camera Ref */
@@ -1286,6 +2123,13 @@ export interface components {
             implied_speed_kmph: number | null;
             /** Reason */
             reason: string;
+        };
+        /** ReplayOut */
+        ReplayOut: {
+            /** Replayed */
+            replayed: boolean;
+            /** Detail */
+            detail: string;
         };
         /** RescanResult */
         RescanResult: {
@@ -1310,6 +2154,119 @@ export interface components {
             /** Note */
             note?: string | null;
         };
+        /** RevokeOut */
+        RevokeOut: {
+            /** Revoked */
+            revoked: boolean;
+            /** Detail */
+            detail: string;
+        };
+        /** ScaleConstantOut */
+        ScaleConstantOut: {
+            /** Key */
+            key: string;
+            /** Value */
+            value: number;
+            /** Unit */
+            unit: string;
+            /** Provenance */
+            provenance: string;
+            /** Source */
+            source: string;
+            /** Note */
+            note: string;
+        };
+        /** ScalePlanOut */
+        ScalePlanOut: {
+            /** Inputs */
+            inputs: Record<string, never>;
+            /** Anpr Cameras */
+            anpr_cameras: number;
+            /** Other Cameras */
+            other_cameras: number;
+            /** Anpr Workers */
+            anpr_workers: number;
+            /** Sighting Workers */
+            sighting_workers: number;
+            /** Gpus */
+            gpus: number;
+            /** Edge Bandwidth Mbps */
+            edge_bandwidth_mbps: number;
+            /** Central Bandwidth Mbps */
+            central_bandwidth_mbps: number;
+            /** Bandwidth Reduction Factor */
+            bandwidth_reduction_factor: number | null;
+            /** Hot Storage Gb */
+            hot_storage_gb: number;
+            /** Warm Storage Gb */
+            warm_storage_gb: number;
+            /** Cold Storage Gb */
+            cold_storage_gb: number;
+            /** Compute Monthly Inr */
+            compute_monthly_inr: number;
+            /** Storage Monthly Inr */
+            storage_monthly_inr: number;
+            /** Total Monthly Inr */
+            total_monthly_inr: number;
+            /** Notes */
+            notes: string[];
+            /** Constants */
+            constants: components["schemas"]["ScaleConstantOut"][];
+        };
+        /** ScopeOut */
+        ScopeOut: {
+            /** Scope */
+            scope: string;
+            /** Description */
+            description: string;
+        };
+        /**
+         * ScoreOut
+         * @description The five components, never just the total.
+         *
+         *     A score without its parts is an assertion. With them a reviewer can see that a 0.71
+         *     came from a strong colour match and a mediocre fingerprint, and decide for
+         *     themselves whether that is worth acting on.
+         */
+        ScoreOut: {
+            /** Appearance */
+            appearance: number;
+            /** Quality */
+            quality: number;
+            /** Class */
+            class: number;
+            /** Colour */
+            colour: number;
+            /** Plausibility */
+            plausibility: number;
+            /** Total */
+            total: number;
+        };
+        /** SeedOut */
+        SeedOut: {
+            /**
+             * Sighting Id
+             * Format: uuid
+             */
+            sighting_id: string;
+            /**
+             * Observed At Utc
+             * Format: date-time
+             */
+            observed_at_utc: string;
+            /** Camera Ref */
+            camera_ref: string;
+            /** Camera Name */
+            camera_name: string;
+            /** Plate Read */
+            plate_read: string;
+            /** Quality Score */
+            quality_score: number;
+            /** Crop Url */
+            crop_url: string | null;
+            /** Tier */
+            tier: string;
+        };
         /**
          * StreamUrlOut
          * @description Playback URL for the console.
@@ -1331,6 +2288,32 @@ export interface components {
             url: string;
             /** Expires In S */
             expires_in_s?: number | null;
+        };
+        /** SubscriptionOut */
+        SubscriptionOut: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Target Url */
+            target_url: string;
+            /** Event Types */
+            event_types: string[];
+            /** Department Id */
+            department_id: string | null;
+            /** Active */
+            active: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Consecutive Failures */
+            consecutive_failures: number;
+            /** Disabled At */
+            disabled_at: string | null;
+            /** Disabled Reason */
+            disabled_reason: string | null;
         };
         /**
          * SyncResult
@@ -1363,6 +2346,15 @@ export interface components {
             unchanged: number;
             /** Note */
             note?: string | null;
+        };
+        /** ToggleOut */
+        ToggleOut: {
+            /** Id */
+            id: string;
+            /** Active */
+            active: boolean;
+            /** Detail */
+            detail: string;
         };
         /** Token */
         Token: {
@@ -2108,6 +3100,391 @@ export interface operations {
             };
         };
     };
+    camera_readiness_health_readiness_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReadinessSummaryOut"];
+                };
+            };
+        };
+    };
+    readiness: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReadyOut"];
+                };
+            };
+        };
+    };
+    build_information_build_info_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    api_version_api_version_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    available_scopes_service_keys_scopes_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScopeOut"][];
+                };
+            };
+        };
+    };
+    list_service_keys_service_keys_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KeyOut"][];
+                };
+            };
+        };
+    };
+    create_service_key_service_keys_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateKeyIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreatedKeyOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    revoke_service_key_service_keys__key_id__delete: {
+        parameters: {
+            query?: {
+                reason?: string;
+            };
+            header?: never;
+            path: {
+                key_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevokeOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    event_types_webhooks_event_types_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string[];
+                };
+            };
+        };
+    };
+    list_subscriptions_webhooks_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubscriptionOut"][];
+                };
+            };
+        };
+    };
+    create_subscription_webhooks_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateSubscriptionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreatedSubscriptionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    enable_subscription_webhooks__subscription_id__enable_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                subscription_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ToggleOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    disable_subscription_webhooks__subscription_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                subscription_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ToggleOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_deliveries_webhooks_deliveries_get: {
+        parameters: {
+            query?: {
+                /** @description pending|delivering|delivered|failed|dead */
+                state?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeliveryOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    replay_delivery_webhooks_deliveries__delivery_id__replay_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                delivery_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReplayOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_alerts_alerts_get: {
         parameters: {
             query?: {
@@ -2402,6 +3779,74 @@ export interface operations {
             };
         };
     };
+    candidate_journey_journey_candidates_get: {
+        parameters: {
+            query: {
+                plate: string;
+                from: string;
+                to: string;
+                purpose: string;
+                limit_per_seed?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CandidateJourneyResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    adjudicate_candidate_journey_candidates_adjudicate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdjudicationIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdjudicationOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     vehicle_counts_analytics_vehicle_counts_get: {
         parameters: {
             query?: {
@@ -2422,6 +3867,111 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["VehicleCountResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    scale_plan_analytics_scale_plan_get: {
+        parameters: {
+            query?: {
+                total_cameras?: number;
+                anpr_capable_fraction?: number;
+                edge_fraction?: number;
+                use_gpu?: boolean;
+                hot_retention_days?: number;
+                warm_retention_days?: number;
+                cold_retention_days?: number;
+                archive_video?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScalePlanOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    anomalies_analytics_anomalies_get: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnomaliesOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    corridor_analytics_corridor_get: {
+        parameters: {
+            query: {
+                /** @description ordered, comma-separated camera_refs; direction matters */
+                cameras: string;
+                from: string;
+                to: string;
+                name?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CorridorOut"];
                 };
             };
             /** @description Validation Error */

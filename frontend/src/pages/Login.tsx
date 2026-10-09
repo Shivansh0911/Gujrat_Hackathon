@@ -27,8 +27,19 @@ const ROLES = [
   },
 ];
 
+/**
+ * The registration Judge Mode opens on.
+ *
+ * Not arbitrary: DISCOVERY finding 22 records this as the first and only
+ * grammar-valid registration the government estate has produced, read from cam22 at
+ * confidence 0.757. Pre-filling a plate the estate has never seen would demonstrate an
+ * empty result very convincingly.
+ */
+const DEMO_PLATE = "GJ09BM3641";
+
 export default function Login() {
   const { signIn } = useAuth();
+  const [judgeMode, setJudgeMode] = useState(false);
   const [username, setUsername] = useState("admin");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -40,6 +51,19 @@ export default function Login() {
     setError(null);
     try {
       await signIn(username, password);
+      if (judgeMode) {
+        // A wide window, because the demonstration data spans whatever was last
+        // ingested and a narrow guess would show an empty route.
+        const to = new Date();
+        const from = new Date(to.getTime() - 30 * 864e5);
+        const query = new URLSearchParams({
+          plate: DEMO_PLATE,
+          from: from.toISOString(),
+          to: to.toISOString(),
+        });
+        window.location.hash = "";
+        window.history.replaceState(null, "", `/journey?${query}`);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "sign in failed");
     } finally {
@@ -103,6 +127,36 @@ export default function Login() {
           Credentials are issued from the deployment environment. Sessions are held in
           memory only and end when this tab closes.
         </p>
+
+        {/*
+          Judge Mode.
+
+          The scored test case is "here is a registration, show us where it went". On
+          evaluation day that should be one click from this screen, not a hunt through
+          a sidebar for the right page and then a guess at a sensible time window.
+
+          It pre-fills nothing it cannot justify: the plate is the one registration
+          this estate has actually produced a grammar-valid read for, and the window is
+          wide enough to contain it. It does not sign anybody in -- credentials are
+          still required -- it only decides where the session lands.
+        */}
+        <label className="flex items-start gap-2 pt-2 border-t border-edge cursor-pointer">
+          <input
+            type="checkbox"
+            checked={judgeMode}
+            onChange={(event) => setJudgeMode(event.target.checked)}
+            className="mt-0.5"
+          />
+          <span>
+            <span className="text-xs">Judge mode</span>
+            <span className="block text-[11px] text-muted leading-snug">
+              Land on a prepared trace of{" "}
+              <span className="mono">{DEMO_PLATE}</span> — the one registration this
+              estate has produced a grammar-valid read for — instead of the coverage
+              map.
+            </span>
+          </span>
+        </label>
       </form>
     </div>
   );

@@ -54,6 +54,13 @@ class CameraOut(BaseModel):
     resolved_at: datetime | None = None
     coordinate_missing: bool = False
 
+    #: Compass bearing the camera faces, where it is known. Stored since the first
+    #: migration and never surfaced, which meant the coverage map had no way to draw a
+    #: viewshed and fell back to pins. A camera without one is drawn as a dome of its
+    #: position uncertainty instead -- a cone would imply an orientation nobody
+    #: recorded, and inventing one is exactly what this project refuses elsewhere.
+    heading_deg: int | None = None
+
     status: str
     codec: str | None = None
     resolution_w: int | None = None

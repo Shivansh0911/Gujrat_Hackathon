@@ -1,12 +1,14 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
-import { api, mediaUrl, type JourneyResult } from "../lib/api";
+import { api, mediaUrl, type CandidateJourney, type JourneyResult } from "../lib/api";
 import { circlePolygon } from "../lib/map";
 import { useMapLibre } from "../lib/useMap";
 import { Badge, Empty, ErrorBox, ProvenanceBadge, SourceBadge } from "../components/ui";
+import { TierBadge, TierLegend } from "../components/tiers";
+import { CandidatePanel } from "../components/candidates";
 
 function isoLocal(d: Date) {
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -57,6 +59,24 @@ export default function JourneyPage() {
       ),
   });
   const result = run.data;
+
+  // The appearance expansion runs as its own query against its own endpoint. Two
+  // reasons, both deliberate. A plate journey that works must never be held up by an
+  // appearance search that is slow or returns nothing. And the two kinds of claim --
+  // "this registration was read here" and "something that looks like it was seen
+  // there" -- stay visibly separate, which is what the whole tier model is for.
+  const candidates = useQuery({
+    queryKey: ["candidates", result?.plate, from, to],
+    queryFn: () =>
+      api.candidates(
+        result!.plate,
+        new Date(from).toISOString(),
+        new Date(to).toISOString(),
+        purpose.trim() || "appearance expansion from the journey screen",
+      ),
+    enabled: !!result,
+    retry: false,
+  });
 
   // ---- map ----------------------------------------------------------------
 
@@ -410,6 +430,9 @@ export default function JourneyPage() {
               onExport={exportEvidence}
               exporting={exporting}
               exportedSeq={exported}
+              candidates={candidates.data}
+              candidatesLoading={candidates.isLoading}
+              purpose={purpose}
             />
           )}
         </div>
@@ -426,6 +449,9 @@ function Results({
   onExport,
   exporting,
   exportedSeq,
+  candidates,
+  candidatesLoading,
+  purpose,
 }: {
   result: JourneyResult;
   activeHop: number | null;
@@ -434,6 +460,12 @@ function Results({
   onExport: () => void;
   exporting: boolean;
   exportedSeq: string | null;
+  /** The appearance expansion, fetched by the parent and passed down rather than
+      fetched here: this component also renders the empty and single-sighting cases,
+      and a query inside it would fire on every one of them. */
+  candidates: CandidateJourney | undefined;
+  candidatesLoading: boolean;
+  purpose: string;
 }) {
   if (!result.hops.length) {
     // These are genuinely different findings and an investigator must be able to
@@ -489,6 +521,12 @@ function Results({
         </p>
       </div>
 
+      {/* Permanent, inline, never behind a tooltip. An operator who has to discover
+          what a dashed border means has already misread one. */}
+      <div className="px-3 py-2 border-b border-edge">
+        <TierLegend />
+      </div>
+
       {result.hops.map((hop) => (
         <div
           key={hop.seq}
@@ -514,6 +552,9 @@ function Results({
 
           <div className="flex flex-wrap gap-1.5">
             <SourceBadge sourceType={hop.camera_source_type} />
+            {/* The tier is what an officer acts on; the provenance badge beside it is
+                how the claim was established. Different questions, both shown. */}
+            <TierBadge tier={hop.evidence_type === "anpr_exact" ? "confirmed" : "probable"} />
             <ProvenanceBadge
               evidenceType={hop.evidence_type}
               corrections={hop.corrections as Array<Record<string, unknown>>}
@@ -560,6 +601,20 @@ function Results({
           )}
         </div>
       ))}
+
+      {/* Appearance candidates, below the confirmed hops and visually separate.
+          Order matters: what the plate actually says comes first, and what the
+          appearance search proposes comes after it, never interleaved. */}
+      {candidates ? (
+        <div className="p-3 border-t-2 border-edge">
+          <CandidatePanel result={candidates} plate={result.plate} purpose={purpose} />
+        </div>
+      ) : candidatesLoading ? (
+        <div className="p-3 border-t-2 border-edge">
+          <div className="skeleton h-4 w-48 mb-2" />
+          <div className="skeleton h-24 w-full" />
+        </div>
+      ) : null}
 
       {result.coverage_gaps.length > 0 && (
         <div className="p-3 space-y-2">

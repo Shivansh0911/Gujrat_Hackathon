@@ -85,3 +85,62 @@ export function circlePolygon(lon: number, lat: number, radiusM: number, steps =
   }
   return { type: "Polygon" as const, coordinates: [coords] };
 }
+
+/**
+ * A viewshed wedge: what one camera can actually see.
+ *
+ * `heading_deg` is compass bearing -- 0 is north, increasing clockwise -- while the
+ * trigonometry below works in the mathematical convention where 0 is east and angles
+ * increase anticlockwise. The conversion is `90 - bearing`, and getting it wrong
+ * produces cones that look plausible and point the wrong way, which is worse than
+ * cones that obviously break.
+ *
+ * Longitude is divided by cos(latitude) because a degree of longitude is shorter the
+ * further from the equator you are. At Gujarat's latitude that is a 7% error, which is
+ * invisible on one cone and obvious when two adjacent cameras are compared.
+ */
+export function sectorPolygon(
+  lon: number,
+  lat: number,
+  radiusM: number,
+  headingDeg: number,
+  fovDeg: number,
+  steps = 24,
+) {
+  const latRad = (lat * Math.PI) / 180;
+  const dLat = radiusM / 111_320;
+  const dLon = radiusM / (111_320 * Math.cos(latRad));
+
+  const centre = ((90 - headingDeg) * Math.PI) / 180;
+  const half = ((fovDeg / 2) * Math.PI) / 180;
+
+  // Apex first, then the arc, then back to the apex. The apex is the camera, which is
+  // what makes the shape read as a viewshed rather than as a pie slice floating on
+  // the map.
+  const coords: [number, number][] = [[lon, lat]];
+  for (let i = 0; i <= steps; i++) {
+    const theta = centre - half + (i / steps) * 2 * half;
+    coords.push([lon + dLon * Math.cos(theta), lat + dLat * Math.sin(theta)]);
+  }
+  coords.push([lon, lat]);
+  return { type: "Polygon" as const, coordinates: [coords] };
+}
+
+/**
+ * Default field of view, in degrees, when a camera does not publish one.
+ *
+ * 55 degrees is a typical fixed-lens CCTV horizontal FOV. It is an assumption and is
+ * labelled as one in the legend: drawing a precise-looking cone from a number nobody
+ * measured is the kind of thing this project refuses elsewhere, and a reviewer who
+ * discovers it unlabelled stops trusting the cones that *are* derived.
+ */
+export const ASSUMED_FOV_DEG = 55;
+
+/**
+ * Effective range in metres for drawing, when nothing better is known.
+ *
+ * Not the same question as `confidence_radius_m`, which is how well we know where the
+ * camera IS. This is how far it can usefully see, and the two are independent: a
+ * precisely located camera can have a short range, and vice versa.
+ */
+export const ASSUMED_RANGE_M = 120;

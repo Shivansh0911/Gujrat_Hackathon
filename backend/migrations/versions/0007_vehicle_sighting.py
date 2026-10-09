@@ -131,9 +131,7 @@ def upgrade() -> None:
             server_default=sa.text("now()"),
             nullable=False,
         ),
-        sa.CheckConstraint(
-            "quality_score >= 0 AND quality_score <= 1", name="ck_sighting_quality"
-        ),
+        sa.CheckConstraint("quality_score >= 0 AND quality_score <= 1", name="ck_sighting_quality"),
         sa.CheckConstraint(
             "vehicle_class_confidence >= 0 AND vehicle_class_confidence <= 1",
             name="ck_sighting_class_conf",
@@ -155,7 +153,9 @@ def upgrade() -> None:
     # The vector column is added separately: Alembic has no built-in type for it, and
     # going through pgvector's SQLAlchemy type here would make the migration depend on
     # the Python package's own versioning for a column shape that must never change.
-    op.execute(f"ALTER TABLE vehicle_sighting ADD COLUMN appearance_vector vector({APPEARANCE_DIM})")
+    op.execute(
+        f"ALTER TABLE vehicle_sighting ADD COLUMN appearance_vector vector({APPEARANCE_DIM})"
+    )
     op.execute(
         """
         ALTER TABLE vehicle_sighting ADD CONSTRAINT ck_sighting_vector_kind_paired
@@ -261,9 +261,7 @@ def downgrade() -> None:
     # first anyway: on a Postgres where the table drop is blocked by a dependency, a
     # half-applied downgrade that left a policy behind would make the re-upgrade fail
     # on "policy already exists", which is a confusing way to learn what went wrong.
-    op.execute(
-        "DROP POLICY IF EXISTS vehicle_sighting_department_isolation ON vehicle_sighting"
-    )
+    op.execute("DROP POLICY IF EXISTS vehicle_sighting_department_isolation ON vehicle_sighting")
     op.execute("DROP INDEX IF EXISTS ix_sighting_appearance_hnsw")
     op.execute("DROP INDEX IF EXISTS ix_sighting_plate_detection")
     op.drop_index("ix_sighting_track", table_name="vehicle_sighting")

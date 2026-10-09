@@ -83,7 +83,10 @@ def upgrade() -> None:
         sa.Column("scopes", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
         sa.Column("created_by", sa.String(length=120), nullable=True),
         sa.Column(
-            "created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
         ),
         sa.Column("expires_at", sa.DateTime(timezone=True), nullable=True),
         # Revocation is a timestamp, not a delete. A revoked key's audit history must
@@ -108,9 +111,7 @@ def upgrade() -> None:
     op.create_index("ix_api_key_prefix", "api_key", ["key_prefix"], unique=False)
     # Partial: authentication only ever looks for live keys, and most of a long-lived
     # estate's keys will eventually be revoked.
-    op.execute(
-        "CREATE INDEX ix_api_key_active ON api_key (token_hash) WHERE revoked_at IS NULL"
-    )
+    op.execute("CREATE INDEX ix_api_key_active ON api_key (token_hash) WHERE revoked_at IS NULL")
 
     # --- webhook_subscription -------------------------------------------------------
     op.create_table(
@@ -127,16 +128,17 @@ def upgrade() -> None:
         sa.Column("active", sa.Boolean(), nullable=False, server_default="true"),
         sa.Column("created_by", sa.String(length=120), nullable=True),
         sa.Column(
-            "created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
         ),
         # Consecutive failures. A subscriber that has been failing for a long time is
         # disabled rather than retried forever, and this is what that decision reads.
         sa.Column("consecutive_failures", sa.Integer(), nullable=False, server_default="0"),
         sa.Column("disabled_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("disabled_reason", sa.Text(), nullable=True),
-        sa.CheckConstraint(
-            "jsonb_typeof(event_types) = 'array'", name="ck_webhook_events_array"
-        ),
+        sa.CheckConstraint("jsonb_typeof(event_types) = 'array'", name="ck_webhook_events_array"),
         sa.ForeignKeyConstraint(["department_id"], ["department.id"], ondelete="RESTRICT"),
         sa.PrimaryKeyConstraint("id"),
     )
@@ -156,7 +158,10 @@ def upgrade() -> None:
         sa.Column("event_id", sa.String(length=64), nullable=False),
         sa.Column("payload", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
         sa.Column(
-            "created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
         ),
         sa.Column("attempts", sa.Integer(), nullable=False, server_default="0"),
         sa.Column("next_attempt_at", sa.DateTime(timezone=True), nullable=True),
@@ -205,7 +210,10 @@ def upgrade() -> None:
         sa.Column("response_status", sa.Integer(), nullable=True),
         sa.Column("response_body", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
         sa.Column(
-            "created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
         ),
         sa.Column("completed_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False),

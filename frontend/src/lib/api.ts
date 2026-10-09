@@ -188,7 +188,175 @@ export async function login(username: string, password: string) {
   };
 }
 
+
+/* --- Phase 2 endpoints -------------------------------------------------------------
+   Hand-written rather than generated. `api-types.ts` comes from the running service's
+   OpenAPI document, and regenerating it is a step with a live backend attached; these
+   shapes are narrow and let the console compile against the new endpoints meanwhile.
+   They are deliberately structural, so a drift shows up as a type error rather than
+   as `undefined` on a screen. */
+
+export type ReadinessGrade =
+  | "anpr_capable"
+  | "marginal_reaim"
+  | "not_viable"
+  | "insufficient_sample";
+
+export type CameraReadiness = {
+  camera_id: string;
+  camera_ref: string;
+  camera_name: string;
+  plate_samples: number;
+  plate_px_median: number | null;
+  plate_px_p90: number | null;
+  vehicle_samples: number;
+  vehicle_px_median: number | null;
+  plate_to_vehicle_ratio: number | null;
+  grade: ReadinessGrade;
+  reasoning: string;
+  remedy: string | null;
+  analytics: string[];
+};
+
+export type ReadinessSummary = {
+  counts_by_grade: Record<string, number>;
+  anpr_capable_fraction: number | null;
+  graded: number;
+  ungraded: number;
+  thresholds: Record<string, number>;
+  cameras: CameraReadiness[];
+};
+
+export type ScoreBreakdown = {
+  appearance: number;
+  quality: number;
+  class: number;
+  colour: number;
+  plausibility: number;
+  total: number;
+};
+
+export type CandidateHop = {
+  sighting_id: string;
+  observed_at_utc: string;
+  camera_id: string;
+  camera_ref: string;
+  camera_name: string;
+  lat: number;
+  lon: number;
+  vehicle_class: string;
+  dominant_colour_lab: Record<string, number> | null;
+  quality_score: number;
+  crop_url: string | null;
+  seed_crop_url: string | null;
+  seed_sighting_id: string;
+  appearance_distance: number;
+  distance_m: number;
+  seconds_from_seed: number;
+  implied_speed_kmph: number;
+  score: ScoreBreakdown;
+  tier: "confirmed" | "probable" | "candidate";
+  evidence_type: string;
+};
+
+export type CandidateJourney = {
+  plate: string;
+  window_start: string;
+  window_end: string;
+  seeds: {
+    sighting_id: string;
+    observed_at_utc: string;
+    camera_ref: string;
+    camera_name: string;
+    plate_read: string;
+    quality_score: number;
+    crop_url: string | null;
+    tier: string;
+  }[];
+  candidates: CandidateHop[];
+  sightings_searched: number;
+  appearance_kind: string;
+  max_candidate_distance: number;
+  min_score: number;
+  analytics_version: string;
+  query_ms: number;
+  caveat: string;
+};
+
+export type Anomalies = {
+  window_start: string;
+  window_end: string;
+  cloned_plates: Record<string, unknown>[];
+  convoys: Record<string, unknown>[];
+  dwells: Record<string, unknown>[];
+  limits: Record<string, string>;
+};
+
+export type ScalePlan = {
+  inputs: Record<string, unknown>;
+  anpr_cameras: number;
+  other_cameras: number;
+  anpr_workers: number;
+  sighting_workers: number;
+  gpus: number;
+  edge_bandwidth_mbps: number;
+  central_bandwidth_mbps: number;
+  bandwidth_reduction_factor: number | null;
+  hot_storage_gb: number;
+  warm_storage_gb: number;
+  cold_storage_gb: number;
+  compute_monthly_inr: number;
+  storage_monthly_inr: number;
+  total_monthly_inr: number;
+  notes: string[];
+  constants: {
+    key: string;
+    value: number;
+    unit: string;
+    provenance: "measured" | "published" | "assumption";
+    source: string;
+    note: string;
+  }[];
+};
+
+export type BuildInfo = {
+  service: string;
+  api_version: string;
+  commit: string;
+  built_at: string;
+  expected_migration_head: string;
+  uptime_s: number;
+  analytics: Record<string, string>;
+};
+
 export const api = {
+  // --- Phase 2 ---------------------------------------------------------------
+  readiness: () => request<ReadinessSummary>("/health/readiness"),
+  candidates: (plate: string, from: string, to: string, purpose: string) =>
+    request<CandidateJourney>(
+      `/journey/candidates?${new URLSearchParams({ plate, from, to, purpose })}`,
+    ),
+  adjudicate: (body: {
+    sighting_id: string;
+    seed_sighting_id: string;
+    plate: string;
+    accepted: boolean;
+    purpose: string;
+    note?: string;
+  }) =>
+    request<{ recorded: boolean; audit_seq: number | null }>(
+      "/journey/candidates/adjudicate",
+      { method: "POST", body: JSON.stringify(body) },
+    ),
+  anomalies: (from: string, to: string) =>
+    request<Anomalies>(`/analytics/anomalies?${new URLSearchParams({ from, to })}`),
+  scalePlan: (params: Record<string, string>) =>
+    request<ScalePlan>(`/analytics/scale-plan?${new URLSearchParams(params)}`),
+  corridor: (cameras: string, from: string, to: string, name = "Corridor") =>
+    request<Record<string, unknown>>(
+      `/analytics/corridor?${new URLSearchParams({ cameras, from, to, name })}`,
+    ),
+  buildInfo: () => request<BuildInfo>("/build-info"),
   cameras: (params?: Record<string, string>) =>
     request<Camera[]>(`/cameras${params ? `?${new URLSearchParams(params)}` : ""}`),
   camera: (id: string) => request<Camera>(`/cameras/${id}`),
