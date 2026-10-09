@@ -15,7 +15,7 @@ this system does **not** do. Every figure below was read from the running deploy
 | | |
 |---|---|
 | **Console** | https://setu-gujarat.netlify.app |
-| **API + interactive docs** | https://setu-api-ai7z.onrender.com/docs |
+| **API + interactive docs** | https://setu-api-8m2h.onrender.com/docs |
 | **Repository** | https://github.com/Shivansh0911/Gujrat_Hackathon |
 
 | Role | Username | Password |

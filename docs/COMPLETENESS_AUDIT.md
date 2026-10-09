@@ -10,7 +10,7 @@ something, and where a document disagreed with the measurement, the document cha
 > the current one so they still resolve; the deployment they describe is the same one.
 
 Deployment audited: **https://setu-gujarat.netlify.app** (console) against
-**https://setu-api-ai7z.onrender.com** (API), Render Postgres in Singapore.
+**https://setu-api-8m2h.onrender.com** (API), Render Postgres in Singapore.
 
 ---
 
@@ -88,7 +88,7 @@ Second pass. The 2026-08-30 entry above stands unchanged; this appends what chan
 today rather than rewriting it.
 
 Deployment audited: **https://setu-gujarat.netlify.app** against
-**https://setu-api-ai7z.onrender.com**.
+**https://setu-api-8m2h.onrender.com**.
 
 ## The gateway, measured again
 
@@ -576,7 +576,7 @@ obvious way would have passed on both the broken and the fixed code.
 
 The last check before submission, run against the live deployment rather than against
 what any document claims. Console: **https://setu-gujarat.netlify.app** · API:
-**https://setu-api-ai7z.onrender.com**.
+**https://setu-api-8m2h.onrender.com**.
 
 ## Requirements — 23 of 23
 

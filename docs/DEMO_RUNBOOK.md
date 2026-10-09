@@ -18,7 +18,7 @@ deployed instance is already running and already seeded.
 | | |
 |---|---|
 | **Console** | https://setu-gujarat.netlify.app |
-| **API docs** | https://setu-api-ai7z.onrender.com/docs |
+| **API docs** | https://setu-api-8m2h.onrender.com/docs |
 | **Accounts** | `admin` (System Administrator) · `operator` (Control Room Operator) |
 | **Passwords** | in the gitignored `deploy-secrets.env` at the repository root |
 
@@ -183,6 +183,45 @@ Points to make, in order:
 result distinguishes *plate never seen anywhere* from *seen, but not in this window*
 — different findings, and an investigator needs to tell them apart.
 
+#### Then the Phase 2 answer to an unreadable plate — 90 seconds
+
+ANPR accuracy on this estate is 29.6%, and that ceiling is set by what the cameras
+publish. Phase 2 does not try to beat it with a better recogniser. It stops requiring a
+readable plate for every hop.
+
+**Scroll to Appearance candidates**, below the confirmed hops and visually separate.
+
+- **Say this:** *"One legible plate read anchors the search. From that vehicle we take a
+  76-dimension fingerprint — colour in CIELAB, lightness, edge orientation — plus its
+  class, and search the rest of the estate for the same vehicle at cameras that never
+  read a plate at all."*
+- Point at the **two crops side by side**. *"Every proposal shows both images. A
+  fingerprint match that cannot be looked at is an assertion."*
+- Open **Why this score**. Five components, not one number. *"A 0.71 from a strong
+  colour match and a weak fingerprint is a different proposition from a 0.71 the other
+  way round, and only the breakdown says which."*
+- **The sentence that matters most:** *"These are Candidates. They are never drawn in
+  the Confirmed style, and there is deliberately no control to promote one — an
+  operator agreeing with a fingerprint is not a plate read. The measured false-link
+  rate at the gate we ship is 0.055. A looser gate measured 0.834, which would have
+  filled this list with wrong answers, so we did not ship it."*
+- Accept or reject one. It is written to the hash-chained ledger with the actor and the
+  purpose.
+
+**Then press "Shape of this movement"** on the map.
+
+- Geography runs across; time runs upward. Drag the replay scrub.
+- **Say this:** *"A vertical segment is a vehicle that stayed put while time passed. A
+  near-horizontal one is distance crossed with almost no time spent — that is the
+  visual signature of a cloned or misread plate, not of a fast car. Two routes running
+  parallel at the same altitude were travelling together. These stop being things an
+  analyst computes and become shapes they recognise."*
+- The faint spurs reach out to cameras on the corridor that recorded nothing. *"A spur
+  is a camera that could have seen this vehicle and did not. It qualifies the leg it
+  hangs from; it does not break it."*
+- **Flat** returns to the unpitched view, which is also what `prefers-reduced-motion`
+  gets by default.
+
 ### 2.3 Alert Desk — 60 seconds
 
 **8 alerts**, all grouped as movement alerts.
@@ -205,7 +244,53 @@ result distinguishes *plate never seen anywhere* from *seen, but not in this win
 > below 0.5 is not published at all, because a wrong registration carrying a high
 > confidence is the one an investigator would act on.
 
-### 2.4 Coverage — gap analysis, 45 seconds
+### 2.4 Coverage — where the state can see, 50 seconds
+
+*This is the login destination and the screen to open on.*
+
+- The map shows every placed camera as the ground it can see, coloured by whether a
+  plate is readable there.
+- **Say this:** *"Every camera here is drawn as a dome, not a cone. That is not a
+  rendering choice — not one camera in this estate publishes a heading. 491 cameras,
+  271 with a position, zero with a surveyed orientation. The cone geometry is built and
+  correct; drawing one would assert an orientation nobody recorded. Onboard a camera
+  over ONVIF, or survey one, and its dome becomes a cone."*
+- The reason to lead with this: it is the shortest demonstration of the posture the
+  whole platform is built on. A system that will not draw what it cannot support is a
+  system whose other claims are worth checking.
+
+### 2.4b Dashboard — the estate right now, 30 seconds
+
+- Switch the window between 6h / 24h / 7d.
+- **Say this:** *"Anything we have not measured shows an em dash, never a zero. A dead
+  ingest must not be reportable as a quiet night."*
+- Point at the readiness mix: what the estate can actually be asked to do, assigned
+  from measured pixel budget rather than from configuration.
+
+### 2.4c Onboarding Studio — the 60 seconds that answers "26 departments"
+
+*If one new thing is shown, show this.*
+
+- Paste a camera URL and press **Probe**. The stages appear as the platform performs
+  them: the URL through the SSRF guard, a timed TCP handshake, transport negotiation
+  with the reason for the choice, the stream opened with codec and resolution,
+  **declared frame rate against measured**, the first decoded frame, the readiness
+  grade with its reasoning, and the analytics that grade permits.
+- **Say this, pointing at the frame-rate panel:** *"The integration guide warns not to
+  trust a camera's declared frame rate. This one declares 25 and delivers 15. Nothing
+  on this platform computes a time from the declared figure — dwell, implied speed and
+  the gap between two hops all come from presentation timestamps. That is why we can
+  report the discrepancy instead of being harmed by it."*
+- **If the probe fails, do not skip it — that is the better demonstration.** A stage
+  the probe never reached is drawn as explicitly skipped, not omitted. **Say this:**
+  *"'It did not work' is the least useful thing a platform can say to 26 departments.
+  Whether the host refused the connection, or answered and refused RTSP, or streamed
+  at a resolution that will never produce a readable plate, are three different
+  problems with three different owners."*
+- Finish with the CSV: a whole department onboarded row by row, each rejection
+  carrying its reason.
+
+### 2.4d Blind spots — gap analysis, 45 seconds
 
 Model 1's own requirement, and the screen that turns the registry from an inventory
 into a planning tool.

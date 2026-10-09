@@ -414,6 +414,21 @@ ships a caveat **in the response body**, because "N vehicles crossed" would be w
 two directions: one vehicle can produce several reads, and a vehicle whose plate is
 unreadable produces none. Every figure is a floor on traffic, never an estimate of it.
 
+**Anomaly detections** run over the same stream: cloned plates (one registration in
+two places too far apart for the time between), convoys (vehicles repeatedly seen
+together across cameras), and dwell. Each ships its limits in the response body
+alongside its results, because an anomaly presented without its false-positive
+conditions is an accusation.
+
+**Corridor analytics** aggregate flow between camera pairs, which is what turns a set
+of point observations into a statement about a road.
+
+**Appearance-based identity** is the Phase 2 answer to the resolution ceiling. When a
+plate is legible at one camera, the estate is searched by appearance for the same
+vehicle elsewhere. It is a search aid that narrows thousands of sightings to a handful
+a human adjudicates with both crops side by side — it is **not** an identification, it
+is never rendered as a confirmed hop, and no control exists to promote it to one.
+
 ### 7.5 Deliberately not built
 
 **No face recognition.** It stays unbuilt until four governance controls fit: off by
@@ -533,8 +548,15 @@ Dependency posture: `pip-audit --strict` on every push, with exactly one suppres
 
 ### 8.5 Quality gates
 
-207 automated tests · `mypy --strict` clean · `ruff` clean · declared-FPS guard ·
-gitleaks over full history · CycloneDX SBOM.
+681 automated tests · `mypy --strict` clean · `ruff` clean · declared-FPS guard ·
+WCAG AA contrast check over the theme tokens · gitleaks over full history ·
+CycloneDX SBOM.
+
+The declared-FPS guard asserts an exact permitted count rather than a per-site marker,
+so adding a read requires editing the expected number in the same commit — a reviewed
+act rather than a pasted comment. The contrast check is the newest and arrived the way
+these usually do: it failed on first run, on the badge worn by every camera the estate
+has not yet graded.
 
 ---
 
@@ -574,9 +596,11 @@ gitleaks over full history · CycloneDX SBOM.
 | Bandwidth saving | Follows from moving metadata not video; **no figure measured** |
 | Kafka event backend | Interface in place, in-process backend active; Kafka backend not written |
 | Keycloak / OIDC | Interim JWT in use; migration path documented |
-| Vehicle re-identification | `pgvector` present; embeddings not built |
-| Intrusion / zone detection | Not built |
-| Adaptive analytic rate | Fixed at 5 fps; load-adaptive gating not built |
+| Vehicle re-identification | **Built.** 76-dimension CIELAB-and-edge appearance descriptor in a `pgvector` HNSW index, driving candidate journeys. Separation measured, false-link rate measured, gate chosen from the measurement — `DISCOVERY.md` findings 24 and 25 |
+| Intrusion / zone detection | **Built.** Per-camera zones with entry/exit events |
+| ONVIF adapter | **Built** as a real `CameraSource`, with unit tests against recorded device responses. **Not exercised against a physical ONVIF camera** — no device was available — so the adapter is implemented and tested, not field-proven |
+| Live onboarding probe | **Built.** Staged probe with every step reported, including the ones it never reached |
+| Adaptive analytic rate | Fixed at 5 fps; **load-adaptive gating still not built.** It is the honest answer to 80,000 cameras on finite GPUs and it is the largest single gap between the scale model and the running system |
 | Face recognition | **Deliberately not built** — §7.5 |
 
 ### 9.4 Known limitations, stated up front
@@ -587,7 +611,18 @@ gitleaks over full history · CycloneDX SBOM.
    detection is genuine inference with a real crop; only *which camera saw it* is
    simulated, and the `REPLAY` prefix is visible in the UI.
 3. **ANPR accuracy is 29.6%**, and the ceiling is what the estate publishes (§7.2).
-4. **The gateway media plane is intermittent.** Cameras producing frames measured 17,
+   Phase 2's answer is not a better recogniser — it is to stop requiring a readable
+   plate for every hop, and to grade each camera for what it can actually support so
+   the ceiling is reported per camera rather than absorbed as a single estate-wide
+   number.
+4. **No camera in the estate publishes a heading.** Counted directly against the
+   registry: 491 cameras, **271** with a position, **0** with a heading. The Coverage screen therefore draws
+   domes of positional uncertainty rather than viewshed cones. The cone geometry is
+   built and correct; it is waiting on survey data that does not exist.
+5. **The estate's registry contains no Gujarati or Devanagari text.** All 491 camera
+   names and locations are ASCII. Indic rendering is verified as a readiness check
+   against representative strings, not against production data.
+6. **The gateway media plane is intermittent.** Cameras producing frames measured 17,
    then 25, then 18 of 30 across 27–30 August, with a total 502 in between. The
    2026-08-30 sweep decoded 5,055 frames for **zero** grammar-valid registrations
    against two on 27 August — same pipeline, different feed.

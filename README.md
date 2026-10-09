@@ -12,7 +12,7 @@ Built for the Gujarat Police Innovation Challenge 2026 (CCTV Integration Hackath
 Category 1.
 
 **Live:** [setu-gujarat.netlify.app](https://setu-gujarat.netlify.app) · API and interactive
-docs at [setu-api-ai7z.onrender.com/docs](https://setu-api-ai7z.onrender.com/docs) ·
+docs at [setu-api-8m2h.onrender.com/docs](https://setu-api-8m2h.onrender.com/docs) ·
 credentials are supplied with the submission. The console runs on a free tier that
 sleeps when idle, so the first page load can take up to a minute.
 
@@ -381,6 +381,26 @@ naming the exact characters corrected, per-hop coordinate confidence, an implied
 column so a reviewer can check the physics independently, and dashed segments labelled
 *no detection at &lt;camera&gt; — coverage gap*. Signed PDF export from the same screen.
 
+Two additions carry the Phase 2 answer to an unreadable plate.
+
+**Appearance candidates**, below the confirmed hops and visually separate. When a plate
+is legible once, the platform searches the rest of the estate by appearance — a
+76-dimension CIELAB-and-edge fingerprint, vehicle class and colour — and proposes
+vehicles that might be the same one. Both crops are shown side by side and the score is
+broken into its five components, because a 0.71 from a strong colour match and a weak
+fingerprint is a different proposition from a 0.71 the other way round. Accept and
+reject are written to the hash-chained ledger. Nothing here can promote a candidate to
+a confirmed hop: there is deliberately no control for it, because an operator agreeing
+with a fingerprint is not a plate read. The measured false-link rate at the shipped
+gate is 0.055; a looser gate measured 0.834 (`docs/DISCOVERY.md`, finding 25).
+
+**The shape of this movement** — the same hops replotted with geography across and time
+upward. A vertical segment is a vehicle that stayed put while time passed; a
+near-horizontal one is distance crossed with almost no time spent, which is the visual
+signature of a cloned or misread plate rather than a fast car; two routes running
+parallel at the same altitude were travelling together. A scrub replays the trace. The
+flat view is one click away and is what `prefers-reduced-motion` gets by default.
+
 ### Alert Desk
 ![Alert desk](docs/screenshots/05-alert-desk.png)
 
@@ -432,7 +452,40 @@ and see what the pipeline made of it. Three unprocessed YouTube videos sit below
 it, labelled as such: they are there so a judge can try footage we did not choose,
 not to imply we processed them.
 
-### Coverage — gap analysis
+### Coverage — where the state can actually see
+*The login destination, and the screen this console is built around.*
+
+Every placed camera drawn as the ground it can see, coloured by whether a number plate
+is readable there. The honest part is what it refuses to draw: **no camera in this
+estate publishes a heading**, so no viewshed cone can be constructed, and each camera
+is shown as a dome of its positional uncertainty instead. A cone would assert an
+orientation nobody surveyed. Onboarding a camera over ONVIF, or recording a heading
+during a survey, turns its dome into a cone — the capability is built and waiting on
+data that does not exist yet, and the legend says exactly that.
+
+### Dashboard — what the estate is doing now
+Activity, camera health, the ANPR readiness mix and anomalies in one window, over a 6
+hour, 24 hour or 7 day window. A measurement that was never taken renders as an em
+dash, never as a zero: a dead ingest must not be reportable as a quiet night. Cameras
+declaring one frame rate and delivering another are badged here rather than trusted.
+
+### Onboarding Studio — bringing a camera, or a department, on
+Paste an RTSP, HLS or ONVIF URL and watch the platform probe it: the URL through the
+SSRF guard, a timed TCP handshake, transport negotiation with the reason for the
+choice, the stream opened with its codec and resolution, **declared frame rate against
+measured**, the first decoded frame, an ANPR readiness grade with its reasoning, and
+the analytics that grade permits. A stage never reached is drawn as explicitly skipped
+rather than omitted — in a list of ticks an absent stage and a passing one look
+identical. The probe creates nothing; the operator decides afterwards. A departmental
+CSV imports row by row, with each rejection carrying its reason.
+
+### Scale Planner — from this estate to 80,000 cameras
+What the measured per-camera cost implies at state scale in compute, storage and
+bandwidth, with every assumption stated and adjustable. The numbers are arithmetic on
+measurements taken on the hardware in `docs/DISCOVERY.md`, not figures chosen to sound
+achievable.
+
+### Blind spots — gap analysis
 ![Gap analysis](docs/screenshots/08-gap-analysis.png)
 
 Model 1's own requirement. Gaps are separated by remedy because the cost of each
@@ -610,26 +663,40 @@ ungoverned biometric feature is worse than none in front of this jury.
 ```
 backend/            Python services, migrations, scripts, tests
   services/
-    api/            FastAPI, routers, auth, tenancy, hash-chained audit, evidence export
-    analytics/      ANPR pipeline, plate grammar, watchlist matcher, persistence
-    ingest/         CameraSource protocol, FileSource, GatewaySource
+    api/            FastAPI, routers, auth, tenancy, hash-chained audit, evidence export,
+                    scoped API keys, signed webhooks, idempotency, cursor pagination,
+                    Prometheus metrics
+    analytics/      ANPR pipeline, plate grammar, watchlist matcher, persistence,
+                    vehicle detection, appearance fingerprinting, candidate journeys,
+                    readiness grading, anomalies, corridors, scale planner
+    ingest/         CameraSource protocol, FileSource, GatewaySource, ONVIF adapter,
+                    live onboarding probe
     registry/       SQLAlchemy models, camera lifecycle, seed loader
-    common/         transport, stream client, SSRF guard, redaction, paths
+    common/         transport, stream client, SSRF guard, redaction, paths,
+                    sealed credentials, structured logging
   migrations/       Alembic — reversibility is tested, not assumed
   scripts/          preflight, probe, geocode, ANPR, demo seed, ground truth, benchmarks
-  tests/            325 tests
-frontend/           React 18 + TypeScript console (ten screens)
+  tests/            681 tests
+frontend/           React 18 + TypeScript console (fifteen screens)
 data/               seeds, own-feed footage, evidence crops
-docs/               runbook, discovery record, ADRs, screenshots
+docs/               operational runbook, demonstration script, discovery record,
+                    ADRs, screenshots
 reports/evidence/   dated, committed evidence records
 ```
 
 See [`backend/README.md`](backend/README.md) and
 [`frontend/README.md`](frontend/README.md) for per-tree detail, and
 [`docs/DISCOVERY.md`](docs/DISCOVERY.md) for what the live gateway actually returned
-as opposed to what the integration guide describes — twenty-two dated findings, each
+as opposed to what the integration guide describes — twenty-seven dated findings, each
 with the measurement behind it, including the optimisations that were measured and
-rejected.
+rejected. The findings now include the checks that failed before they
+passed: a backup drill that reported three gaps the source had all along, a contrast
+token failing on the badge every ungraded camera wears, and two Indic webfonts that
+were linked, listed in every font stack, and never actually downloaded.
+
+[`docs/RUNBOOK.md`](docs/RUNBOOK.md) is the on-call runbook: gateway down, camera
+flapping, database failover, disk pressure. Three of its four entries lead with
+diagnosis rather than remedy, because each has a look-alike the obvious fix makes worse.
 
 ---
 
