@@ -29,6 +29,13 @@ from services.api.routers import (
     system,
     zones,
 )
+from services.api.errors import (
+    ApiError,
+    api_error_handler,
+    correlation_middleware,
+    unhandled_error_handler,
+)
+from services.api.versioning import API_VERSION, deprecation_headers
 from services.common import redact
 
 redact.install(level=logging.INFO)
@@ -88,6 +95,33 @@ async def security_headers(request, call_next):  # type: ignore[no-untyped-def]
     response.headers["Referrer-Policy"] = "no-referrer"
     # The API serves JSON, never HTML, so the strictest CSP is also the correct one.
     response.headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'"
+    return response
+
+
+# Registered after the security headers, which in Starlette means it runs *outside*
+# them -- middleware is applied in reverse order of registration. That is what we want:
+# the correlation id must be attached before anything else can fail, and echoed on the
+# response even when an inner layer raised.
+app.middleware("http")(correlation_middleware)
+
+# ApiError carries a machine-readable code, a retryable flag and the correlation id.
+# Registered for the concrete class rather than for HTTPException, because the point is
+# that a client can branch on the cause rather than on an HTTP status that several
+# different causes share.
+app.add_exception_handler(ApiError, api_error_handler)
+# Anything unhandled. The exception text is logged and never returned: it is whatever
+# Python produced -- a SQL fragment, a path, a connection string -- and none of that
+# belongs in a response to another department's system.
+app.add_exception_handler(Exception, unhandled_error_handler)
+
+
+@app.middleware("http")
+async def version_headers(request, call_next):  # type: ignore[no-untyped-def]
+    """Announce the serving version, and any sunset, on every response."""
+    response = await call_next(request)
+    response.headers["X-API-Version"] = API_VERSION
+    for header, value in deprecation_headers(API_VERSION).items():
+        response.headers[header] = value
     return response
 
 

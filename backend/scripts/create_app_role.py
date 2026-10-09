@@ -62,7 +62,15 @@ TABLES = (
     "watchlist_entry",
     "alert",
     "audit_entry",
+    "alembic_version",
 )
+
+# Read-only for the application. `/readyz` compares the schema revision against the
+# one this build expects, which it cannot do without SELECT here -- the symptom was
+# a readiness probe reporting "migrations unreadable (ProgrammingError)" on a
+# perfectly migrated database. SELECT only: nothing in the API writes a revision,
+# and the role that runs migrations is a different one.
+READ_ONLY = ("alembic_version",)
 
 # The audit ledger is append-only for the application. Nothing in the API updates or
 # deletes an audit entry, and granting those privileges would make the tamper-evident
@@ -175,7 +183,9 @@ def main() -> int:
             if exists is None:
                 missing.append(table)
                 continue
-            if table in APPEND_ONLY:
+            if table in READ_ONLY:
+                conn.execute(text(f'GRANT SELECT ON {table} TO "{APP_ROLE}"'))
+            elif table in APPEND_ONLY:
                 conn.execute(text(f'GRANT SELECT, INSERT ON {table} TO "{APP_ROLE}"'))
             else:
                 conn.execute(

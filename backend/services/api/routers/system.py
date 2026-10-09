@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Response, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -19,6 +19,8 @@ from services.analytics.readiness import (
     grade_cameras,
 )
 from services.api import audit as audit_mod
+from services.api.buildinfo import build_info, readiness
+from services.api.versioning import version_info
 from services.api.db import get_session
 from services.api.schemas import AuditVerifyOut, CameraHealthOut, GatewayStatusOut
 from services.api.security import CurrentActor, camera_scope
@@ -178,3 +180,52 @@ def camera_readiness(session: SessionDep, actor: CurrentActor) -> ReadinessSumma
             ReadinessOut(**row.as_dict(), analytics=list(analytics_for(row.grade))) for row in rows
         ],
     )
+
+
+class DependencyOut(BaseModel):
+    name: str
+    ok: bool
+    detail: str
+    latency_ms: float | None
+
+
+class ReadyOut(BaseModel):
+    ready: bool
+    checks: list[DependencyOut]
+
+
+@router.api_route("/readyz", methods=["GET", "HEAD"], include_in_schema=True)
+def readiness_probe(session: SessionDep, response: Response) -> ReadyOut:
+    """Should this instance receive traffic?
+
+    Distinct from `/healthz`, which answers only "is this process alive". An
+    orchestrator reading liveness as failed *restarts* the container, so a liveness
+    probe that touched the database would turn a recoverable blip into a restart loop.
+    This one touches dependencies and returns 503 when they are unhappy, which is the
+    right signal for a load balancer to stop sending traffic here.
+
+    Deliberately does **not** check the government gateway. It is third-party
+    infrastructure that is down for hours at a time, its state is already on
+    `/health/gateway`, and failing readiness on it would remove the whole platform from
+    the load balancer while journeys, alerts and exports all work perfectly.
+    """
+    ready, checks = readiness(session)
+    if not ready:
+        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+    return ReadyOut(ready=ready, checks=[DependencyOut(**c.as_dict()) for c in checks])
+
+
+@router.get("/build-info")
+def build_information() -> dict[str, Any]:
+    """Version, commit, expected migration head and analytics versions.
+
+    What an ops team monitors, and what a disputed result is tied back to: an evidence
+    export names its analytics versions, and this says which build produced them.
+    """
+    return build_info()
+
+
+@router.get("/api-version")
+def api_version() -> dict[str, Any]:
+    """The versioning and deprecation policy, served rather than only documented."""
+    return version_info()
