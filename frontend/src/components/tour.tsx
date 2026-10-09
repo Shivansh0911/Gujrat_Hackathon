@@ -19,11 +19,13 @@
  * documented.
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 const SEEN_KEY = "setu.tour.seen";
 const STEP_KEY = "setu.tour.step";
+/** Set by Judge Mode so the tour does not open over the screen it just opened. */
+export const JUDGE_KEY = "setu.judge";
 
 type TourStep = {
   path: string;
@@ -190,11 +192,28 @@ export function GuidedTour({
     onClose();
   }, [onClose]);
 
-  // Navigate as the step changes rather than on a click, so resuming mid-tour lands on
-  // the right screen too.
+  // Navigate when the reader moves between steps -- never on the initial open.
+  //
+  // Navigating on open made the tour hijack whatever the app was doing. Judge Mode
+  // signs in and routes straight to a prepared trace on /journey; the tour mounted a
+  // moment later, saw step 1, and sent the browser to /coverage. The button whose
+  // entire purpose is to open the scored capability appeared to do nothing, and the
+  // cause was two features navigating at once rather than either one being broken.
+  //
+  // So the first render adopts the screen the reader is already on, and only Next,
+  // Back and a resumed step move them.
+  const navigatedFor = useRef<number | null>(null);
   useEffect(() => {
-    if (open && step) navigate(step.path);
-  }, [open, step, navigate]);
+    if (!open || !step) return;
+    if (navigatedFor.current === null) {
+      navigatedFor.current = index; // adopt, do not redirect
+      return;
+    }
+    if (navigatedFor.current !== index) {
+      navigatedFor.current = index;
+      navigate(step.path);
+    }
+  }, [open, step, index, navigate]);
 
   useEffect(() => {
     if (!open) return;
@@ -289,13 +308,17 @@ export function TourAndShortcuts() {
 
   useEffect(() => {
     let seen = "1";
+    let judging = false;
     try {
       seen = localStorage.getItem(SEEN_KEY) ?? "";
+      // Judge Mode asked for one specific screen. Opening a tour over it is the
+      // opposite of helpful, so that path suppresses the auto-open for the session.
+      judging = sessionStorage.getItem(JUDGE_KEY) === "1";
     } catch {
       // Treat an unreadable store as "already seen". Showing the tour on every single
       // load in a private window would be worse than not showing it at all.
     }
-    if (!seen) setTourOpen(true);
+    if (!seen && !judging) setTourOpen(true);
   }, []);
 
   useEffect(() => {

@@ -42,10 +42,29 @@ export default function JourneyPage() {
   const { ref: mapContainerRef, mapRef } = useMapLibre();
   const markersRef = useRef<maplibregl.Marker[]>([]);
 
+  // Every control reads its initial value from the query string, not just the plate.
+  //
+  // Judge Mode links here with a plate, a window derived from that plate's own reads
+  // and a purpose. Only `plate` was being read, so the window silently reverted to
+  // "the last seven days" -- which is wrong for any trace older than that -- and the
+  // empty purpose made the browser block submission with "please fill out this field".
+  // The one click the feature promises was two fields short of happening.
+  //
+  // A malformed or absent parameter falls back to the default rather than throwing: a
+  // hand-edited URL should land on a usable screen.
+  const paramStamp = (name: string, fallback: Date): string => {
+    const raw = params.get(name);
+    if (raw) {
+      const parsed = new Date(raw);
+      if (!Number.isNaN(parsed.getTime())) return isoLocal(parsed);
+    }
+    return isoLocal(fallback);
+  };
+
   const [plate, setPlate] = useState(params.get("plate") ?? "");
-  const [from, setFrom] = useState(isoLocal(new Date(Date.now() - 7 * 864e5)));
-  const [to, setTo] = useState(isoLocal(new Date(Date.now() + 36e5)));
-  const [purpose, setPurpose] = useState("");
+  const [from, setFrom] = useState(() => paramStamp("from", new Date(Date.now() - 7 * 864e5)));
+  const [to, setTo] = useState(() => paramStamp("to", new Date(Date.now() + 36e5)));
+  const [purpose, setPurpose] = useState(params.get("purpose") ?? "");
   const [activeHop, setActiveHop] = useState<number | null>(null);
   // Which projection the map column is showing. Not persisted: the flat map is the
   // right thing to land on, and a reader who left the 3D plot open on one trace

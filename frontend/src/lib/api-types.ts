@@ -1087,6 +1087,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/demo/best-trace": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Demo Best Trace
+         * @description The registration that best demonstrates a journey on *this* database.
+         *
+         *     Judge Mode used to pre-fill a constant. That constant was correct for the database
+         *     it was written against and silently wrong for every other one -- on this instance
+         *     it names a plate with zero detections, so the single button whose whole purpose is
+         *     to put the scored capability one click from the login screen landed the reviewer on
+         *     "plate never seen". A demonstration shortcut that depends on which database it is
+         *     pointed at is a demonstration shortcut that will fail in the room.
+         *
+         *     So the plate is chosen from the data: most distinct *placed* cameras first, because
+         *     a route needs coordinates to be drawn at all, then most reads, then most recent.
+         *     The window is derived from the chosen plate's own reads rather than assumed, which
+         *     fixes the matching half of the problem -- a fixed "last 30 days" cannot show reads
+         *     from eight weeks ago.
+         *
+         *     Returns a null plate rather than inventing one when nothing qualifies. The console
+         *     then falls back to its documented demonstration plate and the reviewer sees the
+         *     honest empty-result screen, which is a real state of the system and is designed.
+         */
+        get: operations["demo_best_trace_demo_best_trace_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/demo/own-feed": {
         parameters: {
             query?: never;
@@ -1262,6 +1299,24 @@ export interface components {
             head_hash: string | null;
             /** Verified At */
             verified_at: string;
+        };
+        /**
+         * BestTrace
+         * @description A registration this database can actually produce a route for.
+         */
+        BestTrace: {
+            /** Plate */
+            plate: string | null;
+            /** Cameras */
+            cameras: number;
+            /** Reads */
+            reads: number;
+            /** Window Start */
+            window_start: string | null;
+            /** Window End */
+            window_end: string | null;
+            /** Note */
+            note: string;
         };
         /** Body_bulk_import_cameras_cameras_bulk_import_post */
         Body_bulk_import_cameras_cameras_bulk_import_post: {
@@ -4112,6 +4167,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    demo_best_trace_demo_best_trace_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BestTrace"];
                 };
             };
         };

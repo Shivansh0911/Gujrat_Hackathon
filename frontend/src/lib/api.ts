@@ -35,6 +35,7 @@ export type RescanResult = components["schemas"]["RescanResult"];
 export type DemoFeed = components["schemas"]["DemoFeed"];
 export type DemoRead = components["schemas"]["DemoRead"];
 export type ProbeResult = components["schemas"]["ProbeResult"];
+export type BestTrace = components["schemas"]["BestTrace"];
 export type ProbeStep = components["schemas"]["ProbeStepOut"];
 
 /**
@@ -371,6 +372,9 @@ export const api = {
   syncCatalogue: () => request<SyncResult>("/cameras/sync-catalogue", { method: "POST" }),
   createCamera: (body: CameraCreate) =>
     request<Camera>("/cameras", { method: "POST", body: JSON.stringify(body) }),
+  /** Which registration this database can actually draw a route for, and the window
+      that contains its reads. Judge Mode uses it instead of a hardcoded plate. */
+  bestTrace: () => request<BestTrace>("/demo/best-trace"),
   /** Probe a source live. Slow by nature: it opens a stream and decodes frames. */
   probeSource: (url: string, gradeReadiness = true) =>
     request<ProbeResult>("/cameras/probe", {

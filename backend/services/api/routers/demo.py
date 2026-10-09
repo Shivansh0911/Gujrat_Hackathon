@@ -32,6 +32,7 @@ serves what that produced.
 from __future__ import annotations
 
 import logging
+from datetime import timedelta
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends
@@ -82,6 +83,105 @@ class DemoFeed(BaseModel):
     own_feed_detections: int
     gateway_detections: int
     note: str
+
+
+class BestTrace(BaseModel):
+    """A registration this database can actually produce a route for."""
+
+    #: None when no plate in this database has been seen by more than one placed
+    #: camera. The caller must handle that rather than show an empty route.
+    plate: str | None
+    cameras: int
+    reads: int
+    #: A window that provably contains the reads, widened by a day at each end. The
+    #: default "last 30 days" is the other half of the bug this endpoint fixes: it
+    #: misses data older than that entirely.
+    window_start: str | None
+    window_end: str | None
+    note: str
+
+
+@router.get("/demo/best-trace", response_model=BestTrace)
+def demo_best_trace(session: SessionDep, actor: CurrentActor) -> BestTrace:
+    """The registration that best demonstrates a journey on *this* database.
+
+    Judge Mode used to pre-fill a constant. That constant was correct for the database
+    it was written against and silently wrong for every other one -- on this instance
+    it names a plate with zero detections, so the single button whose whole purpose is
+    to put the scored capability one click from the login screen landed the reviewer on
+    "plate never seen". A demonstration shortcut that depends on which database it is
+    pointed at is a demonstration shortcut that will fail in the room.
+
+    So the plate is chosen from the data: most distinct *placed* cameras first, because
+    a route needs coordinates to be drawn at all, then most reads, then most recent.
+    The window is derived from the chosen plate's own reads rather than assumed, which
+    fixes the matching half of the problem -- a fixed "last 30 days" cannot show reads
+    from eight weeks ago.
+
+    Returns a null plate rather than inventing one when nothing qualifies. The console
+    then falls back to its documented demonstration plate and the reviewer sees the
+    honest empty-result screen, which is a real state of the system and is designed.
+    """
+    row = session.execute(
+        text(
+            """
+            SELECT d.plate_normalised AS plate,
+                   count(DISTINCT d.camera_id) AS cameras,
+                   count(*) AS reads,
+                   min(d.observed_at_utc) AS first_seen,
+                   max(d.observed_at_utc) AS last_seen
+            FROM detection d
+            JOIN camera c ON c.id = d.camera_id
+            WHERE d.plate_normalised IS NOT NULL
+              AND c.geom IS NOT NULL
+            GROUP BY d.plate_normalised
+            HAVING count(DISTINCT d.camera_id) > 1
+            -- Time span before read count, and that ordering is the whole point.
+            --
+            -- Reads at several cameras are not the same thing as a journey. The first
+            -- version ranked on cameras then reads, and picked a registration read at
+            -- four cameras fifteen minutes apart -- cameras that sit hundreds of
+            -- kilometres from each other. `speed.py` correctly rejected every hop as
+            -- physically impossible and the route collapsed to "1 hop, single
+            -- sighting", which is exactly the screen Judge Mode exists to avoid.
+            --
+            -- Preferring the widest time span favours reads that can plausibly belong
+            -- to one vehicle, without this query trying to re-derive the physics the
+            -- journey builder already applies.
+            ORDER BY cameras DESC,
+                     (max(d.observed_at_utc) - min(d.observed_at_utc)) DESC,
+                     reads DESC
+            LIMIT 1
+            """
+        )
+    ).first()
+
+    if row is None:
+        return BestTrace(
+            plate=None,
+            cameras=0,
+            reads=0,
+            window_start=None,
+            window_end=None,
+            note=(
+                "no registration in this database has been read by more than one "
+                "placed camera, so no route can be drawn from it"
+            ),
+        )
+
+    pad = timedelta(days=1)
+    return BestTrace(
+        plate=str(row.plate),
+        cameras=int(row.cameras),
+        reads=int(row.reads),
+        window_start=(row.first_seen - pad).isoformat(),
+        window_end=(row.last_seen + pad).isoformat(),
+        note=(
+            f"{row.plate} was read {row.reads} times across {row.cameras} placed "
+            f"cameras over {row.last_seen - row.first_seen}, which is what makes it "
+            "traceable here"
+        ),
+    )
 
 
 @router.get("/demo/own-feed", response_model=DemoFeed)

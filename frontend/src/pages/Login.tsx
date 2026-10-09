@@ -1,5 +1,8 @@
 import { FormEvent, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../lib/auth";
+import { api } from "../lib/api";
+import { JUDGE_KEY } from "../components/tour";
 import { ThemeToggle } from "../lib/theme";
 
 /**
@@ -28,17 +31,27 @@ const ROLES = [
 ];
 
 /**
- * The registration Judge Mode opens on.
+ * The registration Judge Mode falls back to.
  *
- * Not arbitrary: DISCOVERY finding 22 records this as the first and only
- * grammar-valid registration the government estate has produced, read from cam22 at
- * confidence 0.757. Pre-filling a plate the estate has never seen would demonstrate an
- * empty result very convincingly.
+ * DISCOVERY finding 22 records this as the first and only grammar-valid registration
+ * the government estate has produced, read from cam22 at confidence 0.757.
+ *
+ * It is a fallback rather than the answer because a constant here is only correct for
+ * the database it was written against. On an instance seeded from different footage
+ * this plate has zero detections, and the one button whose entire purpose is to put
+ * the scored capability one click from the login screen was landing the reviewer on
+ * "plate never seen" -- the single worst first screen this console can show. The
+ * comment that used to sit here even said so: pre-filling a plate the estate has never
+ * seen would demonstrate an empty result very convincingly.
+ *
+ * So Judge Mode now asks the API which registration this database can actually trace,
+ * and uses this only when the answer is that none can.
  */
-const DEMO_PLATE = "GJ09BM3641";
+const FALLBACK_DEMO_PLATE = "GJ09BM3641";
 
 export default function Login() {
   const { signIn } = useAuth();
+  const navigate = useNavigate();
   const [judgeMode, setJudgeMode] = useState(false);
   const [username, setUsername] = useState("admin");
   const [password, setPassword] = useState("");
@@ -52,17 +65,44 @@ export default function Login() {
     try {
       await signIn(username, password);
       if (judgeMode) {
-        // A wide window, because the demonstration data spans whatever was last
-        // ingested and a narrow guess would show an empty route.
-        const to = new Date();
-        const from = new Date(to.getTime() - 30 * 864e5);
+        try {
+          sessionStorage.setItem(JUDGE_KEY, "1");
+        } catch {
+          // A tour appearing over the trace is a small cost; a failed sign-in is not.
+        }
+        // Ask the database what it can actually demonstrate. Both halves matter: a
+        // fixed "last 30 days" window cannot show reads from eight weeks ago, so the
+        // window comes from the chosen plate's own reads rather than from a guess.
+        let plate = FALLBACK_DEMO_PLATE;
+        let to = new Date();
+        let from = new Date(to.getTime() - 30 * 864e5);
+        try {
+          const best = await api.bestTrace();
+          if (best.plate && best.window_start && best.window_end) {
+            plate = best.plate;
+            from = new Date(best.window_start);
+            to = new Date(best.window_end);
+          }
+        } catch {
+          // A failed lookup must not block the sign-in it follows. The fallback plate
+          // still opens the Journey screen with its controls populated, which is a
+          // better outcome than an error on the way in.
+        }
         const query = new URLSearchParams({
-          plate: DEMO_PLATE,
+          plate,
           from: from.toISOString(),
           to: to.toISOString(),
+          // The purpose is required, and rightly so -- it reaches the audit ledger
+          // before the search runs. Without it the browser blocks submission and the
+          // promised single click becomes "fill in this field, then click".
+          purpose: "Judge Mode demonstration - vehicle trace from the login screen",
         });
-        window.location.hash = "";
-        window.history.replaceState(null, "", `/journey?${query}`);
+        // `history.replaceState` changes the address bar and tells the router nothing.
+        // React Router holds the current location in its own state and updates it only
+        // through its navigation API or a popstate event, so the previous version set
+        // a /journey URL and left the app sitting on Coverage -- Judge Mode missing
+        // the one screen it exists to open, while appearing to have worked.
+        navigate(`/journey?${query}`, { replace: true });
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "sign in failed");
@@ -151,7 +191,7 @@ export default function Login() {
             <span className="text-xs">Judge mode</span>
             <span className="block text-[11px] text-muted leading-snug">
               Land on a prepared trace of{" "}
-              <span className="mono">{DEMO_PLATE}</span> — the one registration this
+              <span className="mono">{FALLBACK_DEMO_PLATE}</span> — the one registration this
               estate has produced a grammar-valid read for — instead of the coverage
               map.
             </span>
