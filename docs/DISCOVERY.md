@@ -804,6 +804,71 @@ Drill result: `docs/evidence/backup_restore_drill.json`. Eight checks, all passi
 0.3 MB dumped in 2.2 s and restored in 2.8 s, with PostGIS geography digests matching
 and `appearance_vector` restored as `vector(76)`.
 
+## Finding 27 - the accessibility pass found three things, and two were invisible
+
+§8 asks for a WCAG AA contrast check, a responsive audit, and verification that Indic
+camera names render. Each was done as a measurement rather than a review, and two of
+the three failed in ways nobody would have noticed by looking.
+
+**Contrast.** Computed from the theme tokens rather than judged by eye, because
+distinguishing 4.3:1 from 4.5:1 is not something a person can do. The dark theme passed
+outright. The light theme had two failures:
+
+```
+muted          on ink-700   4.31:1  (needs 4.5)
+grade-unknown  on ink-900   2.43:1  (needs 3)
+grade-unknown  on ink-800   2.56:1  (needs 3)
+grade-unknown  on ink-700   2.32:1  (needs 3)
+```
+
+`grade-unknown` is the badge worn by a camera the estate has not yet graded, which at
+the time of measurement was **477 of 477 cameras**. The least legible colour on the
+palette was also the most frequently rendered one. Both tokens were darkened and the
+check is now `npm run check:contrast`, which exits non-zero, so this cannot regress
+quietly the way it arrived.
+
+**Responsive.** Eight screens at 375, 390, 768 and 1024 px in both themes, asserting
+that the document does not scroll horizontally and that no element escapes the
+viewport. No findings: 64 page-width-theme combinations, zero overflow. This one
+passed, and it passed because the earlier work on the journey and GIS layouts had
+already fixed the two cases that did overflow.
+
+**Indic rendering.** This is the one worth writing down.
+
+First, the estate's own data: of 491 cameras, **none** carries a Gujarati or Devanagari
+character. Every camera name and location string is ASCII. The only non-ASCII codepoint
+anywhere in the registry is U+00B7, a middle dot this project introduced in its own
+replay labels. So "verify with real strings" has no real strings to verify against, and
+what follows is a readiness check, not a verification against production data. Saying
+otherwise would be the easy and dishonest version.
+
+Second, the bug. The Google Fonts link for Noto Sans Gujarati and Noto Sans Devanagari
+was present, and both faces were in the `font-family` stacks, in `index.css` and in the
+Tailwind `sans` role. Both correct, and both insufficient. Measured in the browser on a
+fully loaded page:
+
+```
+Noto Sans Gujarati     false
+Noto Sans Devanagari   false
+IBM Plex Sans          true
+```
+
+A browser does not download a webfont until something on screen needs a glyph from it,
+and nothing on the console is in Gujarati. The Gujarati sample rendered anyway -- via a
+Windows system font that happened to be installed. On a workstation without one, which
+is an entirely ordinary state for a kiosk or a locked-down police build, the stack falls
+through to `system-ui` and a camera named in Gujarati renders as tofu. The failure would
+appear only on the machines nobody develops on.
+
+The faces are now requested by name at startup. `document.fonts.load()` returns one face
+each and the check flips to true with no Indic text anywhere on screen. Not awaited:
+Indic text is not on the first screen, and blocking first render on a font request would
+trade a rare failure for a universal delay.
+
+The general shape of this, which is why all three were measured rather than reviewed: a
+contrast ratio, a horizontal overflow and a missing webfont are all invisible on the
+machine of the person who built them. Two of the three were wrong.
+
 ## Local evaluation hardware
 
 Python 3.12.5, Docker 29.7.2, Node 20.14, **NVIDIA RTX 4050 Laptop, 6 GB VRAM**.

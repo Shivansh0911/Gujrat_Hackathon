@@ -47,7 +47,7 @@
   --ok: 4 120 87;
   --warn: 180 83 9;
   --bad: 185 28 28;
-  --muted: 100 116 139;
+  --muted: 88 102 125; /* AA on ink-700: slate-500 measured 4.31:1, below 4.5 */
 
   --fg: 15 23 42;
   --fg2: 30 41 59;
@@ -66,7 +66,7 @@
   --grade-capable: 4 120 87;
   --grade-marginal: 180 83 9;
   --grade-unviable: 71 85 105;
-  --grade-unknown: 148 163 184;
+  --grade-unknown: 100 116 139; /* was slate-400: 2.32:1 on ink-700, failing 3:1 */
 
   color-scheme: light;
 }
