@@ -27,7 +27,7 @@
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 
-import { api, type CandidateHop, type CandidateJourney } from "../lib/api";
+import { api, mediaUrl, type CandidateHop, type CandidateJourney } from "../lib/api";
 import { CandidateCaveat, TierBadge, TierLegend } from "./tiers";
 
 function ScoreBar({ label, value }: { label: string; value: number }) {
@@ -123,7 +123,16 @@ function CandidateCard({
         <TierBadge tier={candidate.tier} score={candidate.score.total} />
       </div>
 
-      <CropPair seedUrl={candidate.seed_crop_url} candidateUrl={candidate.crop_url} />
+      {/* Through mediaUrl, not raw.
+          The API returns these as paths rooted at its own origin. Rendered raw they
+          resolve against the *console's* origin, which in the deployed split-origin
+          setup is Netlify -- so both evidence crops 404 on exactly the panel whose
+          argument is that a fingerprint match you cannot look at is an assertion. The
+          hop list next to it was already using the helper; this was not. */}
+      <CropPair
+        seedUrl={mediaUrl(candidate.seed_crop_url) ?? null}
+        candidateUrl={mediaUrl(candidate.crop_url) ?? null}
+      />
 
       {/* The evidence, as numbers a reviewer can check against the map. */}
       <dl className="grid grid-cols-2 gap-x-3 gap-y-0.5">
