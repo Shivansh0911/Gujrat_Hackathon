@@ -9,6 +9,7 @@ import { useMapLibre } from "../lib/useMap";
 import { Badge, Empty, ErrorBox, ProvenanceBadge, SourceBadge } from "../components/ui";
 import { TierBadge, TierLegend } from "../components/tiers";
 import { CandidatePanel } from "../components/candidates";
+import { Journey3D } from "../components/journey3d";
 
 function isoLocal(d: Date) {
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -46,6 +47,10 @@ export default function JourneyPage() {
   const [to, setTo] = useState(isoLocal(new Date(Date.now() + 36e5)));
   const [purpose, setPurpose] = useState("");
   const [activeHop, setActiveHop] = useState<number | null>(null);
+  // Which projection the map column is showing. Not persisted: the flat map is the
+  // right thing to land on, and a reader who left the 3D plot open on one trace
+  // should not inherit it on the next.
+  const [shapeView, setShapeView] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exported, setExported] = useState<string | null>(null);
 
@@ -333,10 +338,34 @@ export default function JourneyPage() {
         <div className="relative min-w-0 h-[38vh] shrink-0 lg:h-auto lg:flex-1">
           <div ref={mapContainerRef} className="absolute inset-0" />
 
+          {/* The time-as-altitude plot takes over the map column rather than sitting
+              beside it. Both views answer "where did this vehicle go"; showing them
+              at once halves each and makes the reader choose twice. */}
+          {result && result.hops.length >= 2 ? (
+            <button
+              type="button"
+              className="btn t-small absolute bottom-3 right-3 z-10 shadow"
+              aria-pressed={shapeView}
+              onClick={() => setShapeView((on) => !on)}
+            >
+              {shapeView ? "Back to the map" : "Shape of this movement"}
+            </button>
+          ) : null}
+
+          {shapeView && result ? (
+            <div className="absolute inset-0 z-[5] bg-ink-900 overflow-y-auto p-3">
+              <Journey3D
+                hops={result.hops}
+                gaps={result.coverage_gaps}
+                plate={result.plate}
+              />
+            </div>
+          ) : null}
+
           {/* Both cards are desktop-only. Overlaid on a 38vh map they covered most of
               it and each other; the same facts are rendered inline at the top of the
               results panel below, where they can wrap. */}
-          {result && (
+          {result && !shapeView && (
             <div className="hidden lg:block absolute top-3 left-3 panel px-3 py-2 text-xs bg-ink-800/95 space-y-1">
               <div className="flex items-center gap-2">
                 <span className="mono text-fg text-sm">{result.plate}</span>
