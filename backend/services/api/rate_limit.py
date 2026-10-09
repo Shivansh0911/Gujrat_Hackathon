@@ -81,3 +81,45 @@ LOGIN_WINDOW_S = 60.0
 login_limiter = SlidingWindowLimiter(LOGIN_LIMIT, LOGIN_WINDOW_S)
 
 __all__ = ["SlidingWindowLimiter", "login_limiter", "LOGIN_LIMIT", "LOGIN_WINDOW_S"]
+
+
+class PerCallerLimiter:
+    """A sliding window per caller, with the ceiling supplied per call.
+
+    Separate from `SlidingWindowLimiter` because an API key's ceiling is a property of
+    the key rather than of the endpoint: a department running a nightly bulk import
+    legitimately needs a higher rate than one polling a dashboard, and baking a single
+    limit into the limiter would force the stricter of the two on both.
+
+    Same process-local caveat as the login limiter, and it matters more here. With
+    SETU_WORKERS above 1 each worker holds its own window, so the effective ceiling is
+    the configured limit times the worker count. The deployment runs one worker. This is
+    a ceiling, not an accounting system, and it should be replaced by a shared-storage
+    limiter before the API runs across instances.
+    """
+
+    def __init__(self, window_s: float = 60.0) -> None:
+        self._window_s = window_s
+        self._events: dict[str, deque[float]] = defaultdict(deque)
+
+    def allow(self, caller: str, *, limit: int) -> bool:
+        now = time.monotonic()
+        window = self._events[caller]
+        cutoff = now - self._window_s
+        while window and window[0] <= cutoff:
+            window.popleft()
+        if len(window) >= limit:
+            return False
+        window.append(now)
+        return True
+
+    def reset(self, caller: str | None = None) -> None:
+        """Clear state. For tests, and for a key whose limit was just raised."""
+        if caller is None:
+            self._events.clear()
+        else:
+            self._events.pop(caller, None)
+
+
+#: Shared instance for API-key traffic.
+key_limiter = PerCallerLimiter()

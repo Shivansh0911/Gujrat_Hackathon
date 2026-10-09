@@ -26,6 +26,7 @@ from services.api.routers import (
     demo,
     gaps,
     journey,
+    keys,
     system,
     zones,
 )
@@ -133,6 +134,7 @@ app.include_router(gaps.router)
 app.include_router(zones.router)
 app.include_router(cameras.router)
 app.include_router(system.router)
+app.include_router(keys.router)
 app.include_router(alerts.router)
 app.include_router(journey.router)
 app.include_router(candidates.router)

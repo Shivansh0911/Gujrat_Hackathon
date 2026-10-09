@@ -51,7 +51,10 @@ from passlib.context import CryptContext
 from sqlalchemy import Select, select
 from sqlalchemy.orm import Session
 
+from services.api.api_keys import KEY_PREFIX as API_KEY_PREFIX
 from services.api.config import ApiSettings, get_api_settings
+from services.api.errors import ApiError, ErrorCode
+from services.api.rate_limit import key_limiter
 from services.api.db import get_session
 from services.registry.enums import Role
 from services.registry.models import Camera
@@ -66,19 +69,65 @@ ALGORITHM = "HS256"
 
 
 class Actor:
-    """The authenticated caller. Passed to every scoped accessor."""
+    """The authenticated caller. Passed to every scoped accessor.
 
-    def __init__(self, subject: str, role: str, department_id: uuid.UUID | None) -> None:
+    A caller is either a person holding a JWT or a service account holding an API key.
+    Both resolve to an Actor so every scoped accessor, every RLS binding and every audit
+    entry works unchanged -- but `api_key_id` is set for one and not the other, so the
+    ledger can tell a department's integration apart from a person at a keyboard.
+    """
+
+    def __init__(
+        self,
+        subject: str,
+        role: str,
+        department_id: uuid.UUID | None,
+        *,
+        api_key_id: uuid.UUID | None = None,
+        scopes: frozenset[str] | None = None,
+    ) -> None:
         self.subject = subject
         self.role = role
         self.department_id = department_id
+        self.api_key_id = api_key_id
+        # None for a human: a JWT session is not scope-limited, and an empty set would
+        # read as "permitted nothing" at every scope check.
+        self.scopes = scopes
 
     @property
     def is_admin(self) -> bool:
         return self.role == Role.ADMIN.value
 
+    @property
+    def is_service_account(self) -> bool:
+        return self.api_key_id is not None
+
+    @property
+    def sees_all_departments(self) -> bool:
+        """Whether row-level security should show this caller the whole estate.
+
+        **Row visibility and endpoint authorisation are different questions**, and
+        conflating them is how an estate-wide service key ended up seeing nothing.
+
+        `is_admin` answers "may this caller reach admin-only endpoints". It is the
+        wrong input for RLS, because an estate-wide key is deliberately *not* an admin
+        -- it must never reach a mutating admin endpoint -- while its entire purpose is
+        to read across departments. Deriving visibility from the role meant such a key
+        bound NO_DEPARTMENT and every query returned zero rows, silently, which reads
+        as "there is no data" rather than "you cannot see it".
+
+        So visibility is its own property. A human admin has it by role. A service key
+        has it when it was issued without a department, which is an explicit act an
+        admin performed and the audit ledger recorded. Everyone else, including a human
+        operator with no department, fails closed exactly as before.
+        """
+        if self.is_admin:
+            return True
+        return self.is_service_account and self.department_id is None
+
     def __repr__(self) -> str:  # pragma: no cover - debugging aid
-        return f"Actor(subject={self.subject!r}, role={self.role!r})"
+        kind = "key" if self.is_service_account else "user"
+        return f"Actor({kind} subject={self.subject!r}, role={self.role!r})"
 
 
 def hash_password(plain: str) -> str:
@@ -149,13 +198,19 @@ def get_current_actor(
             detail="not authenticated",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    claims = decode_token(token, settings)
-    dept = claims.get("dept")
-    actor = Actor(
-        subject=str(claims["sub"]),
-        role=str(claims.get("role", Role.OPERATOR.value)),
-        department_id=uuid.UUID(dept) if dept else None,
-    )
+    # A service account presents its key through the same Authorization: Bearer header
+    # a person's session uses. The prefix tells them apart, which is one of the reasons
+    # issued keys carry one.
+    if token.startswith(API_KEY_PREFIX):
+        actor = _actor_from_api_key(token, session)
+    else:
+        claims = decode_token(token, settings)
+        dept = claims.get("dept")
+        actor = Actor(
+            subject=str(claims["sub"]),
+            role=str(claims.get("role", Role.OPERATOR.value)),
+            department_id=uuid.UUID(dept) if dept else None,
+        )
 
     # Bind tenancy to this transaction before any route touches data, so row-level
     # security applies even to a query that bypassed the scoped accessors. Done here
@@ -168,6 +223,66 @@ def get_current_actor(
 
 
 CurrentActor = Annotated[Actor, Depends(get_current_actor)]
+
+
+def _actor_from_api_key(token: str, session: Session | None) -> Actor:
+    """Resolve a service-account key to an Actor, enforcing its own rate ceiling.
+
+    A key is never an admin. Estate-wide reach is expressed by a NULL department, which
+    RLS already understands; granting the admin *role* as well would hand it every
+    mutating endpoint a human admin can reach, which is not what estate-wide read access
+    is meant to mean.
+    """
+    if session is None:  # pragma: no cover - the dependency always provides one
+        raise ApiError(ErrorCode.DEPENDENCY_UNAVAILABLE, "database unavailable")
+
+    from services.api import api_keys
+    from services.api.tenancy import set_admin_context
+
+    # The key table is RLS-protected and the caller has no identity yet -- this is the
+    # request that establishes one. Elevating for the lookup is the only way to read it,
+    # and the lookup is by token hash, so it cannot return another department's key.
+    set_admin_context(session)
+    try:
+        principal = api_keys.authenticate(session, token)
+    except api_keys.ApiKeyError as exc:
+        raise ApiError(ErrorCode.CREDENTIALS_INVALID, str(exc)) from exc
+
+    if not key_limiter.allow(str(principal.id), limit=principal.rate_limit_per_minute):
+        raise ApiError(
+            ErrorCode.RATE_LIMITED,
+            f"this key is limited to {principal.rate_limit_per_minute} requests per minute",
+            retry_after_s=60,
+        )
+
+    api_keys.record_use(session, principal)
+    return Actor(
+        subject=principal.audit_subject,
+        role=Role.OPERATOR.value,
+        department_id=principal.department_id,
+        api_key_id=principal.id,
+        scopes=principal.scopes,
+    )
+
+
+def require_scope(scope: str) -> Any:
+    """Dependency factory: this endpoint needs this scope from a service account.
+
+    A human session has `scopes is None` and passes every check. Deliberate -- scopes
+    exist to narrow a machine integration, and retrofitting them onto human roles would
+    be a second, parallel authorisation system saying different things about one person.
+    """
+
+    def _check(actor: CurrentActor) -> Actor:
+        if actor.scopes is not None and scope not in actor.scopes:
+            raise ApiError(
+                ErrorCode.PERMISSION_DENIED,
+                f"this API key does not carry the '{scope}' scope",
+                detail={"required_scope": scope, "granted": sorted(actor.scopes)},
+            )
+        return actor
+
+    return Depends(_check)
 
 
 def require_admin(actor: CurrentActor) -> Actor:

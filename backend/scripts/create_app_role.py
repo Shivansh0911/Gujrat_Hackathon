@@ -63,6 +63,13 @@ TABLES = (
     "alert",
     "audit_entry",
     "alembic_version",
+    # The integration surface (migration 0009). The API creates, revokes and
+    # reads keys and subscriptions, and the dispatcher updates delivery rows as
+    # it retries them, so all four need full DML.
+    "api_key",
+    "webhook_subscription",
+    "webhook_delivery",
+    "idempotency_key",
 )
 
 # Read-only for the application. `/readyz` compares the schema revision against the

@@ -42,9 +42,13 @@ def apply_context(session: Session, actor: Actor) -> None:
         text("SELECT set_config('setu.department_id', :dept, true)"),
         {"dept": department},
     )
+    # `sees_all_departments`, not `is_admin`. The two differ for exactly one caller:
+    # an estate-wide service key, which must read across departments while never being
+    # permitted an admin endpoint. Binding visibility to the role meant such a key saw
+    # zero rows everywhere, which looks like an empty estate rather than a denial.
     session.execute(
         text("SELECT set_config('setu.is_admin', :admin, true)"),
-        {"admin": "on" if actor.is_admin else "off"},
+        {"admin": "on" if actor.sees_all_departments else "off"},
     )
 
 
