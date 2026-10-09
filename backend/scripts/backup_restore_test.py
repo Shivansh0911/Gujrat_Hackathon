@@ -101,7 +101,18 @@ def _run(command: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
 
 
 def _have_client() -> bool:
-    return _run(["pg_dump", "--version"]).returncode == 0
+    """Whether pg_dump can be invoked at all.
+
+    The absent binary raises FileNotFoundError from CreateProcess rather than
+    returning non-zero, so the unguarded version of this crashed with a traceback in
+    exactly the case it exists to report -- a developer machine with no client
+    installed, which is the common one. A probe that cannot survive the condition it
+    probes for is not a probe.
+    """
+    try:
+        return _run(["pg_dump", "--version"]).returncode == 0
+    except (FileNotFoundError, OSError):
+        return False
 
 
 def _counts(engine: Any) -> dict[str, int]:
@@ -299,16 +310,33 @@ def main() -> int:
                 mismatched=mismatched,
             )
 
+            # A gap in `seq` is not a restore defect and must not be asserted to zero.
+            # `seq` comes from a Postgres sequence, and a sequence is deliberately
+            # non-transactional: a rolled-back write keeps the number it drew. The
+            # first run of this drill failed on three gaps that turned out to exist
+            # identically in the source -- one of them 60 wide, from the ingest run
+            # that rolled back when RLS refused its writes. The dump reproduced the
+            # source exactly and the drill called it a failure.
+            #
+            # What the restore must preserve is the *same* gaps, which is what makes
+            # it faithful, and an unbroken hash chain, which is what makes the ledger
+            # evidence. Gaps are reported as an observation about the source.
             chain_ok = (
                 after_chain["entries"] == before_chain["entries"]
                 and after_chain["broken_links"] == 0
-                and after_chain["sequence_gaps"] == 0
+                and after_chain["sequence_gaps"] == before_chain["sequence_gaps"]
+            )
+            gap_note = (
+                "no sequence gaps"
+                if after_chain["sequence_gaps"] == 0
+                else f"{after_chain['sequence_gaps']} sequence gaps, same as the source "
+                "(a rolled-back write keeps its sequence number; this is not data loss)"
             )
             step(
                 "audit chain intact",
                 chain_ok,
                 f"{after_chain['entries']} entries, {after_chain['broken_links']} broken links, "
-                f"{after_chain['sequence_gaps']} sequence gaps",
+                f"{gap_note}",
                 before=before_chain,
                 after=after_chain,
             )

@@ -1,0 +1,115 @@
+{
+  "started_utc": "2026-10-09T13:43:22.959702+00:00",
+  "source_database": "setu",
+  "scratch_database": "setu_restore_test",
+  "ok": true,
+  "steps": [
+    {
+      "step": "read source",
+      "ok": true,
+      "detail": "2375 rows across 13 tables, 1696 audit entries"
+    },
+    {
+      "step": "pg_dump",
+      "ok": true,
+      "detail": "0.3 MB in 2.2s"
+    },
+    {
+      "step": "create scratch database",
+      "ok": true,
+      "detail": "setu_restore_test"
+    },
+    {
+      "step": "pg_restore",
+      "ok": true,
+      "detail": "completed in 2.8s with 1 warnings"
+    },
+    {
+      "step": "row counts match",
+      "ok": true,
+      "detail": "every table matches",
+      "mismatched": {}
+    },
+    {
+      "step": "audit chain intact",
+      "ok": true,
+      "detail": "1696 entries, 0 broken links, 3 sequence gaps, same as the source (a rolled-back write keeps its sequence number; this is not data loss)",
+      "before": {
+        "entries": 1696,
+        "broken_links": 0,
+        "sequence_gaps": 3
+      },
+      "after": {
+        "entries": 1696,
+        "broken_links": 0,
+        "sequence_gaps": 3
+      }
+    },
+    {
+      "step": "PostGIS geography preserved",
+      "ok": true,
+      "detail": "267 placed cameras, digests match"
+    },
+    {
+      "step": "pgvector column preserved",
+      "ok": true,
+      "detail": "appearance_vector is vector(76)"
+    }
+  ],
+  "before": {
+    "counts": {
+      "department": 58,
+      "site": 0,
+      "camera": 484,
+      "camera_capability": 0,
+      "camera_zone": 3,
+      "detection": 29,
+      "vehicle_sighting": 87,
+      "watchlist_entry": 9,
+      "alert": 6,
+      "audit_entry": 1696,
+      "api_key": 3,
+      "webhook_subscription": 0,
+      "webhook_delivery": 0
+    },
+    "chain": {
+      "entries": 1696,
+      "broken_links": 0,
+      "sequence_gaps": 3
+    },
+    "geometry": {
+      "placed_cameras": 267,
+      "geometry_digest": "9198463c591bb3a56e88188cfaff9fb0",
+      "vector_type": "vector(76)"
+    }
+  },
+  "after": {
+    "counts": {
+      "department": 58,
+      "site": 0,
+      "camera": 484,
+      "camera_capability": 0,
+      "camera_zone": 3,
+      "detection": 29,
+      "vehicle_sighting": 87,
+      "watchlist_entry": 9,
+      "alert": 6,
+      "audit_entry": 1696,
+      "api_key": 3,
+      "webhook_subscription": 0,
+      "webhook_delivery": 0
+    },
+    "chain": {
+      "entries": 1696,
+      "broken_links": 0,
+      "sequence_gaps": 3
+    },
+    "geometry": {
+      "placed_cameras": 267,
+      "geometry_digest": "9198463c591bb3a56e88188cfaff9fb0",
+      "vector_type": "vector(76)"
+    }
+  },
+  "dump_size_mb": 0.27,
+  "finished_utc": "2026-10-09T13:43:32.268937+00:00"
+}

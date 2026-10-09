@@ -758,6 +758,52 @@ Three caveats, all of which cut against flattering the figures:
 The honest summary: this is a search aid that narrows thousands of sightings to a handful
 a human then adjudicates, with both crops shown side by side. It is not an identification.
 
+## Finding 26 - a gap in the audit ledger's sequence is not a hole in the audit ledger
+
+The backup/restore drill (`backend/scripts/backup_restore_test.py`) failed on its first
+complete run, on one check out of eight:
+
+```
+[ok ] row counts match: every table matches
+[ERR] audit chain intact: 1696 entries, 0 broken links, 3 sequence gaps
+[ok ] PostGIS geography preserved: 267 placed cameras, digests match
+```
+
+Zero broken hash links and three gaps in `seq` is a strange pair of numbers. A restore
+that lost entries would break the chain, because each entry's `prev_hash` names the one
+before it. Querying the **source** database returned the same three gaps, in the same
+places:
+
+```
+seq   1 ->   3   (1 value never committed)
+seq  59 ->  61   (1 value never committed)
+seq  66 -> 127   (60 values never committed)
+```
+
+The dump was faithful; the check was wrong. `seq` is drawn from a Postgres sequence, and
+a sequence is deliberately non-transactional -- it hands out a number before the
+transaction commits and does not reclaim it on rollback, because reclaiming would make
+every `nextval` wait on every other writer. So a rolled-back write permanently consumes
+its number. The 60-wide gap is recognisably the ingest run recorded in this document that
+rolled back when RLS refused its writes: the attempt drew 60 sequence values and
+committed none of them.
+
+The drill now asserts that the restored gaps **match the source's**, which is what
+faithfulness actually means, and keeps asserting zero broken links, which is what makes
+the ledger evidence. It reports the gap count as an observation about the source rather
+than a failure.
+
+Worth stating because the opposite mistake is the expensive one. A reviewer who reads
+"gap in the audit sequence" as "entries were deleted" would be right to be alarmed about
+an append-only ledger -- and would be wrong here, for a reason that has to be written
+down rather than argued in the room. The property the ledger guarantees is that no
+committed entry can be altered or removed without breaking the chain. It does not
+guarantee that every integer is used, and it never did.
+
+Drill result: `docs/evidence/backup_restore_drill.json`. Eight checks, all passing,
+0.3 MB dumped in 2.2 s and restored in 2.8 s, with PostGIS geography digests matching
+and `appearance_vector` restored as `vector(76)`.
+
 ## Local evaluation hardware
 
 Python 3.12.5, Docker 29.7.2, Node 20.14, **NVIDIA RTX 4050 Laptop, 6 GB VRAM**.
