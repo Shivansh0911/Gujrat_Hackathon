@@ -18,6 +18,7 @@ import DashboardPage from "./pages/DashboardPage";
 import ScalePage from "./pages/ScalePage";
 import OnboardingPage from "./pages/OnboardingPage";
 import { CommandPalette } from "./components/palette";
+import { TourAndShortcuts } from "./components/tour";
 
 const NAV = [
   // Coverage leads, and is the login destination. It is the screen that answers the
@@ -55,6 +56,7 @@ function Shell() {
   return (
     <div className="h-full flex flex-col md:flex-row">
       <CommandPalette />
+      <TourAndShortcuts />
       {/*
         Below md the sidebar is 208px of a 375px screen -- 55% of the viewport spent on
         navigation, with the map squeezed out of what remains entirely. `main` carries
