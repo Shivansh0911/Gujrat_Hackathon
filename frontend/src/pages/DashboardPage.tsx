@@ -192,17 +192,28 @@ export default function DashboardPage() {
                 hint="have delivered a measurable frame rate"
                 tone={cameraHealth.measured ? "ok" : "muted"}
               />
+              {/* A count, not a percentage.
+                  This tile read "ANPR capable 100%" while the readiness mix beside it
+                  read "ANPR capable 0%". Both were arithmetically right -- 2 of 2
+                  graded, 2 of 512 overall -- and together they were a contradiction on
+                  one screen, with the larger number being the misleading one: a
+                  reviewer reads 100% as "the estate can read plates".
+                  A percentage of a handful of graded cameras is not an estate
+                  statistic. The count is, and the hint says what it is out of. */}
               <Stat
                 label="ANPR capable"
                 value={
-                  readiness.data?.anpr_capable_fraction == null
+                  readiness.data == null
                     ? null
-                    : `${Math.round(readiness.data.anpr_capable_fraction * 100)}%`
+                    : (readiness.data.counts_by_grade?.anpr_capable ?? 0)
                 }
+                unit={readiness.data == null ? undefined : `/ ${cameraHealth.rows.length}`}
                 hint={
-                  readiness.data?.anpr_capable_fraction == null
-                    ? "not enough observations to grade"
-                    : `of ${readiness.data.graded} graded cameras`
+                  !readiness.data?.graded
+                    ? "no camera has enough observations to grade yet"
+                    : `${readiness.data.graded} camera${
+                        readiness.data.graded === 1 ? "" : "s"
+                      } graded so far`
                 }
                 tone="ok"
               />
