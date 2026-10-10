@@ -262,7 +262,15 @@ seed_sightings() {
   fi
 
   log "no vehicle sightings yet; running vehicle detection over the demo clip..."
-  python scripts/ingest_sightings.py     --file "$CLIP" --camera-ref REPLAY-01 --offset-min 0     --file "$CLIP" --camera-ref REPLAY-02 --offset-min 100     --file "$CLIP" --camera-ref REPLAY-03 --offset-min 300     --file "$CLIP" --camera-ref REPLAY-04 --offset-min 340     --align-to-reads     --max-frames "${SETU_SIGHTING_FRAMES:-150}"     --analytic-fps 5     || log "sighting ingest failed; the appearance search will have nothing to search"
+  python scripts/ingest_sightings.py \
+    --file "$CLIP" --camera-ref REPLAY-01 --offset-min 0 \
+    --file "$CLIP" --camera-ref REPLAY-02 --offset-min 100 \
+    --file "$CLIP" --camera-ref REPLAY-03 --offset-min 300 \
+    --file "$CLIP" --camera-ref REPLAY-04 --offset-min 340 \
+    --align-to-reads \
+    --max-frames "${SETU_SIGHTING_FRAMES:-150}" \
+    --analytic-fps 5 \
+    || log "sighting ingest failed; the appearance search will have nothing to search"
   log "sighting ingest finished"
 }
 
