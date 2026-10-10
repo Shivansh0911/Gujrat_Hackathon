@@ -38,6 +38,11 @@ DOCS_DIR: Path = PROJECT_ROOT / "docs"
 EVIDENCE_DIR: Path = REPORTS_DIR / "evidence"
 CROPS_DIR: Path = DATA_DIR / "evidence" / "crops"
 SEED_DIR: Path = DATA_DIR / "seed"
+#: Crops that ship in the image, for a deployment that cannot run vehicle detection.
+#: Served alongside CROPS_DIR because they are evidence crops too -- cut by the same
+#: detector from the same footage -- and they are the only ones a constrained instance
+#: has.
+SEED_CROPS_DIR: Path = SEED_DIR / "sighting_crops"
 OWN_FEED_DIR: Path = DATA_DIR / "own_feed"
 
 # Configuration is read from the project root, not the working directory: `make demo`,

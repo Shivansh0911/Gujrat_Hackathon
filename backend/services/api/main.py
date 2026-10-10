@@ -181,7 +181,7 @@ def evidence_crop(name: str, exp: int = 0, sig: str = "") -> FileResponse:
 
     from services.api.config import get_api_settings
     from services.api.media_signing import verify_media_name
-    from services.common.paths import CROPS_DIR
+    from services.common.paths import CROPS_DIR, SEED_CROPS_DIR
 
     settings = get_api_settings()
     if not verify_media_name(name, exp, sig, settings.jwt_secret):
@@ -189,9 +189,19 @@ def evidence_crop(name: str, exp: int = 0, sig: str = "") -> FileResponse:
         # unauthenticated caller which filenames are real.
         raise HTTPException(status_code=404, detail="crop not found")
 
-    crop_dir = CROPS_DIR.resolve()
-    candidate = (crop_dir / Path(name).name).resolve()
-    if crop_dir not in candidate.parents or not candidate.is_file():
+    # Two directories, each resolved the same way. The second holds the crops that
+    # ship in the image for a deployment that cannot run vehicle detection -- they are
+    # evidence crops cut by the same detector from the same footage, and on a
+    # constrained instance they are the only ones there are. The traversal check is
+    # repeated per directory rather than widened, so neither one can be escaped.
+    candidate = None
+    for directory in (CROPS_DIR, SEED_CROPS_DIR):
+        root = directory.resolve()
+        found = (root / Path(name).name).resolve()
+        if root in found.parents and found.is_file():
+            candidate = found
+            break
+    if candidate is None:
         raise HTTPException(status_code=404, detail="crop not found")
     return FileResponse(candidate, media_type="image/jpeg")
 

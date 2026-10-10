@@ -29,9 +29,28 @@ Selection
 ---------
 Sightings are taken at matching stream positions across the four replay cameras, so the
 *same* vehicles appear on all of them -- which is what makes a cross-camera search
-return anything at all. Crops above `MAX_CROP_BYTES` are skipped: a 591 KB crop in the
-repository buys nothing a 40 KB one does not, and the fixture has to stay small enough
-that committing it is reasonable.
+return anything at all.
+
+Within that, the ones the plate linker matched come first. This was a correction: taking
+the earliest ten per camera gave forty sightings clustered in the first three seconds of
+the clip, while every plate read on that footage falls after the fifth second. Loaded into
+a deployment, that fixture produced no plate links at all -- so the one screen that shows
+why appearance search exists had no vehicle with a plate to contrast against the ones
+without. The linked sightings sit at identical stream positions on all four cameras, so
+preferring them costs nothing in cross-camera coverage.
+
+The link itself is never exported. It is recomputed in the deployment by the same linker,
+against that deployment's own plate reads, from bbox containment and stream position -- a
+fixture row claims no relationship it has not earned there.
+
+Crops have to stay small enough that committing them is reasonable, and the tail of the
+distribution runs to 591 KB because a crop is cut at whatever resolution it was found in.
+A crop over `MAX_CROP_BYTES` is therefore re-encoded at a lower JPEG quality until it
+fits, and skipped only if it still does not. Re-encoding, not downscaling: the pixel
+dimensions are left exactly as the detector cut them, so the crop still shows the region
+it showed, at the size it showed it. The fixture records the quality used, and the
+descriptor in the row beside it was computed from the original -- a recompressed crop is
+display evidence, never the input to a measurement.
 """
 
 from __future__ import annotations
@@ -48,10 +67,50 @@ BACKEND_ROOT = Path(__file__).resolve().parents[1]
 if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
-#: Per-crop ceiling. The median crop is 24 KB; the tail runs to 591 KB because a crop is
-#: cut at the resolution it was found in, and the largest add size without adding
-#: evidence.
-MAX_CROP_BYTES = 60 * 1024
+#: Per-crop ceiling. The median crop is 24 KB and the tail runs to 591 KB, because a crop
+#: is cut at whatever resolution the vehicle occupied. 150 KB rather than the 60 KB this
+#: started at: a 1478x912 crop -- a vehicle close enough for its plate to be read -- does
+#: not reach 60 KB at any quality worth looking at, and forty crops at this ceiling is
+#: about 1.5 MB, which is a reasonable thing to commit.
+MAX_CROP_BYTES = 150 * 1024
+
+#: JPEG qualities tried, in order, for a crop over the ceiling. Stops at the first that
+#: fits. 35 is the floor: below it the blocking is visible enough to argue with, and a
+#: crop nobody trusts is not worth the bytes.
+RECOMPRESS_QUALITIES = (75, 60, 50, 40, 35)
+
+
+def _place_crop(source: Path, destination: Path) -> int | None:
+    """Copy a crop into the fixture, re-encoding it only if it is over the ceiling.
+
+    Returns the JPEG quality used, or None when the file was copied untouched. Raises
+    nothing and returns -1 when even the lowest quality does not fit, which the caller
+    treats as a skip.
+
+    The ceiling used to be a filter rather than a ceiling, and the sightings it dropped
+    were not a random sample: a crop is large when the vehicle filled the frame, and a
+    vehicle that fills the frame is the one whose plate was readable. Every plate-linked
+    sighting on this footage was over 60 KB, so the fixture that reached a deployment had
+    none of them.
+    """
+    if source.stat().st_size <= MAX_CROP_BYTES:
+        shutil.copy2(source, destination)
+        return None
+
+    from PIL import Image
+
+    with Image.open(source) as image:
+        frame = image.convert("RGB")
+        for quality in RECOMPRESS_QUALITIES:
+            # `optimize` costs a second pass over the Huffman tables and buys a few
+            # percent, which at this ceiling is the difference between two quality steps.
+            frame.save(destination, "JPEG", quality=quality, optimize=True)
+            if destination.stat().st_size <= MAX_CROP_BYTES:
+                return quality
+
+    destination.unlink(missing_ok=True)
+    return -1
+
 
 #: Sightings per camera. Enough to browse, and enough that a search between cameras has
 #: several plausible pairs to rank.
@@ -82,11 +141,18 @@ def main() -> int:
     from services.common.dburl import normalise_pg_url
     from services.common.paths import CROPS_DIR
 
+    # The deployment's own configuration first, the raw URL second. Same order as
+    # `seed_sighting_fixture.py`: this runs from a developer checkout, where the database
+    # is in `.env` and pydantic-settings is the only thing that reads it, and against an
+    # arbitrary instance, where it arrives in the environment.
     url = os.environ.get("SETU_MIGRATION_DATABASE_URL") or os.environ.get("SETU_DATABASE_URL")
-    if not url:
-        raise SystemExit("set SETU_MIGRATION_DATABASE_URL or SETU_DATABASE_URL")
+    normalised = normalise_pg_url(url)
+    if normalised:
+        session = sessionmaker(bind=create_engine(normalised, future=True), future=True)()
+    else:
+        from services.api.db import get_sessionmaker
 
-    session = sessionmaker(bind=create_engine(normalise_pg_url(url), future=True), future=True)()
+        session = get_sessionmaker()()
     set_admin_context(session)
 
     args.crop_dir.mkdir(parents=True, exist_ok=True)
@@ -108,10 +174,13 @@ def main() -> int:
                 WHERE c.camera_ref = :ref
                   AND s.appearance_vector IS NOT NULL
                   AND s.crop_path IS NOT NULL
-                -- Ordered by position in the clip, not by quality: the four cameras
-                -- replay the same footage, so matching positions mean matching
-                -- vehicles, and a cross-camera search needs those to exist.
-                ORDER BY s.pts_ms
+                -- Sightings the plate linker matched first, then by position in the
+                -- clip -- not by quality. The four cameras replay the same footage, so
+                -- matching positions mean matching vehicles, and a cross-camera search
+                -- needs those to exist. The linked ones lead because every plate read on
+                -- this footage falls after the fifth second: ordering by position alone
+                -- returned only the opening seconds and no linkable vehicle at all.
+                ORDER BY (s.plate_detection_id IS NULL), s.pts_ms
                 """
             ),
             {"ref": ref},
@@ -122,13 +191,17 @@ def main() -> int:
             if kept >= args.per_camera:
                 break
             source = CROPS_DIR / Path(row["crop_path"]).name
-            if not source.exists() or source.stat().st_size > MAX_CROP_BYTES:
+            if not source.exists():
                 continue
-            shutil.copy2(source, args.crop_dir / source.name)
+            quality = _place_crop(source, args.crop_dir / source.name)
+            if quality == -1:
+                continue
             records.append(
                 {
                     "camera_ref": ref,
                     "crop_file": source.name,
+                    # Null when the crop is byte-for-byte what the detector wrote.
+                    "crop_jpeg_quality": quality,
                     "pts_ms": float(row["pts_ms"]),
                     "last_pts_ms": float(row["last_pts_ms"]),
                     "vehicle_class": row["vehicle_class"],

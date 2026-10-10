@@ -128,3 +128,40 @@ def test_a_windows_path_signs_and_verifies_as_its_basename() -> None:
     exp = int(url.split("exp=")[1].split("&")[0])
     sig = url.split("sig=")[1]
     assert verify_media_name(name, exp, sig, SECRET) is True
+
+
+def test_a_seed_crop_is_served_and_traversal_still_refused(tmp_path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    """The crop route reads two directories now; neither may be escaped.
+
+    The second holds crops that ship in the image, for a deployment that cannot run
+    vehicle detection. Adding a directory to a path check is the kind of change that
+    quietly widens it, so the traversal case is asserted against the new one too.
+    """
+    from pathlib import Path
+
+    from services.common import paths
+
+    evidence = tmp_path / "evidence"
+    seed = tmp_path / "seed"
+    evidence.mkdir()
+    seed.mkdir()
+    (seed / "sighting_demo.jpg").write_bytes(b"\xff\xd8\xff")
+    (tmp_path / "secret.txt").write_text("not a crop", encoding="utf-8")
+
+    monkeypatch.setattr(paths, "CROPS_DIR", evidence)
+    monkeypatch.setattr(paths, "SEED_CROPS_DIR", seed)
+
+    def resolve(name: str) -> Path | None:
+        for directory in (paths.CROPS_DIR, paths.SEED_CROPS_DIR):
+            root = directory.resolve()
+            found = (root / Path(name).name).resolve()
+            if root in found.parents and found.is_file():
+                return found
+        return None
+
+    assert resolve("sighting_demo.jpg") is not None, "a seed crop must be servable"
+    assert resolve("missing.jpg") is None
+    # Only the basename is ever used, so a traversal attempt becomes a plain filename
+    # that exists in neither directory.
+    assert resolve("../secret.txt") is None
+    assert resolve("..\secret.txt") is None

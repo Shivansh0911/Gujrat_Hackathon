@@ -1041,6 +1041,55 @@ detections, finding 29's zero links, and now thirty zero-frame successes. The pa
 is always a zero that could mean "nothing was there" or "nothing was looked at", and
 code that renders the two identically. It is worth watching for deliberately.
 
+## Finding 32 - a size filter selected against the evidence it was filtering for
+
+The hosted instance cannot run vehicle detection, so the sightings it serves come from a
+committed fixture: real detector output, computed once on a machine with a processor.
+Forty sightings, ten per replay camera, each with the crop the detector cut.
+
+Loaded into the deployment, it produced **zero plate links**. The appearance search had
+forty vehicles to search and not one vehicle with a plate to contrast them against --
+which is the entire argument for the feature. A plate-linked sighting is the control: it
+is what lets the screen say *this* one a plate-based system would have found, and these
+forty-odd it would not.
+
+Two independent causes, and the second is the interesting one.
+
+**The window.** The fixture took the earliest ten sightings per camera, by stream
+position. That put all forty inside the first three seconds of the clip:
+
+```
+REPLAY-01  pts 1802 .. 1802      plate reads on this camera:
+REPLAY-02  pts 1802 .. 2202        5404, 8808, 10009, 10209, 16815 ms
+```
+
+Every plate read on that footage falls after the fifth second. The two sets could not
+overlap, so the linker's `+/-400 ms` stream-position condition was never satisfiable.
+
+**The size ceiling.** Crops over 60 KB were dropped, to keep the committed fixture small.
+That ceiling is not a neutral sample. A crop is large when the vehicle filled the frame,
+and a vehicle that fills the frame is exactly the one whose plate was legible. Every
+plate-linked sighting on this footage was over the ceiling -- 132 KB and 343 KB -- so even
+after fixing the window, the filter removed precisely the rows that made the point.
+
+The 343 KB crop is 1478x912. It does not reach 60 KB at any JPEG quality worth showing.
+
+Both are fixed in `export_sighting_fixture.py`: linked sightings are selected first, and a
+crop over the ceiling is re-encoded at a lower quality rather than discarded -- at the
+same pixel dimensions, so it still shows the region it showed, at the size it showed it.
+The ceiling moved to 150 KB; the fixture is 1.9 MB. The link is not exported and is
+recomputed in the deployment by the same linker, from its own plate reads.
+
+| | before | after |
+|---|---|---|
+| sightings | 40 | 40 |
+| stream positions covered | 1802-3003 ms | 1801-26691 ms |
+| plate-linked, once loaded | 0 | 2 per camera where that camera has reads |
+
+The shape worth naming: **a filter applied for an unrelated reason (bytes) correlated with
+the property being measured (plate legibility), and silently removed the signal.** The
+count stayed at forty throughout, so nothing looked wrong.
+
 ## Local evaluation hardware
 
 Python 3.12.5, Docker 29.7.2, Node 20.14, **NVIDIA RTX 4050 Laptop, 6 GB VRAM**.
