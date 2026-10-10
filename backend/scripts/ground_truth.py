@@ -32,12 +32,27 @@ What is measured
   one that is 40% right, even at identical plate-level accuracy.
 * **Correction efficacy** — did grammar correction help or hurt? Measured by
   comparing accuracy on reads that were corrected against those that were not.
+
+Two denominators, and the difference is not cosmetic
+----------------------------------------------------
+The four `REPLAY-*` cameras replay one clip, so a crop cut from it exists four times
+over, under four camera references, byte for byte identical. `annotate` enumerates crops
+per camera and cannot see that: of 27 annotated rows, 12 are distinct images and five of
+those appear four times each.
+
+Scored per row, the headline is therefore weighted by how many cameras happened to be
+pointed at the same recording -- a property of the demonstration rig, not of the
+recogniser. So both figures are reported: **per annotated crop**, which is the number
+every document has quoted and stays comparable with them, and **per distinct image**,
+which is the recogniser's accuracy. Neither is a correction of the other and both are
+printed, because collapsing to one invites exactly the question of which was chosen.
 """
 
 from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import logging
 import sys
 from pathlib import Path
@@ -174,6 +189,67 @@ def annotate(args: argparse.Namespace) -> int:
     return 0
 
 
+def _image_digest(crop_file: str) -> str:
+    """Content hash of a crop, or its filename when the file is gone.
+
+    Identity by content rather than by name, because the duplication this exists to
+    find is four camera references over one recording: the files have four names and
+    one set of bytes.
+    """
+    path = CROPS_DIR / crop_file
+    try:
+        return hashlib.sha256(path.read_bytes()).hexdigest()
+    except OSError:
+        # A missing crop cannot be shown to duplicate anything, so it counts once.
+        return f"missing:{crop_file}"
+
+
+def _per_distinct_image(
+    readable: list[dict[str, str]], unreadable: list[dict[str, str]]
+) -> dict[str, object]:
+    """Re-score with each distinct crop image counted once.
+
+    Keeps the first row for each image. Which row is kept does not matter: the duplicates
+    are the same bytes through the same recogniser, so they carry the same read.
+    """
+    seen: set[str] = set()
+    uniq_readable: list[dict[str, str]] = []
+    for row in readable:
+        digest = _image_digest(row["crop_file"])
+        if digest not in seen:
+            seen.add(digest)
+            uniq_readable.append(row)
+    uniq_unreadable: list[dict[str, str]] = []
+    for row in unreadable:
+        digest = _image_digest(row["crop_file"])
+        if digest not in seen:
+            seen.add(digest)
+            uniq_unreadable.append(row)
+
+    correct = 0
+    distance = chars = 0
+    for row in uniq_readable:
+        truth = row["true_plate"].strip().upper().replace(" ", "").replace("-", "")
+        read = row["pipeline_read"].strip().upper()
+        if read == truth:
+            correct += 1
+        distance += _levenshtein(read, truth)
+        chars += len(truth)
+
+    asserted = len(uniq_readable) + sum(1 for r in uniq_unreadable if r["pipeline_read"].strip())
+    precision = correct / asserted if asserted else 0.0
+    recall = correct / len(uniq_readable) if uniq_readable else 0.0
+    return {
+        "distinct_images": len(seen),
+        "duplicate_rows_collapsed": (len(readable) + len(unreadable)) - len(seen),
+        "legible_to_a_human": len(uniq_readable),
+        "reads_correct": correct,
+        "precision": round(precision, 4),
+        "recall": round(recall, 4),
+        "character_error_rate": round(distance / chars, 4) if chars else 0.0,
+    }
+
+
 def score(args: argparse.Namespace) -> int:
     """Compute precision, recall and character error rate against the annotations."""
     if not ANNOTATION_CSV.exists():
@@ -210,6 +286,8 @@ def score(args: argparse.Namespace) -> int:
     # system produced a registration where no evidence of one exists.
     false_on_unreadable = [r for r in unreadable if r["pipeline_read"].strip()]
 
+    distinct = _per_distinct_image(readable, unreadable)
+
     asserted = len(readable) + len(false_on_unreadable)
     precision = len(correct) / asserted if asserted else 0.0
     recall = len(correct) / len(readable) if readable else 0.0
@@ -237,6 +315,7 @@ def score(args: argparse.Namespace) -> int:
         "recall": round(recall, 4),
         "f1": round(f1, 4),
         "character_error_rate": round(cer, 4),
+        "per_distinct_image": distinct,
         "correction_efficacy": {
             "corrected_reads": len(corrected),
             "corrected_correct": corrected_ok,
@@ -265,7 +344,10 @@ def score(args: argparse.Namespace) -> int:
             "Precision counts every asserted registration, including those asserted on "
             "crops a human found unreadable. Recall is over crops a human could read: "
             "failing to read what no human can read is not a miss. Character error rate "
-            "is total Levenshtein distance over total ground-truth characters."
+            "is total Levenshtein distance over total ground-truth characters. "
+            "`per_distinct_image` repeats all three with each crop image counted once, "
+            "because the replay cameras share one recording and a crop cut from it is "
+            "annotated once per camera."
         ),
     }
 
@@ -284,6 +366,16 @@ def score(args: argparse.Namespace) -> int:
     print(f"  RECALL                   : {recall:.1%}")
     print(f"  F1                       : {f1:.3f}")
     print(f"  CHARACTER ERROR RATE     : {cer:.1%}")
+    if distinct["duplicate_rows_collapsed"]:
+        print()
+        print(
+            f"  the same {distinct['duplicate_rows_collapsed']} row(s) are duplicate images "
+            f"-- the replay cameras share one recording"
+        )
+        print(f"  per distinct image       : {distinct['distinct_images']} crop(s)")
+        print(f"    PRECISION              : {float(distinct['precision']):.1%}")
+        print(f"    RECALL                 : {float(distinct['recall']):.1%}")
+        print(f"    CHARACTER ERROR RATE   : {float(distinct['character_error_rate']):.1%}")
     if corrected:
         acc = corrected_ok / len(corrected)
         print(f"\n  corrected reads accuracy : {acc:.1%} over {len(corrected)} read(s)")

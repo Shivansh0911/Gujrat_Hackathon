@@ -1090,6 +1090,99 @@ The shape worth naming: **a filter applied for an unrelated reason (bytes) corre
 the property being measured (plate legibility), and silently removed the signal.** The
 count stayed at forty throughout, so nothing looked wrong.
 
+## Finding 33 - the accuracy denominator counted one image four times
+
+29.6% precision and recall, 26.9% character error rate, over 27 annotated crops. Hashing
+those crops says something the annotation file cannot: there are **12 distinct images**.
+The four `REPLAY-*` cameras replay one recording, `annotate` enumerates crops per camera,
+and five crops are therefore annotated four times each, byte for byte identical.
+
+```
+51f625717bed x4  REPLAY-01,02,03,04   read KA25AB1542  truth KA25AB1542
+24ddca38a3fa x4  REPLAY-01,02,03,04   read 4425A1111   truth KA25AB1116
+0d4483cca5d3 x4  REPLAY-01,02,03,04   read K4ZA11111   truth KA25AB1116
+660affef3408 x4  REPLAY-01,02,03,04   read KLZ541111   truth KA25AB1116
+58f9a9f747c6 x4  REPLAY-01,02,03,04   read KA25A6156   truth KA25AB1561
+dbebad372d34 x1  cam07                read GJ32AA3900  truth GJ32AA3900
+   ... six more, one each
+```
+
+So the headline is weighted by how many cameras happened to be pointed at the same
+recording, which is a property of the demonstration rig. Counted once each, the *same
+reads* give:
+
+| | per annotated crop | per distinct image |
+|---|---|---|
+| crops | 27 | 12 |
+| correct | 8 | 5 |
+| precision / recall | 29.6% | **41.7%** |
+| character error rate | 26.9% | **20.3%** |
+
+`ground_truth.py score` now prints both and neither is presented as a correction of the
+other. 29.6% stays the figure every document quotes: it is the lower number, and it is
+the one a reader reproduces by running `score` against the committed CSV without knowing
+anything about replay.
+
+Worth naming because the duplication *flattered* the headline here as easily as it could
+have depressed it -- the crop that reads correctly is one of the five repeated ones, so
+the duplicates contributed 4 of the 8 correct reads. Either direction, the number was
+measuring the rig.
+
+## Finding 34 - a true pair at 3.03 diagonals, against a bound of 2.5
+
+Three of the four worst reads on the own-feed clip are the same vehicle: `4425A1111`,
+`K4ZA11111` and `KLZ541111`, annotated `KA25AB1116` in all three cases, at 8808 ms,
+10009 ms and 10209 ms. Three records for one plate means multi-frame fusion did not
+happen, and finding 23 already established that single-frame reads are where this
+recogniser is worst.
+
+The tracker rejects a pair whose box centre moves more than `max_travel_diagonals`
+between analytic frames. Measured on the real boxes:
+
+```
+10009 ms  (336, 955, 424, 1016)  centre (380, 986)  diagonal 107 px
+10209 ms  ( 14, 987, 101, 1051)  centre ( 58, 1019)
+travel 324 px / 107 px  =  3.03 diagonals        bound was 2.5
+```
+
+Half a diagonal outside, at 200 ms apart. The pair at 8808 ms is 1201 ms later than its
+predecessor and is held out by the separate 600 ms gap bound, which is a different and
+defensible refusal.
+
+The bound is now exposed as a parameter (`--max-travel-diagonals`) and swept over the
+clip's 41 plate boxes:
+
+| max_travel | fused records | grammar-valid | distinct valid plates |
+|---|---|---|---|
+| 2.5 (was) | 5 | 2 | 2 |
+| 3.0 | 4 | 2 | 2 |
+| **3.5 (now)** | **3** | **3** | **3** |
+| 4.5 | 3 | 3 | 3 |
+| 6.0 | 3 | 3 | 3 |
+
+At 2.5 the vehicle produced `4425A1111` (6 frames), `K4ZA11111` (1 frame) and
+`KLZ541111` (1 frame), all unparseable. At 3.5 it produces one 8-frame record reading
+`KA25AI111` with two grammar corrections. That is still **not** the right plate --
+`KA25AB1116` -- but it is a near-miss the grammar accepts instead of three strings it
+rejects, and `KA25AB1542` is recovered as a clean 4-frame read at the same time.
+
+3.5 is the bottom of the plateau, chosen for being the least permissive value that gets
+the benefit. **6.0 not over-merging on this clip is not evidence that 6.0 is safe** -- it
+is evidence that this clip does not contain the case that would catch it, which is a
+different statement. The two geometries are pinned as tests so a future tightening has to
+argue with the measurement.
+
+### What has not been re-measured
+
+**The 29.6% and 41.7% figures above are from the run with the 2.5 bound and are not
+restated under 3.5.** Changing fusion changes which crops exist and what each one reads,
+so the committed annotation -- which is keyed by crop filename -- no longer lines up.
+Re-measuring honestly means running the pipeline again, writing new crops, and a human
+annotating them by eye, which is the one step in this repository that cannot be
+automated. Until that is done the accuracy claim stands at 29.6%, unchanged, and the
+sweep is reported as what it is: three unparseable records became one near-miss and one
+more plate became readable, on one clip.
+
 ## Local evaluation hardware
 
 Python 3.12.5, Docker 29.7.2, Node 20.14, **NVIDIA RTX 4050 Laptop, 6 GB VRAM**.

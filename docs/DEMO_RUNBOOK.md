@@ -517,7 +517,11 @@ front tends to trust the rest.
 
 1. **ANPR plate-level accuracy is 29.6% precision and recall**, 26.9% character error
    rate, measured against a by-eye annotation of every evidence crop
-   (`data/seed/anpr_ground_truth.csv`). Four of the seven government-feed crops from
+   (`data/seed/anpr_ground_truth.csv`). If asked why the denominator is 27 when the
+   estate is larger: it is every crop that was annotated, and five of those 27 are one
+   image repeated across the four replay cameras, which share a recording. Counted once
+   each the same reads give 41.7% over 12 distinct images, and `score` prints both. Lead
+   with 29.6% -- it is the lower number and the one the documents carry. Four of the seven government-feed crops from
    camera 7 are read exactly right — that camera belonged to the estate retired on
    1 September and has no equivalent in the current one, so quote it as history rather
    than as something a judge can go and look at.

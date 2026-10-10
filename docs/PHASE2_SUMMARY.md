@@ -90,7 +90,13 @@ recorded backup/restore drill result.
 
 ## What is still not true, stated here rather than found later
 
-- **ANPR accuracy is still 29.6%.** Phase 2 routes around the ceiling; it does not raise it.
+- **ANPR accuracy is still 29.6% per annotated crop.** Phase 2 routes around the ceiling;
+  it does not raise it. One thing was learned about the figure itself: the four replay
+  cameras share one recording, so five of the 27 annotated crops are the same image four
+  times over. Counted once each, the same reads give **41.7% precision and recall and a
+  20.3% character error rate over 12 distinct images**. Both numbers are printed by
+  `ground_truth.py score`; the 29.6% stays the headline because every other document
+  quotes it and it is the figure a judge can reproduce against the committed CSV.
 - **No camera in the estate publishes a heading.** 491 cameras, 271 with a position, 0 with an
   orientation. Coverage therefore draws uncertainty domes, not viewshed cones. The cone
   geometry is built and waiting on survey data that does not exist.

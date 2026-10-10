@@ -140,13 +140,29 @@ class PlateTracker:
     so two nearby plates cannot have their tracks swapped by iteration order.
     """
 
+    #: Defaults, named so `AnprPipeline` can state them in its own signature instead of
+    #: repeating two literals that would then drift apart.
+    #:
+    #: 3.5 box-diagonals, swept rather than chosen. It was 2.5, and on the own-feed clip
+    #: a genuine pair -- the same plate at 10009 ms and 10209 ms -- moved 324 px with a
+    #: box diagonal of 107, which is 3.03 diagonals: just outside the bound, so the two
+    #: reads were never fused and the vehicle produced three unparseable records instead
+    #: of one. Sweeping 2.5 / 3.0 / 3.5 / 4.5 / 6.0 over the clip's 41 plate boxes gave
+    #: 5 / 4 / 3 / 3 / 3 fused records and 2 / 2 / 3 / 3 / 3 grammar-valid plates, so
+    #: everything from 3.5 up behaves identically here. 3.5 is the bottom of that
+    #: plateau: the least permissive value that gets the benefit. The top is not bounded
+    #: by this clip -- 6.0 did not over-merge on it, which is not evidence that 6.0 is
+    #: safe, only that this clip does not contain the case that would catch it.
+    MAX_TRAVEL_DIAGONALS: float = 3.5
+    MAX_GAP_MS: float = 600.0
+
     def __init__(
         self,
         iou_threshold: float = 0.25,
         max_misses: int = 8,
-        max_travel_diagonals: float = 2.5,
+        max_travel_diagonals: float = MAX_TRAVEL_DIAGONALS,
         max_scale_ratio: float = 2.5,
-        max_gap_ms: float = 600.0,
+        max_gap_ms: float = MAX_GAP_MS,
     ) -> None:
         self._iou_threshold = iou_threshold
         self._max_misses = max_misses
@@ -381,6 +397,8 @@ class AnprPipeline:
         crop_margin_x: float = 0.12,
         crop_margin_y: float = 0.20,
         min_publish_confidence: float = 0.5,
+        track_max_travel_diagonals: float = PlateTracker.MAX_TRAVEL_DIAGONALS,
+        track_max_gap_ms: float = PlateTracker.MAX_GAP_MS,
     ) -> None:
         self._detector = detector
         self._recogniser = recogniser
@@ -399,6 +417,13 @@ class AnprPipeline:
         # 10-character plate, 0.20 fell back to 4. Measured, not guessed.
         self._crop_margin_x = crop_margin_x
         self._crop_margin_y = crop_margin_y
+        # The association bounds, exposed so they can be swept rather than argued
+        # about. They decide whether N reads of one plate become one fused observation
+        # or N independent guesses, and the right value is a property of the footage:
+        # a plate crosses more of the frame per analytic frame the closer and faster it
+        # is. See `PlateTracker` for what each bound is holding back.
+        self._track_max_travel = track_max_travel_diagonals
+        self._track_max_gap_ms = track_max_gap_ms
         # Below this fused confidence a read is not emitted at all.
         #
         # This is a deliberate bias towards silence. Reporting a wrong registration to
@@ -422,7 +447,10 @@ class AnprPipeline:
     ) -> Iterator[PlateDetectionRecord]:
         """Process frames from a CameraSource, yielding fused plate records."""
         gate = MotionGate(threshold=self._motion_threshold)
-        tracker = PlateTracker()
+        tracker = PlateTracker(
+            max_travel_diagonals=self._track_max_travel,
+            max_gap_ms=self._track_max_gap_ms,
+        )
         stats = PipelineStats()
         self.stats = stats
 

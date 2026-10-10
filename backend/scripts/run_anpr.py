@@ -47,6 +47,11 @@ def main() -> int:
         default=None,
         help="override the OCR model (default: FastPlateRecogniser.DEFAULT_MODEL)",
     )
+    # Association bounds, so the sweep is a command rather than an edit. A plate that
+    # crosses more than `max-travel-diagonals` of its own box between analytic frames
+    # starts a new track, and its reads are never fused with the ones before it.
+    ap.add_argument("--max-travel-diagonals", type=float, default=None)
+    ap.add_argument("--max-gap-ms", type=float, default=None)
     ap.add_argument("--crop-margin-x", type=float, default=0.12)
     ap.add_argument("--crop-margin-y", type=float, default=0.20)
     ap.add_argument("--crop-dir", type=Path, default=REPO_ROOT / "data" / "evidence" / "crops")
@@ -74,6 +79,12 @@ def main() -> int:
     recogniser = FastPlateRecogniser(args.recogniser_model)
     print(f"  models ready in {time.monotonic() - t0:.1f}s")
 
+    bounds: dict[str, float] = {}
+    if args.max_travel_diagonals is not None:
+        bounds["track_max_travel_diagonals"] = args.max_travel_diagonals
+    if args.max_gap_ms is not None:
+        bounds["track_max_gap_ms"] = args.max_gap_ms
+
     pipeline = AnprPipeline(
         detector,
         recogniser,
@@ -82,6 +93,7 @@ def main() -> int:
         motion_threshold=args.motion_threshold,
         crop_margin_x=args.crop_margin_x,
         crop_margin_y=args.crop_margin_y,
+        **bounds,  # type: ignore[arg-type]
     )
 
     writer = None

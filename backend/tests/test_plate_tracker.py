@@ -83,3 +83,34 @@ def test_reset_drops_every_track() -> None:
     tracker.reset()
     b = tracker.update([_box(100, 200)], pts_ms=200.0, session_id="s2")[0][0]
     assert a.track_id != b.track_id
+
+
+def test_the_measured_near_miss_associates() -> None:
+    """The pair the 2.5-diagonal bound rejected, pinned at its measured geometry.
+
+    These are the real boxes of one plate on the own-feed clip at 10009 ms and 10209 ms,
+    200 ms apart at 5 analytic fps. The centre moves 324 px and the box diagonal is 107,
+    so the travel is 3.03 diagonals -- outside the old bound by half a diagonal. The
+    vehicle therefore produced three separate unparseable reads where it should have
+    produced one fused observation, and no amount of better OCR would have helped.
+
+    A test rather than a comment because the bound is a number someone will tighten
+    again, and the cost of tightening it is invisible in every unit test that uses
+    synthetic boxes a comfortable distance apart.
+    """
+    tracker = PlateTracker()
+    first = tracker.update([(336, 955, 424, 1016)], pts_ms=10009.0, session_id=SESSION)[0][0]
+    second = tracker.update([(14, 987, 101, 1051)], pts_ms=10209.0, session_id=SESSION)[0][0]
+    assert first.track_id == second.track_id
+
+
+def test_a_plate_across_the_frame_is_still_a_different_vehicle() -> None:
+    """The other side of that bound: widening it must not merge anything at any distance.
+
+    23 diagonals apart, which is what a genuinely unrelated plate looks like. If a future
+    sweep raises the bound far enough to pass this, the bound has stopped being a bound.
+    """
+    tracker = PlateTracker()
+    a = tracker.update([_box(100, 200)], pts_ms=0.0, session_id=SESSION)[0][0]
+    b = tracker.update([_box(1400, 900)], pts_ms=200.0, session_id=SESSION)[0][0]
+    assert a.track_id != b.track_id
