@@ -1119,6 +1119,59 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/vehicle-search/sightings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Browse
+         * @description Vehicles the detector recorded, for an operator to pick one out of.
+         *
+         *     Not audited. Looking at footage the platform already holds is the ordinary work of
+         *     a control room, and an entry per scroll would bury the entries that matter -- the
+         *     searches, which are audited, and the exports, which are audited more heavily still.
+         */
+        get: operations["browse_vehicle_search_sightings_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vehicle-search/sightings/{sighting_id}/similar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Similar
+         * @description Find the same vehicle on other cameras, starting from one sighting.
+         *
+         *     POST rather than GET, and with a required purpose, for the same reason the journey
+         *     search has both: this is an investigative act against a particular vehicle, the
+         *     ledger records why it happened before it happens, and a side effect belongs behind
+         *     a method that is not supposed to be cacheable or prefetchable.
+         *
+         *     Every result is a Candidate. Nothing returned here can be promoted, because no
+         *     registration anchors it -- two vehicles that look alike are two vehicles that look
+         *     alike.
+         */
+        post: operations["similar_vehicle_search_sightings__sighting_id__similar_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/demo/best-trace": {
         parameters: {
             query?: never;
@@ -1381,6 +1434,25 @@ export interface components {
              * Format: password
              */
             client_secret?: string | null;
+        };
+        /** BrowseResult */
+        BrowseResult: {
+            /**
+             * From Utc
+             * Format: date-time
+             */
+            from_utc: string;
+            /**
+             * To Utc
+             * Format: date-time
+             */
+            to_utc: string;
+            /** Total Returned */
+            total_returned: number;
+            /** Sightings */
+            sightings: components["schemas"]["SightingOut"][];
+            /** Note */
+            note: string;
         };
         /**
          * BulkImportRejection
@@ -2171,6 +2243,50 @@ export interface components {
             /** Active */
             active: boolean;
         };
+        /** MatchOut */
+        MatchOut: {
+            /** Sighting Id */
+            sighting_id: string;
+            /**
+             * Observed At Utc
+             * Format: date-time
+             */
+            observed_at_utc: string;
+            /** Camera Id */
+            camera_id: string;
+            /** Camera Ref */
+            camera_ref: string;
+            /** Camera Name */
+            camera_name: string;
+            /** Lat */
+            lat: number | null;
+            /** Lon */
+            lon: number | null;
+            /** Vehicle Class */
+            vehicle_class: string;
+            /** Dominant Colour Lab */
+            dominant_colour_lab: {
+                [key: string]: number;
+            } | null;
+            /** Quality Score */
+            quality_score: number;
+            /** Crop Url */
+            crop_url: string | null;
+            /** Appearance Distance */
+            appearance_distance: number;
+            /** Distance M */
+            distance_m: number;
+            /** Seconds From Seed */
+            seconds_from_seed: number;
+            /** Implied Speed Kmph */
+            implied_speed_kmph: number;
+            /** Score */
+            score: {
+                [key: string]: number;
+            };
+            /** Tier */
+            tier: string;
+        };
         /**
          * ProbeRequest
          * @description A source an operator wants onboarded, before it is a camera.
@@ -2427,6 +2543,30 @@ export interface components {
             /** Total */
             total: number;
         };
+        /**
+         * SearchRequest
+         * @description Why this search is being run. Recorded before it produces anything.
+         */
+        SearchRequest: {
+            /** Purpose */
+            purpose: string;
+        };
+        /** SearchResultOut */
+        SearchResultOut: {
+            anchor: components["schemas"]["SightingOut"];
+            /** Matches */
+            matches: components["schemas"]["MatchOut"][];
+            /** Appearance Kind */
+            appearance_kind: string;
+            /** Max Distance */
+            max_distance: number;
+            /** Min Score */
+            min_score: number;
+            /** Query Ms */
+            query_ms: number;
+            /** Caveat */
+            caveat: string;
+        };
         /** SeedOut */
         SeedOut: {
             /**
@@ -2451,6 +2591,36 @@ export interface components {
             crop_url: string | null;
             /** Tier */
             tier: string;
+        };
+        /** SightingOut */
+        SightingOut: {
+            /** Sighting Id */
+            sighting_id: string;
+            /**
+             * Observed At Utc
+             * Format: date-time
+             */
+            observed_at_utc: string;
+            /** Camera Id */
+            camera_id: string;
+            /** Camera Ref */
+            camera_ref: string;
+            /** Camera Name */
+            camera_name: string;
+            /** Vehicle Class */
+            vehicle_class: string;
+            /** Dominant Colour Lab */
+            dominant_colour_lab: {
+                [key: string]: number;
+            } | null;
+            /** Quality Score */
+            quality_score: number;
+            /** Crop Url */
+            crop_url: string | null;
+            /** Plate Read */
+            plate_read: string | null;
+            /** Has Fingerprint */
+            has_fingerprint: boolean;
         };
         /**
          * StreamUrlOut
@@ -4223,6 +4393,81 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CorridorOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    browse_vehicle_search_sightings_get: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+                vehicle_class?: string | null;
+                camera_ref?: string | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BrowseResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    similar_vehicle_search_sightings__sighting_id__similar_post: {
+        parameters: {
+            query?: {
+                from?: string | null;
+                to?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                sighting_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SearchRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SearchResultOut"];
                 };
             };
             /** @description Validation Error */

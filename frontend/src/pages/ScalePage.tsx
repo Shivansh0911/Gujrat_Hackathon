@@ -281,6 +281,93 @@ export default function ScalePage() {
                 </section>
               ) : null}
 
+              {/* Sizing is half the question. The other half is what you run to keep
+                  80,000 cameras alive, and it is the half that is easy to assert and
+                  hard to evidence -- so every row here names the thing that is
+                  actually built, and says plainly where it has not been proven at
+                  scale. A claim with no artefact behind it is worse than an omission,
+                  because a reviewer can check. */}
+              <section className="panel overflow-hidden">
+                <h2 className="t-section px-3 py-2 border-b border-edge">
+                  Operating it at that size
+                </h2>
+                <div className="overflow-x-auto">
+                  <table className="tbl tbl--dense">
+                    <thead>
+                      <tr>
+                        <th>Concern</th>
+                        <th>What exists today</th>
+                        <th>Where to check it</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(
+                        [
+                          [
+                            "Horizontal scaling",
+                            "Ingest is one worker per camera with no shared state, so scale-out is replica count. The figures above are workers, not machines.",
+                            "backend/services/ingest/",
+                          ],
+                          [
+                            "Load balancing",
+                            "Stateless API behind the platform load balancer; /readyz returns 503 when a dependency is unhappy so an unhealthy replica is withdrawn rather than served.",
+                            "GET /readyz",
+                          ],
+                          [
+                            "Health checks",
+                            "/healthz is liveness and touches nothing; /readyz is readiness and checks the database and the migration head. Splitting them is why a database blip does not become a restart loop.",
+                            "GET /healthz · GET /readyz",
+                          ],
+                          [
+                            "Monitoring",
+                            "Prometheus exposition with 18 series: ingest and detection rates, inference latency percentiles, alert volumes, camera health counts. Authenticated, because alert volume is a fact about policing activity rather than a neutral counter.",
+                            "GET /metrics",
+                          ],
+                          [
+                            "Logging",
+                            "Structured JSON with a correlation id on every response, and a redaction layer that strips credentials, bearer tokens and gateway access codes before a line is written.",
+                            "services/common/structured_log.py · redact.py",
+                          ],
+                          [
+                            "Backup and recovery",
+                            "A restore drill that runs against a scratch database and verifies row counts, PostGIS geometry digests, the pgvector column type and the audit chain. Last run: 8 of 8 checks passed.",
+                            "docs/evidence/backup_restore_drill.json",
+                          ],
+                          [
+                            "Disaster recovery",
+                            "Documented per failure mode — gateway down, camera flapping, database failover, disk pressure — with the table-level RLS check a restore actually needs.",
+                            "docs/RUNBOOK.md",
+                          ],
+                          [
+                            "High availability",
+                            "Stateless API replicas; Postgres HA is the managed service's. Not exercised: no failover has been performed on this deployment.",
+                            "stated as unproven",
+                          ],
+                          [
+                            "Cybersecurity",
+                            "Row-level security forced on every tenant table with an unprivileged role that cannot bypass it, a hash-chained append-only audit ledger, Ed25519-signed evidence exports, an SSRF guard on every outbound URL, AES-256-GCM sealed camera credentials, and scoped service-account keys.",
+                            "SECURITY.md · GET /audit/verify",
+                          ],
+                        ] as const
+                      ).map(([concern, what, where]) => (
+                        <tr key={concern}>
+                          <td className="t-small font-medium whitespace-nowrap">{concern}</td>
+                          <td className="t-micro text-fg3">{what}</td>
+                          <td className="t-micro mono text-muted whitespace-nowrap">{where}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <p className="t-micro text-muted px-3 py-2 border-t border-edge">
+                  The two things this platform has <span className="text-fg3">not</span>{" "}
+                  demonstrated at scale, said here rather than left to be found: no edge
+                  node has been deployed, and no database failover has been performed.
+                  Both are architecture that is designed and costed above, not
+                  infrastructure that has been exercised.
+                </p>
+              </section>
+
               {/* The constants are the argument. */}
               <section className="panel overflow-hidden">
                 <h2 className="t-section px-3 py-2 border-b border-edge">

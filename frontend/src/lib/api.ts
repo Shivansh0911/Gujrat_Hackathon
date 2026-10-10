@@ -36,6 +36,10 @@ export type DemoFeed = components["schemas"]["DemoFeed"];
 export type DemoRead = components["schemas"]["DemoRead"];
 export type ProbeResult = components["schemas"]["ProbeResult"];
 export type BestTrace = components["schemas"]["BestTrace"];
+export type SightingBrief = components["schemas"]["SightingOut"];
+export type VehicleMatch = components["schemas"]["MatchOut"];
+export type VehicleSearchResult = components["schemas"]["SearchResultOut"];
+export type SightingBrowse = components["schemas"]["BrowseResult"];
 
 /** Hand-written: the endpoint returns a plain dict, so there is no generated schema. */
 export type TrafficReport = {
@@ -396,6 +400,32 @@ export const api = {
   syncCatalogue: () => request<SyncResult>("/cameras/sync-catalogue", { method: "POST" }),
   createCamera: (body: CameraCreate) =>
     request<Camera>("/cameras", { method: "POST", body: JSON.stringify(body) }),
+  /** Vehicles the detector recorded, to pick a search anchor out of. */
+  browseSightings: (params: {
+    from: string;
+    to: string;
+    vehicle_class?: string;
+    camera_ref?: string;
+    limit?: number;
+  }) => {
+    const q = new URLSearchParams({ from: params.from, to: params.to });
+    if (params.vehicle_class) q.set("vehicle_class", params.vehicle_class);
+    if (params.camera_ref) q.set("camera_ref", params.camera_ref);
+    if (params.limit) q.set("limit", String(params.limit));
+    return request<SightingBrowse>(`/vehicle-search/sightings?${q}`);
+  },
+  /** Find the same vehicle elsewhere, starting from a picture rather than a plate.
+      POST with a purpose, because it is an investigative act and the ledger records
+      why before it records what. */
+  findSimilar: (sightingId: string, purpose: string, from: string, to: string) =>
+    request<VehicleSearchResult>(
+      `/vehicle-search/sightings/${sightingId}/similar?${new URLSearchParams({ from, to })}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ purpose }),
+      },
+    ),
   /** Traffic counted from vehicles the detector saw, not from plates it read. The
       honest volume figure: /vehicle-counts can only count vehicles whose plate was
       legible, which on this estate is a small minority of them. */

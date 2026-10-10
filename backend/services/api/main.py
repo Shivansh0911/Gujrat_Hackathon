@@ -29,6 +29,7 @@ from services.api.routers import (
     keys,
     system,
     webhooks as webhooks_router,
+    vehicle_search,
     zones,
 )
 from services.api.errors import (
@@ -141,6 +142,7 @@ app.include_router(alerts.router)
 app.include_router(journey.router)
 app.include_router(candidates.router)
 app.include_router(analytics.router)
+app.include_router(vehicle_search.router)
 app.include_router(demo.router)
 app.include_router(gateway_proxy.router)
 

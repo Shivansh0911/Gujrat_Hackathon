@@ -17,6 +17,7 @@ import CoveragePage from "./pages/CoveragePage";
 import DashboardPage from "./pages/DashboardPage";
 import ScalePage from "./pages/ScalePage";
 import OnboardingPage from "./pages/OnboardingPage";
+import VehicleSearchPage from "./pages/VehicleSearchPage";
 import { CommandPalette } from "./components/palette";
 import { TourAndShortcuts } from "./components/tour";
 
@@ -34,6 +35,7 @@ const NAV = [
   { to: "/gaps", label: "Blind spots", hint: "Gap analysis by district" },
   { to: "/watchlist", label: "Watchlist", hint: "Vehicles being watched" },
   { to: "/zones", label: "Zones", hint: "Intrusion detection areas" },
+  { to: "/find", label: "Find a vehicle", hint: "Search by appearance, no plate needed" },
   { to: "/onboarding", label: "Onboarding", hint: "Bring a camera or a department on" },
   { to: "/scale", label: "Scale Planner", hint: "Sizing for 80,000 cameras" },
   { to: "/system", label: "System", hint: "Audit chain, catalogue" },
@@ -142,6 +144,7 @@ function Shell() {
         <Routes>
           <Route path="/coverage" element={<CoveragePage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/find" element={<VehicleSearchPage />} />
           <Route path="/onboarding" element={<OnboardingPage />} />
           <Route path="/scale" element={<ScalePage />} />
           <Route path="/map" element={<MapPage />} />
