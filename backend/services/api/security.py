@@ -24,6 +24,7 @@ from typing import Annotated, Any
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
+
 # PyJWT, not python-jose.
 #
 # GHSA-3qf3-8w2g-rqmx is a critical algorithm-confusion bypass in python-jose: a
