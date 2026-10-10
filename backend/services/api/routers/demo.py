@@ -148,7 +148,22 @@ def demo_best_trace(session: SessionDep, actor: CurrentActor) -> BestTrace:
             -- Preferring the widest time span favours reads that can plausibly belong
             -- to one vehicle, without this query trying to re-derive the physics the
             -- journey builder already applies.
-            ORDER BY cameras DESC,
+            -- Grammar-valid first, and this one is about what the reviewer is shown
+            -- rather than about ranking quality.
+            --
+            -- The recogniser emits unparseable strings as well as registrations, and
+            -- both land in `plate_normalised`. On this database `4425A1111` and
+            -- `KA25AB1542` are each read at four placed cameras over the same span, so
+            -- the ordering above was a tie broken arbitrarily -- and it broke toward
+            -- the string that is not a registration. Judge Mode then opened on a plate
+            -- the system itself would never render as Confirmed, which argues against
+            -- the tier model on the one screen built to demonstrate it.
+            --
+            -- The pattern is the one `plate_grammar.py` enforces. Repeated here rather
+            -- than imported because this is a database-side ordering, and a SQL
+            -- expression is the only form it can take.
+            ORDER BY (d.plate_normalised ~ '^[A-Z]{2}[0-9]{1,2}[A-Z]{1,3}[0-9]{1,4}$') DESC,
+                     cameras DESC,
                      (max(d.observed_at_utc) - min(d.observed_at_utc)) DESC,
                      reads DESC
             LIMIT 1

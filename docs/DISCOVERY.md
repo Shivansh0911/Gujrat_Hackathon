@@ -1223,6 +1223,88 @@ announces when it expires.** The dashboard should say "no data in this window" w
 currently says 0, and the window should widen to find the data rather than report its
 absence at the default.
 
+## Finding 36 - Judge Mode fills the form and stops, and the fix did not work
+
+A walkthrough against a database with data, following the brief's order and asserting the
+content of each screen. The capabilities verified end to end, all on one trace:
+
+```
+Find a vehicle  48 vehicles, 1 with a readable registration, 48 crops rendering
+Journey         4 hops · 413.4 km · 340.0 min, tiers on screen, signed export, 4 crops
+3D              time-as-altitude opens, 2 canvases, survives rotation and pitch,
+                scrubs to halfway, returns to the map with the route intact
+Dashboard       402 vehicles seen (100.5/hour, peak 204) against 20 plate reads
+Coverage        all four analytics modes answer
+Onboarding      the probe reports stage by stage, including the stages it never reached
+```
+
+Zero requests returned 400 or above across the whole run.
+
+**Judge Mode is two clicks, not one.** It signs in, derives the registration and the
+window from the database, fills the form and navigates -- and leaves the trace unrun. The
+reviewer lands on a populated form beside a panel reading "Enter a registration number".
+`JourneyPage` reads every parameter into state and nothing calls the mutation.
+
+Two things were done about it, and only one of them works.
+
+**The registration it chooses (fixed).** `plate_normalised` holds unparseable recogniser
+output beside real registrations, and `4425A1111` and `KA25AB1542` were each read at four
+placed cameras over the same span -- every term the ordering had was equal, and the tie
+broke toward the string that is not a registration. The screen built to demonstrate the
+three-tier evidence model opened on a read that model rejects. Grammar-validity is now the
+first ordering term, pinned by a test, and the live run confirms a valid plate is chosen.
+
+**Running the trace (reverted).** An effect that calls the mutation once when the URL
+carries a plate and a purpose. It fires -- the request is made and the server answers
+**200 in 1.5 seconds with four hops** -- and the button stays on "Searching…" indefinitely.
+The mutation never settles in the client and the cause was not found. A demonstration path
+that hangs is worse than one that needs a second click, so the change was removed rather
+than shipped. The two-click behaviour stands, and the defect stands with it.
+
+Worth recording as a method note: the first three attempts to verify this reported
+failures that were all the harness's. The walkthrough pressed "Trace vehicle" with no
+registration and no purpose and read the form's refusal as a broken journey engine -- the
+form was right, and the purpose reaching the audit ledger before any result is the point.
+Then the browser was pointed at a dev server proxying to a port where nothing was
+listening, and at a module the dev server had not reloaded. **Three of the four "product
+defects" found by automation were defects in the automation**, and the only way that was
+established was checking each against the API directly.
+
+## Finding 37 - the re-ID comparison the brief asks for cannot be run on stored data
+
+§3.2 asks for a small MIT/Apache ONNX re-identification or general embedding model to be
+evaluated beside the handcrafted descriptor, and says a measured negative result is a
+legitimate outcome. Finding 25 measured the descriptor and no model was ever put next to
+it, so the brief's question had one answer and not the comparison.
+
+Two Apache-2.0 graphs from the ONNX Model Zoo were fetched -- `mobilenetv2-12` (13.9 MB)
+and `squeezenet1.1-7` (5.0 MB) -- and `compare_appearance_models.py` reproduces finding
+25's method exactly: same-vehicle pairs from the tracker's own association, cosine
+distance, and the recall / false-link / precision table at the same gates, so the rows sit
+beside the existing ones.
+
+It returns nothing, for a reason worth recording:
+
+```
+220 crops over 220 tracks
+shipped: 76-dimension CIELAB + edge descriptor: not enough tracks to form both kinds of pair
+```
+
+`vehicle_sighting` holds **one row per fused pass**, not one per frame -- 489 sightings
+over 489 distinct `track_id`s, confirmed by query. Finding 25's 1,070 same-vehicle pairs
+came from per-frame crops during ingest, and those crops are not retained; only the one
+crop chosen per pass survives. So the stored data contains no two views of one vehicle,
+and the pair that the whole method rests on cannot be formed from it.
+
+The replay cameras are not a way around this. They replay one recording, so a crop at the
+same stream position on two cameras is the *same image*, byte for byte -- distance zero
+for any descriptor, and no appearance variation at all.
+
+What would unblock it: `ingest_sightings.py` keeping every frame's crop with its track id
+behind a flag, and a detection pass over the own-feed clip. That is a code change plus a
+run, not a measurement, so **this brief item is open, not answered.** The harness and the
+models are committed so the measurement is one ingest away rather than a day's work.
+
 ## Local evaluation hardware
 
 Python 3.12.5, Docker 29.7.2, Node 20.14, **NVIDIA RTX 4050 Laptop, 6 GB VRAM**.

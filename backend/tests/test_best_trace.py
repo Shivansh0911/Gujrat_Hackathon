@@ -220,3 +220,44 @@ def test_reads_at_unplaced_cameras_do_not_make_a_plate_traceable(estate: Any) ->
     assert (
         _best(session, "NOCOORD01") is None
     ), "one placed camera plus one unplaced one is a single drawable point, not a route"
+
+
+def test_a_registration_beats_an_unparseable_read_at_the_same_rank(estate: Any) -> None:
+    """The tie this ordering used to break the wrong way.
+
+    `plate_normalised` holds whatever the recogniser produced, which includes strings
+    that are not registrations at all. On the demonstration database `4425A1111` and
+    `KA25AB1542` were each read at four placed cameras over the same span, so every term
+    the ordering had was equal and the tie broke arbitrarily -- toward the one that is
+    not a registration. Judge Mode then opened the screen built to demonstrate the
+    three-tier evidence model on a read that model would never call Confirmed.
+
+    Both plates here are given identical cameras and identical spans, so grammar is the
+    only term that can decide.
+    """
+    session = estate["session"]
+    cams = estate["cams"]
+    refs = estate["refs"]
+
+    for i, ref in enumerate(refs):
+        _read(session, cams[ref], "4425A1111", NOW + timedelta(hours=2 * i))
+        _read(session, cams[ref], "KA25AB1542", NOW + timedelta(hours=2 * i))
+    session.commit()
+
+    row = session.execute(
+        text(
+            """
+            SELECT d.plate_normalised AS plate
+            FROM detection d JOIN camera c ON c.id = d.camera_id
+            WHERE d.plate_normalised IN ('4425A1111', 'KA25AB1542') AND c.geom IS NOT NULL
+            GROUP BY d.plate_normalised
+            ORDER BY (d.plate_normalised ~ '^[A-Z]{2}[0-9]{1,2}[A-Z]{1,3}[0-9]{1,4}$') DESC,
+                     count(DISTINCT d.camera_id) DESC,
+                     (max(d.observed_at_utc) - min(d.observed_at_utc)) DESC,
+                     count(*) DESC
+            LIMIT 1
+            """
+        )
+    ).first()
+    assert row is not None
+    assert row.plate == "KA25AB1542", "a grammar-valid registration must win the tie"
