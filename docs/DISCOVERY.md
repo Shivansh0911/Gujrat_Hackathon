@@ -1333,6 +1333,45 @@ end is what settled it: `/demo/best-trace` returned a grammar-valid registration
 only the new ordering does. And an unauthenticated 404 rather than a 401 is itself a
 deliberate choice here: a 401 confirms the filename exists.
 
+## Finding 39 - the hosted instance, verified in the order a judge meets it
+
+**2026-10-11.** Twenty-two screens against the deployed console, asserting content and
+counting the evidence images that actually decoded -- an image that 404s still occupies an
+`img` tag, so counting tags proves nothing.
+
+**Seventeen of twenty-two held.** The scored path works on the hosted instance today:
+
+```
+Judge Mode    chose KA25A6156, a grammar-valid registration
+Journey       4 hops · 413.4 km · 340.0 min
+              three-tier legend, signed PDF export, 4 evidence crops decoded
+3D            time-as-altitude opens, WebGL draws, survives rotation and pitch,
+              scrubs to halfway, returns to the map with the route intact
+Coverage · GIS · Alert Desk · Control Room · Onboarding · Scale Planner ·
+Health · Blind spots · Watchlist · Zones · Audit ledger · Own-feed demo   all answer
+```
+
+Judge Mode works there precisely because it derives its window from the chosen
+registration's own reads rather than from a default -- the same fix finding 35's stale
+timeline would otherwise have defeated.
+
+The five that failed are one cause, already recorded as finding 35: the dashboard reports
+0 vehicles seen and 0 plate reads, and Find a vehicle offers 0 vehicles, because the seed
+is 41 days behind the windows those screens open on. The rebase now runs on every
+container start, so a deploy clears all five.
+
+**One failing request in the whole run**: `502 /media/gateway/cam01__index.m3u8`, four
+times. That is the organiser's gateway, and the Control Room renders the failure properly
+-- "Live feed unavailable · networkError: manifestLoadError · Camera cam01 · last known
+status ACTIVE", with "The registry entry, coordinates and recorded detections for this
+camera remain available. Only live playback is affected."
+
+A freshly issued access code was tried and the gateway answered **"watch time limit
+reached -- please wait for your cooldown"**. That is finding 28 repeating: a new code does
+not return watch time. The control plane and the media plane fail independently, every
+other screen reads from the database, and the demonstration runbook already leads with
+those.
+
 ## Local evaluation hardware
 
 Python 3.12.5, Docker 29.7.2, Node 20.14, **NVIDIA RTX 4050 Laptop, 6 GB VRAM**.
