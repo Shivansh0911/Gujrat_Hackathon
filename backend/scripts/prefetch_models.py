@@ -66,8 +66,22 @@ def main() -> int:
 
         LicensePlateRecognizer(RECOGNISER_MODEL)
 
-    print("prefetching ANPR models...")
-    ok = [fetch("detector", detector), fetch("recogniser", recogniser)]
+    def vehicle_detector() -> None:
+        # The vehicle detector was missing from this list, which only mattered once
+        # something ran it at startup: the entrypoint's sighting seed would have
+        # downloaded 20 MB on a cold container before it could detect anything, on an
+        # instance already short of CPU. Fetched here it is in the image like the other
+        # two, and its checksum is verified at build time rather than first use.
+        from services.analytics.vehicle_detect import model_path
+
+        model_path()
+
+    print("prefetching ANPR and vehicle-detection models...")
+    ok = [
+        fetch("plate detector", detector),
+        fetch("recogniser", recogniser),
+        fetch("vehicle detector", vehicle_detector),
+    ]
 
     cache = Path.home() / ".cache"
     found = sorted(cache.rglob("*.onnx")) if cache.exists() else []
