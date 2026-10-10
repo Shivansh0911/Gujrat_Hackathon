@@ -11,30 +11,29 @@ so the Control Room tiles render black in it and every screenshot of it would li
 | | Screen | What it is there to show |
 |---|---|---|
 | 01 | Login | Role selection, and Judge Mode — the scored path one click from here |
-| 02 | Signed in | The guided tour opening itself on a first visit |
-| 03 | Find a vehicle | **The capability nobody else will have.** Browse every vehicle the detector recorded — 48 here, of which 1 has a readable plate — and search the estate by appearance alone |
-| 04 | Coverage | The login destination. Every placed camera as the ground it can see |
-| 00 | Coverage, domes | Why they are domes: no camera in this estate publishes a heading |
-| 04 | Coverage, dark | The same screen in the other theme |
-| 05 | Dashboard | Estate activity, readiness mix, camera health, anomalies with their limits |
-| 06 | GIS Map | The camera registry — Model 1, the mandatory foundation |
-| 07 | Journey, empty | The designed empty state, not a blank panel |
-| 08 | Journey, traced | 4 hops, 413 km, with evidence crops, tiers and the signed export |
-| 09 | Journey, time as altitude | Geography across, time upward. The signature forensic view |
-| 10 | Journey, scrubbed | The same trace replayed to the halfway point |
-| 11 | Alert Desk | Watchlist matches, including the fuzzy match an exact system misses |
-| 12 | Control Room | The multi-camera wall |
-| 13 | Onboarding Studio | Paste a source, or import a department |
-| 14 | Onboarding, probed | Every stage of the probe, including the ones it never reached |
-| 15 | Scale Planner | 80,000 cameras, with every constant's provenance stated |
-| 16 | Health | Declared against measured frame rate |
-| 17 | Blind spots | Gap analysis, separated by remedy |
-| 18 | Watchlist | Where the authorisation for an alert lives, with expiry |
-| 19 | Zones | Intrusion detection areas |
-| 20 | System | The hash-chained audit ledger, verified |
-| 21 | Demo | The own-feed clip, frame-aligned to the reads it produced |
-| 22 | Command palette | Ctrl/⌘-K |
-| 23 | Shortcuts | The keyboard reference, on `?` |
+| 02 | Signed in | The guided tour opening itself on a first visit, now centred on the right edge |
+| 03 | Find a vehicle | **The capability that does not depend on ANPR.** 48 vehicles the detector recorded, of which 1 has a readable plate — the other 47 are invisible to every plate-based search |
+| 04 | Coverage | The login destination. Every placed camera as the ground it can see, and why they are domes: no camera in this estate publishes a heading |
+| 05 | Coverage, dark | The same screen in the other theme |
+| 06 | Dashboard | Vehicles seen before plate reads — 402 against 20 — with the class mix, camera health and anomalies carrying their limits |
+| 07 | GIS Map | The camera registry — Model 1, the mandatory foundation |
+| 08 | Journey, empty | The designed empty state, not a blank panel |
+| 09 | Journey, traced | 4 hops, 413 km, with evidence crops, tiers, appearance candidates and the signed export |
+| 10 | Journey, time as altitude | Geography across, time upward, now ruled at round clock intervals so a climb reads as a duration |
+| 11 | Journey, scrubbed | The same trace replayed to the halfway point |
+| 12 | Alert Desk | Watchlist matches, including the fuzzy match an exact system misses |
+| 13 | Control Room | The multi-camera wall |
+| 14 | Onboarding Studio | Paste a source, or import a department |
+| 15 | Onboarding, probed | Every stage of the probe, including the ones it never reached |
+| 16 | Scale Planner | 80,000 cameras, every constant's provenance, and the operational half — scaling, monitoring, backup, DR, security |
+| 17 | Health | Declared against measured frame rate |
+| 18 | Blind spots | Gap analysis, separated by remedy |
+| 19 | Watchlist | Where the authorisation for an alert lives, with expiry |
+| 20 | Zones | Intrusion detection areas |
+| 21 | System | The hash-chained audit ledger, verified |
+| 22 | Demo | The own-feed clip, frame-aligned to the reads it produced |
+| 23 | Command palette | Ctrl/⌘-K |
+| 24 | Shortcuts | The keyboard reference, on `?` |
 
 ## Two things these images show that are not defects
 
