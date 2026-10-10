@@ -265,6 +265,26 @@ readable plate for every hop.
   whole platform is built on. A system that will not draw what it cannot support is a
   system whose other claims are worth checking.
 
+### 2.4a Find a vehicle — 60 seconds, and the one to lead the bonus case with
+
+*Open `/find`. This is the capability that does not depend on ANPR working.*
+
+- The grid is every vehicle the detector recorded. Point at the labels: almost every
+  one reads **no plate read**.
+- **Say this:** *"Forty-eight vehicles over two days, and one of them has a readable
+  registration. Every plate-based search in this competition can find that one. The
+  other forty-seven are invisible to all of them — and they are the normal case on this
+  estate, not the exception."*
+- Click any vehicle, give a purpose, press **Find this vehicle**. Matches come back
+  from other cameras with implied speeds, distances and both crops side by side.
+- **The sentence that matters:** *"Every one of these is a Candidate and none of them
+  can become anything else. A plate read anchors a journey and everything on it
+  inherits that. Nothing anchors this, so nothing inherits anything — two vehicles that
+  look alike are two vehicles that look alike. The measured false-link rate is 0.055
+  and precision is 0.356, which is why you are looking at both photographs."*
+- If a judge asks about a specific vehicle they saw in a feed, this is the screen that
+  answers them when the plate was never legible.
+
 ### 2.4b Dashboard — the estate right now, 30 seconds
 
 - Switch the window between 6h / 24h / 7d.
@@ -272,6 +292,9 @@ readable plate for every hop.
   ingest must not be reportable as a quiet night."*
 - Point at the readiness mix: what the estate can actually be asked to do, assigned
   from measured pixel budget rather than from configuration.
+- **Point at the first two tiles.** Vehicles seen, then plate reads: 402 against 20 on
+  the same window. *"The second number is what an ANPR platform can tell you. The first
+  is what is actually on the road. We report both and we label which is which."*
 
 ### 2.4c Onboarding Studio — the 60 seconds that answers "26 departments"
 
@@ -293,8 +316,11 @@ readable plate for every hop.
   Whether the host refused the connection, or answered and refused RTSP, or streamed
   at a resolution that will never produce a readable plate, are three different
   problems with three different owners."*
-- Finish with the CSV: a whole department onboarded row by row, each rejection
-  carrying its reason.
+- Finish with the department story, which is the problem statement's core. Create a
+  department on screen — code and name, two fields — then import its CSV. Cameras are
+  filed under it, a malformed row is rejected by line and reason, and the other rows
+  still import. *"Twenty-six departments means a department has to be able to join
+  without anyone running a script on our server."*
 
 ### 2.4d Blind spots — gap analysis, 45 seconds
 

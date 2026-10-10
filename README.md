@@ -463,9 +463,30 @@ orientation nobody surveyed. Onboarding a camera over ONVIF, or recording a head
 during a survey, turns its dome into a cone — the capability is built and waiting on
 data that does not exist yet, and the legend says exactly that.
 
+### Find a vehicle — when nobody ever read the plate
+*The capability that does not depend on ANPR working.*
+
+Browse every vehicle the detector recorded and search the estate by what one looks
+like. On two days of this footage that is **48 vehicles, of which 1 has a readable
+registration** — the other 47 were invisible to every plate-based search the platform
+offered. Pick any of them and the estate is searched on a 76-dimension
+CIELAB-and-edge fingerprint, vehicle class, colour and physical reachability.
+
+Everything it returns is a **Candidate**, always, and that is the design rather than a
+shortfall. The journey screen may return Probable because a confirmed plate read
+anchors the chain and the rest inherits its credibility; nothing anchors this, so
+nothing can inherit anything. The downgrade is applied after scoring, so the number
+still means what it means elsewhere and only the claim changes. Both crops sit side by
+side at a size a person can judge, and the search is written to the audit ledger with
+its purpose before it runs.
+
 ### Dashboard — what the estate is doing now
 Activity, camera health, the ANPR readiness mix and anomalies in one window, over a 6
-hour, 24 hour or 7 day window. A measurement that was never taken renders as an em
+hour, 24 hour or 7 day window. It leads with **vehicles seen** rather than plate reads
+— 402 against 20 on the same window — because a vehicle whose registration could not
+be resolved is still a vehicle on the road, and `/analytics/vehicle-counts` says in its
+own docstring that every figure it returns is a floor on traffic. The class mix beside
+it is counted the same way. A measurement that was never taken renders as an em
 dash, never as a zero: a dead ingest must not be reportable as a quiet night. Cameras
 declaring one frame rate and delivering another are badged here rather than trusted.
 
@@ -677,7 +698,7 @@ backend/            Python services, migrations, scripts, tests
   migrations/       Alembic — reversibility is tested, not assumed
   scripts/          preflight, probe, geocode, ANPR, demo seed, ground truth, benchmarks
   tests/            681 tests
-frontend/           React 18 + TypeScript console (fifteen screens)
+frontend/           React 18 + TypeScript console (sixteen screens)
 data/               seeds, own-feed footage, evidence crops
 docs/               operational runbook, demonstration script, discovery record,
                     ADRs, screenshots
