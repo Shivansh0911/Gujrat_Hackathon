@@ -989,6 +989,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/analytics/traffic": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Traffic
+         * @description Traffic volume counted from vehicles seen, not from registrations read.
+         *
+         *     The companion to `/vehicle-counts`, and the one that answers "how busy is this
+         *     road". `/vehicle-counts` counts plate reads, so a vehicle whose plate was never
+         *     legible is invisible to it -- on this estate that is most of them, and every
+         *     figure it returns is explicitly a floor rather than a measurement. This counts a
+         *     row per vehicle pass recorded by the detector, which is the number a control room
+         *     is actually asking for.
+         *
+         *     One row is one pass of one camera. A vehicle crossing two cameras counts twice and
+         *     one that returns counts again, because those are two traffic events either way.
+         *     They are not distinct vehicles, and the caveat travels in the response body rather
+         *     than in UI chrome a screenshot would drop.
+         */
+        get: operations["traffic_analytics_traffic_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/analytics/vehicle-counts": {
         parameters: {
             query?: never;
@@ -4020,6 +4052,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AdjudicationOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    traffic_analytics_traffic_get: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+                bucket?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
                 };
             };
             /** @description Validation Error */

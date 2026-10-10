@@ -231,10 +231,20 @@ export function GuidedTour({
   const last = index === STEPS.length - 1;
 
   return (
-    // Anchored to a corner rather than modal: the point is to look at the screen
-    // behind it. A tour that covers the thing it is describing is a slide deck.
+    // Anchored rather than modal: the point is to look at the screen behind it. A
+    // tour that covers the thing it is describing is a slide deck.
+    //
+    // Vertically centred on the right rather than in the bottom corner. In the corner
+    // it sat below most people's natural line of sight and under the two floating
+    // buttons, and the first thing a reviewer is meant to read was the thing they did
+    // not notice. Centred it is unmissable and still leaves the navigation, the page
+    // header and the left two-thirds of every screen clear.
+    //
+    // Capped at the viewport height with its own scroll, so a long step on a short
+    // laptop screen cannot push its own controls out of reach.
     <div
-      className="fixed bottom-4 right-4 z-40 w-[min(26rem,calc(100vw-2rem))] panel bg-ink-800 shadow-lg"
+      className="fixed right-4 top-1/2 -translate-y-1/2 z-40 w-[min(26rem,calc(100vw-2rem))]
+                 max-h-[calc(100vh-2rem)] overflow-y-auto panel bg-ink-800 shadow-lg"
       role="dialog"
       aria-label="Guided tour"
     >

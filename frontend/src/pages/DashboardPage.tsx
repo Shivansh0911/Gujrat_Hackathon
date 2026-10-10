@@ -69,6 +69,12 @@ export default function DashboardPage() {
     return { from: from.toISOString(), to: to.toISOString() };
   }, [hours]);
 
+  const traffic = useQuery({
+    queryKey: ["traffic", window_.from, window_.to, hours],
+    queryFn: () => api.traffic(window_.from, window_.to, hours > 48 ? "day" : "hour"),
+    refetchInterval: 60_000,
+  });
+
   const anomalies = useQuery({
     queryKey: ["anomalies", window_.from, window_.to],
     queryFn: () => api.anomalies(window_.from, window_.to),
@@ -160,23 +166,41 @@ export default function DashboardPage() {
       <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-3">
         {/* --- Summary before detail ------------------------------------------- */}
         <section
-          className="grid gap-2 grid-cols-2 md:grid-cols-3 xl:grid-cols-5"
+          className="grid gap-2 grid-cols-2 md:grid-cols-3 xl:grid-cols-6"
           aria-label="Summary"
         >
           {loading ? (
-            Array.from({ length: 5 }, (_, i) => <SkeletonStat key={i} />)
+            Array.from({ length: 6 }, (_, i) => <SkeletonStat key={i} />)
           ) : (
             <>
+              {/* Vehicles first, plate reads second.
+                  Plate reads were the headline for a Phase 1 reason: they were all
+                  the platform recorded. They are also the smaller and more misleading
+                  number -- a vehicle whose plate is unreadable contributes nothing to
+                  them, and on this estate that is most vehicles. The detector sees
+                  them all, so that is the count a control room is actually asking
+                  for, and the plate figure sits beside it as what was additionally
+                  identified. */}
+              <Stat
+                label="Vehicles seen"
+                value={traffic.data?.total_vehicles ?? null}
+                hint={
+                  traffic.data
+                    ? `${traffic.data.mean_per_hour}/hour · peak ${traffic.data.peak_vehicles}`
+                    : "detected passes, plate or no plate"
+                }
+                tone="ok"
+              />
               <Stat
                 label="Plate reads"
                 value={counts.data?.total_reads ?? null}
-                hint={`in the last ${hours}h`}
+                hint={`of those, identified by registration`}
                 tone="accent"
               />
               <Stat
                 label="Distinct plates"
                 value={counts.data?.total_distinct_plates ?? null}
-                hint="the honest vehicle proxy"
+                hint="unique registrations"
                 tone="accent"
               />
               <Stat
@@ -222,7 +246,7 @@ export default function DashboardPage() {
         </section>
 
         {/* --- Shapes ----------------------------------------------------------- */}
-        <section className="grid gap-3 lg:grid-cols-3">
+        <section className="grid gap-3 lg:grid-cols-4">
           <div className="panel p-3 lg:col-span-2">
             <h2 className="t-section mb-2">Distinct vehicles over time</h2>
             {counts.isLoading ? (
@@ -241,6 +265,46 @@ export default function DashboardPage() {
                   })
                 }
               />
+            )}
+          </div>
+
+          <div className="panel p-3">
+            <h2 className="t-section mb-2">What is on the road</h2>
+            {traffic.isLoading ? (
+              <SkeletonChart height={60} />
+            ) : (
+              <>
+                <StackedBar
+                  label="Vehicle class mix"
+                  segments={[
+                    { key: "car", value: traffic.data?.classes.car ?? 0, colour: "accent", label: "Cars" },
+                    { key: "bus", value: traffic.data?.classes.bus ?? 0, colour: "ok", label: "Buses" },
+                    { key: "truck", value: traffic.data?.classes.truck ?? 0, colour: "warn", label: "Trucks" },
+                    {
+                      key: "motorcycle",
+                      value: traffic.data?.classes.motorcycle ?? 0,
+                      colour: "probable",
+                      label: "Motorcycles",
+                    },
+                    {
+                      key: "unknown",
+                      value: traffic.data?.classes.unknown ?? 0,
+                      colour: "muted",
+                      label: "Unclassified",
+                    },
+                  ]}
+                />
+                <p className="t-micro text-muted mt-2">
+                  Counted from vehicles the detector saw, not from plates it read.{" "}
+                  {traffic.data
+                    ? `${traffic.data.cameras_reporting} camera${
+                        traffic.data.cameras_reporting === 1 ? "" : "s"
+                      } reporting.`
+                    : null}{" "}
+                  A pass at two cameras counts twice — these are traffic events, not
+                  distinct vehicles.
+                </p>
+              </>
             )}
           </div>
 

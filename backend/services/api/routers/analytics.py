@@ -21,6 +21,8 @@ from services.analytics.corridors import corridor_report
 from services.analytics.scale_planner import CONSTANTS as SCALE_CONSTANTS
 from services.analytics.scale_planner import ScaleInputs
 from services.analytics.scale_planner import plan as scale_plan_model
+from services.analytics.traffic import BUCKETS as TRAFFIC_BUCKETS
+from services.analytics.traffic import traffic_report
 from services.analytics.vehicle_counting import BUCKETS, count_by_camera, count_windows
 from services.api.db import get_session
 from services.api.security import CurrentActor, camera_scope
@@ -75,6 +77,49 @@ COUNT_CAVEAT = (
     "several reads. distinct_plates is the closest honest proxy for vehicles; treat "
     "every figure as a floor on traffic, never an estimate of it."
 )
+
+
+@router.get("/traffic")
+def traffic(
+    session: SessionDep,
+    actor: CurrentActor,
+    from_: Annotated[datetime, Query(alias="from")],
+    to: Annotated[datetime, Query()],
+    bucket: Annotated[str, Query(pattern="^(minute|hour|day)$")] = "hour",
+) -> dict[str, Any]:
+    """Traffic volume counted from vehicles seen, not from registrations read.
+
+    The companion to `/vehicle-counts`, and the one that answers "how busy is this
+    road". `/vehicle-counts` counts plate reads, so a vehicle whose plate was never
+    legible is invisible to it -- on this estate that is most of them, and every
+    figure it returns is explicitly a floor rather than a measurement. This counts a
+    row per vehicle pass recorded by the detector, which is the number a control room
+    is actually asking for.
+
+    One row is one pass of one camera. A vehicle crossing two cameras counts twice and
+    one that returns counts again, because those are two traffic events either way.
+    They are not distinct vehicles, and the caveat travels in the response body rather
+    than in UI chrome a screenshot would drop.
+    """
+    if bucket not in TRAFFIC_BUCKETS:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=f"bucket must be one of {sorted(TRAFFIC_BUCKETS)}",
+        )
+    if to <= from_:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="`to` must be after `from`",
+        )
+    if to - from_ > MAX_WINDOW:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=f"window exceeds the {MAX_WINDOW.days}-day maximum",
+        )
+
+    visible = [c.id for c in session.execute(camera_scope(actor)).scalars()]
+    report = traffic_report(session, from_=from_, to=to, bucket=bucket, camera_ids=visible)
+    return report.as_dict()
 
 
 @router.get("/vehicle-counts", response_model=VehicleCountResult)

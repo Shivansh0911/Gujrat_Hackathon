@@ -36,6 +36,30 @@ export type DemoFeed = components["schemas"]["DemoFeed"];
 export type DemoRead = components["schemas"]["DemoRead"];
 export type ProbeResult = components["schemas"]["ProbeResult"];
 export type BestTrace = components["schemas"]["BestTrace"];
+
+/** Hand-written: the endpoint returns a plain dict, so there is no generated schema. */
+export type TrafficReport = {
+  from_utc: string;
+  to_utc: string;
+  bucket: string;
+  total_vehicles: number;
+  cameras_reporting: number;
+  mean_per_hour: number;
+  peak_bucket_start_utc: string | null;
+  peak_vehicles: number;
+  classes: Record<string, number>;
+  windows: { bucket_start_utc: string; vehicles: number; cameras_reporting: number }[];
+  by_camera: {
+    camera_id: string;
+    camera_ref: string;
+    camera_name: string;
+    vehicles: number;
+    per_hour: number;
+    classes: Record<string, number>;
+    mean_rel_area: number | null;
+  }[];
+  caveat: string;
+};
 export type ProbeStep = components["schemas"]["ProbeStepOut"];
 
 /**
@@ -372,6 +396,13 @@ export const api = {
   syncCatalogue: () => request<SyncResult>("/cameras/sync-catalogue", { method: "POST" }),
   createCamera: (body: CameraCreate) =>
     request<Camera>("/cameras", { method: "POST", body: JSON.stringify(body) }),
+  /** Traffic counted from vehicles the detector saw, not from plates it read. The
+      honest volume figure: /vehicle-counts can only count vehicles whose plate was
+      legible, which on this estate is a small minority of them. */
+  traffic: (from: string, to: string, bucket: "minute" | "hour" | "day" = "hour") =>
+    request<TrafficReport>(
+      `/analytics/traffic?${new URLSearchParams({ from, to, bucket })}`,
+    ),
   /** Which registration this database can actually draw a route for, and the window
       that contains its reads. Judge Mode uses it instead of a hardcoded plate. */
   bestTrace: () => request<BestTrace>("/demo/best-trace"),
