@@ -240,12 +240,15 @@ print(f'[entrypoint] {stats.alerts_created} alert(s) raised', file=sys.stderr)
 # writes are served from local disk, so sightings inserted remotely would reference
 # images this instance does not have.
 #
-# 150 frames per camera, not 600. Four cameras at 600 takes ten minutes on a developer
+# 80 frames per camera, down from 600 and then 150. Four cameras at 600 takes ten minutes on a developer
 # laptop; the hosted instance has a fraction of a CPU, which puts the same job in the
 # hours and spends every one of them competing with the API for the processor a
 # reviewer is waiting on. 150 still yields enough vehicles per camera to browse and to
 # search between, which is what the screen needs, and SETU_SIGHTING_FRAMES raises it
-# wherever there is capacity to spare.
+# wherever there is capacity to spare. Lowered twice because the hosted instance has
+# 512 MB and is already running the API: onnxruntime, OpenCV's decode buffers and the
+# detector's session have to fit in what is left, and a job killed for memory leaves
+# the same zero behind as a job that never ran.
 seed_sightings() {
   if [ "${SETU_SEED_DEMO:-1}" != "1" ]; then
     return 0
@@ -268,9 +271,48 @@ seed_sightings() {
     --file "$CLIP" --camera-ref REPLAY-03 --offset-min 300 \
     --file "$CLIP" --camera-ref REPLAY-04 --offset-min 340 \
     --align-to-reads \
-    --max-frames "${SETU_SIGHTING_FRAMES:-150}" \
+    --max-frames "${SETU_SIGHTING_FRAMES:-80}" \
     --analytic-fps 5 \
-    || log "sighting ingest failed; the appearance search will have nothing to search"
+    > /tmp/sighting-ingest.log 2>&1 || true
+
+  # Record what happened where it can be read without container logs.
+  #
+  # The first deployment of this seed produced nothing and said nothing: the only
+  # evidence available from outside was a sighting count of zero, which is the same
+  # answer whether the job was skipped, crashed, or is still running. An entry in the
+  # ledger distinguishes them, and the ledger is already the place this platform puts
+  # things that have to be checkable afterwards.
+  python - <<'PYEOF' || log "could not record the sighting ingest outcome"
+import os, sys
+sys.path.insert(0, ".")
+from sqlalchemy import text
+from services.api import audit
+from services.api.db import get_sessionmaker
+from services.api.tenancy import set_admin_context
+
+tail = ""
+try:
+    with open("/tmp/sighting-ingest.log", encoding="utf-8", errors="replace") as handle:
+        tail = handle.read()[-1500:]
+except OSError as exc:
+    tail = f"(log unreadable: {exc})"
+
+s = get_sessionmaker()()
+set_admin_context(s)
+count = s.execute(text("SELECT count(*) FROM vehicle_sighting")).scalar_one()
+audit.append(
+    s,
+    action="SIGHTING_SEED_RAN",
+    subject_type="deployment",
+    subject_id="sighting-seed",
+    actor_id="entrypoint",
+    actor_role="system",
+    detail={"sightings_after": int(count), "tail": tail},
+)
+s.commit()
+s.close()
+print(f"[entrypoint] sighting seed finished with {count} sighting(s)", file=sys.stderr)
+PYEOF
   log "sighting ingest finished"
 }
 
