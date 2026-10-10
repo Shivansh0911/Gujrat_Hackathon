@@ -1305,6 +1305,34 @@ behind a flag, and a detection pass over the own-feed clip. That is a code chang
 run, not a measurement, so **this brief item is open, not answered.** The harness and the
 models are committed so the measurement is one ingest away rather than a day's work.
 
+## Finding 38 - a 404 that was the security control working
+
+The evidence-image route was reported here, in a commit message and in the summary
+document, as broken on the hosted instance:
+
+```
+$ curl -o /dev/null -w "%{http_code}" https://<api>/media/crops/sighting_01b55fdc5c9f.jpg
+404
+```
+
+That 404 is correct. `/media/crops/{name}` takes `exp` and `sig` and serves nothing
+without them: a crop is reachable only through a signed, expiring URL bound to one
+filename. The signature exists because crop filenames are structured and therefore
+guessable, and these are photographs of vehicles and their registrations assembled into
+an investigative record. The console can still put them in an `img` tag, which a bearer
+token cannot do, because the authorisation is in the URL.
+
+So the probe was asking the question "is this file public?" and reading the correct answer
+-- no -- as "this file is missing". Four turns of work were spent on a deployment that had
+already landed, and the summary document carried the wrong claim until it was withdrawn.
+
+Two things to take from it. **A request made without the credential the endpoint requires
+is not a test of whether the endpoint works**, and the way to tell the difference is to
+check something the deployment would only answer if the new code were live -- which in the
+end is what settled it: `/demo/best-trace` returned a grammar-valid registration, which
+only the new ordering does. And an unauthenticated 404 rather than a 401 is itself a
+deliberate choice here: a 401 confirms the filename exists.
+
 ## Local evaluation hardware
 
 Python 3.12.5, Docker 29.7.2, Node 20.14, **NVIDIA RTX 4050 Laptop, 6 GB VRAM**.
