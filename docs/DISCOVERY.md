@@ -1183,6 +1183,46 @@ automated. Until that is done the accuracy claim stands at 29.6%, unchanged, and
 sweep is reported as what it is: three unparseable records became one near-miss and one
 more plate became readable, on one clip.
 
+## Finding 35 - a correct platform showing zeroes, because the seed is dated
+
+A full chronological walkthrough of the hosted console, 22 screens, asserting the
+*content* of each one rather than that it drew. Everything structural passed: coverage,
+the registry, the dashboard's panels, the alert desk, the control room, onboarding, the
+scale planner, health, blind spots, watchlist, zones, the audit ledger, the own-feed demo,
+the command palette, the keyboard reference and the dark theme.
+
+Three screens had nothing in them:
+
+```
+/find      0 vehicles, 0 evidence crops
+/journey   Trace vehicle -> no route, no tiers, no export, no 3D control
+/dashboard VEHICLES SEEN 0 · PLATE READS 0 · DISTINCT PLATES 0 · no class mix
+```
+
+One cause for all three. `seed_demo.py` places the replay timeline at `now() - 7h` **at
+the moment it runs**, and the hosted database was seeded on 2026-09-03. Six weeks later
+the demonstration data sits 41 days behind every default window in the console: the
+dashboard opens on 24 hours, "Find a vehicle" on two days, and Journey traces inside a
+bounded window.
+
+Every row is present and every query is correct. The console reports zero, and a zero
+from a correct query over an empty window is indistinguishable, on screen, from a
+platform that does not work. This is the fourth instance in this document of a zero that
+cannot say which of two things happened -- findings 23, 29 and 31 are the others -- and
+the first where the ambiguity is in front of the judge rather than in a log.
+
+`rebase_demo_timeline.py` applies one offset to the rows the seed itself placed: the four
+`REPLAY-*` cameras' detections, their sightings and their alerts. It does **not** touch
+the government-feed detections, whose timestamps are records of when a camera saw
+something, and it does not touch the audit ledger. Re-running the seed is the intended
+fix; this exists for the case where the container cannot be redeployed in time.
+
+The general lesson, which is a deployment lesson rather than a code one: **demonstration
+data placed relative to its seeding run has a shelf life, and nothing in the system
+announces when it expires.** The dashboard should say "no data in this window" where it
+currently says 0, and the window should widen to find the data rather than report its
+absence at the default.
+
 ## Local evaluation hardware
 
 Python 3.12.5, Docker 29.7.2, Node 20.14, **NVIDIA RTX 4050 Laptop, 6 GB VRAM**.
