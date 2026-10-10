@@ -224,9 +224,46 @@ print(f'[entrypoint] {stats.alerts_created} alert(s) raised', file=sys.stderr)
   log "background demo seeding finished"
 }
 
+# Vehicle sightings, which are what the appearance search runs on.
+#
+# Gated on its own table rather than on `detection`, because the two are seeded
+# independently and an instance that already has plate reads would otherwise never get
+# sightings -- which is exactly the state the first deployment of the search screen
+# landed in: the page worked and had nothing to search.
+#
+# The offsets are the real travel times between these four replay cameras, the same
+# ones `seed_demo.py` uses for its plate reads, and `--align-to-reads` anchors this
+# timeline to those reads rather than to the clock. Without that the two halves sit
+# hours apart, plate linking finds nothing and the search has no seed.
+#
+# This has to run in the container rather than from a developer machine: the crops it
+# writes are served from local disk, so sightings inserted remotely would reference
+# images this instance does not have.
+seed_sightings() {
+  if [ "${SETU_SEED_DEMO:-1}" != "1" ]; then
+    return 0
+  fi
+  SIGHTING_COUNT="$(count_rows vehicle_sighting || echo unknown)"
+  if [ "$SIGHTING_COUNT" != "0" ]; then
+    log "vehicle sightings present (${SIGHTING_COUNT}); skipping sighting ingest"
+    return 0
+  fi
+  CLIP=/srv/setu/data/own_feed/demo_clip.mp4
+  if [ ! -f "$CLIP" ]; then
+    log "no demo clip in the image; skipping sighting ingest"
+    return 0
+  fi
+
+  log "no vehicle sightings yet; running vehicle detection over the demo clip..."
+  python scripts/ingest_sightings.py     --file "$CLIP" --camera-ref REPLAY-01 --offset-min 0     --file "$CLIP" --camera-ref REPLAY-02 --offset-min 100     --file "$CLIP" --camera-ref REPLAY-03 --offset-min 300     --file "$CLIP" --camera-ref REPLAY-04 --offset-min 340     --align-to-reads     --max-frames "${SETU_SIGHTING_FRAMES:-600}"     --analytic-fps 5     || log "sighting ingest failed; the appearance search will have nothing to search"
+  log "sighting ingest finished"
+}
+
 # `set -e` does not apply inside a backgrounded job, so a seeding failure degrades the
 # demonstration data without ever taking down a service that is already serving.
-seed_demo_data &
+# Sequenced, not parallel: the sighting timeline anchors itself to the plate reads, so
+# it has to run after they exist.
+{ seed_demo_data; seed_sightings; } &
 
 log "starting API on port ${PORT:-8000}"
 exec uvicorn services.api.main:app \
