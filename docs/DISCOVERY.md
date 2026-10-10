@@ -1279,6 +1279,12 @@ ok  three-tier legend · signed export · 3D control all present
 ok  editing the form does not re-fire the search — 0 extra
 ```
 
+Then confirmed on the deployed console itself, which Netlify had already rebuilt from the
+push: signing in with Judge Mode ticked draws the route with no second click --
+`4 hops · 413.4 km · 340.0 min`, one journey request, 200, with the tier legend, the signed
+export and the 3D control. The frontend half of this is live; the backend deploy that
+re-anchors the timeline is separate and still pending.
+
 The lesson is finding 38's, again and in a new costume: **a symptom observed under a
 development-only behaviour is not evidence about the shipped artefact.** First it was an
 unauthenticated 404 read as a missing file; then a dev server pointed at a dead port;
