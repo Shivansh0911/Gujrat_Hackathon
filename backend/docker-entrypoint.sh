@@ -282,6 +282,22 @@ seed_sightings() {
   # answer whether the job was skipped, crashed, or is still running. An entry in the
   # ledger distinguishes them, and the ledger is already the place this platform puts
   # things that have to be checkable afterwards.
+  # Fall back to the committed fixture when detection produced nothing.
+  #
+  # On this instance it repeatedly produced nothing: a fraction of a CPU and 512 MB
+  # shared with the API, and the job was killed before it finished every time. The
+  # appearance search was deployed, correct, and empty -- which is the one state worse
+  # than not shipping it.
+  #
+  # The fixture is the same pipeline's real output, computed once on a machine that
+  # could do it. What moved is where the arithmetic ran. A deployment with capacity
+  # runs the ingest above and never reaches this line.
+  AFTER_INGEST="$(count_rows vehicle_sighting || echo 0)"
+  if [ "$AFTER_INGEST" = "0" ]; then
+    log "detection produced no sightings here; loading the committed fixture instead"
+    python scripts/seed_sighting_fixture.py >> /tmp/sighting-ingest.log 2>&1       || log "fixture load failed too; the appearance search will have nothing to search"
+  fi
+
   python - <<'PYEOF' || log "could not record the sighting ingest outcome"
 import os, sys
 sys.path.insert(0, ".")
