@@ -239,6 +239,13 @@ print(f'[entrypoint] {stats.alerts_created} alert(s) raised', file=sys.stderr)
 # This has to run in the container rather than from a developer machine: the crops it
 # writes are served from local disk, so sightings inserted remotely would reference
 # images this instance does not have.
+#
+# 150 frames per camera, not 600. Four cameras at 600 takes ten minutes on a developer
+# laptop; the hosted instance has a fraction of a CPU, which puts the same job in the
+# hours and spends every one of them competing with the API for the processor a
+# reviewer is waiting on. 150 still yields enough vehicles per camera to browse and to
+# search between, which is what the screen needs, and SETU_SIGHTING_FRAMES raises it
+# wherever there is capacity to spare.
 seed_sightings() {
   if [ "${SETU_SEED_DEMO:-1}" != "1" ]; then
     return 0
@@ -255,7 +262,7 @@ seed_sightings() {
   fi
 
   log "no vehicle sightings yet; running vehicle detection over the demo clip..."
-  python scripts/ingest_sightings.py     --file "$CLIP" --camera-ref REPLAY-01 --offset-min 0     --file "$CLIP" --camera-ref REPLAY-02 --offset-min 100     --file "$CLIP" --camera-ref REPLAY-03 --offset-min 300     --file "$CLIP" --camera-ref REPLAY-04 --offset-min 340     --align-to-reads     --max-frames "${SETU_SIGHTING_FRAMES:-600}"     --analytic-fps 5     || log "sighting ingest failed; the appearance search will have nothing to search"
+  python scripts/ingest_sightings.py     --file "$CLIP" --camera-ref REPLAY-01 --offset-min 0     --file "$CLIP" --camera-ref REPLAY-02 --offset-min 100     --file "$CLIP" --camera-ref REPLAY-03 --offset-min 300     --file "$CLIP" --camera-ref REPLAY-04 --offset-min 340     --align-to-reads     --max-frames "${SETU_SIGHTING_FRAMES:-150}"     --analytic-fps 5     || log "sighting ingest failed; the appearance search will have nothing to search"
   log "sighting ingest finished"
 }
 
