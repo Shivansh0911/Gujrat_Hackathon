@@ -84,6 +84,35 @@ export default function JourneyPage() {
   });
   const result = run.data;
 
+  // Judge Mode arrives with the registration, the window and the purpose in the URL and
+  // the fields filled from them. Filling the form was never the promise: the promise is
+  // the scored capability one click from the login screen, and without this the reviewer
+  // lands on a populated form beside a panel reading "Enter a registration number".
+  //
+  // Deferred to a macrotask rather than fired straight from the effect. React's
+  // development StrictMode mounts, unmounts and remounts; a mutation started during the
+  // first of those is orphaned when its observer unmounts, and the remounted observer
+  // inherits a pending state that never settles -- the button sits on "Searching…" while
+  // the request it is waiting for has already returned 200. A zero-delay timeout runs
+  // after the remount has finished, so there is one observer and it is the live one. The
+  // cleanup cancels it, which is what makes the discarded mount harmless.
+  //
+  // The ref, not a dependency list, guards the repeat: the fields are state, and typing
+  // in them must not start a search.
+  const autoRan = useRef(false);
+  useEffect(() => {
+    if (autoRan.current) return;
+    if (!params.get("plate") || !params.get("purpose")) return;
+    const timer = window.setTimeout(() => {
+      autoRan.current = true;
+      run.mutate();
+    }, 0);
+    return () => window.clearTimeout(timer);
+    // `run` is a stable mutation object and the fields are read through it; listing
+    // either would restart the search on every keystroke.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // The appearance expansion runs as its own query against its own endpoint. Two
   // reasons, both deliberate. A plate journey that works must never be held up by an
   // appearance search that is slow or returns nothing. And the two kinds of claim --

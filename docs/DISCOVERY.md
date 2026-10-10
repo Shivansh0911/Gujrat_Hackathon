@@ -1223,7 +1223,7 @@ announces when it expires.** The dashboard should say "no data in this window" w
 currently says 0, and the window should widen to find the data rather than report its
 absence at the default.
 
-## Finding 36 - Judge Mode fills the form and stops, and the fix did not work
+## Finding 36 - Judge Mode filled the form and stopped, and the first fix was tested wrong
 
 A walkthrough against a database with data, following the brief's order and asserting the
 content of each screen. The capabilities verified end to end, all on one trace:
@@ -1254,12 +1254,37 @@ broke toward the string that is not a registration. The screen built to demonstr
 three-tier evidence model opened on a read that model rejects. Grammar-validity is now the
 first ordering term, pinned by a test, and the live run confirms a valid plate is chosen.
 
-**Running the trace (reverted).** An effect that calls the mutation once when the URL
-carries a plate and a purpose. It fires -- the request is made and the server answers
-**200 in 1.5 seconds with four hops** -- and the button stays on "Searching…" indefinitely.
-The mutation never settles in the client and the cause was not found. A demonstration path
-that hangs is worse than one that needs a second click, so the change was removed rather
-than shipped. The two-click behaviour stands, and the defect stands with it.
+**Running the trace (fixed, after a wrong diagnosis).** An effect that calls the mutation
+once when the URL carries a plate and a purpose. Against the dev server it fired, the
+server answered **200 in 1.5 seconds with four hops**, and the button sat on "Searching…"
+indefinitely. I could not find the cause, decided a demonstration path that hangs is worse
+than one needing a second click, and reverted it.
+
+That was the wrong call, for a reason that should have been obvious. **React's StrictMode
+double-mount is a development behaviour.** It mounts, unmounts and remounts; a mutation
+started during the first of those is orphaned when its observer unmounts, and the
+remounted observer inherits a pending state nothing will ever settle. The built bundle
+does not do this.
+
+Deferring the call to a zero-delay timeout fixes it in both: the timeout fires after the
+remount has finished, so there is one observer and it is the live one, and the cleanup
+cancels the discarded mount's timer. Verified against the **built** bundle served
+same-origin with the API behind it, which is the shape Netlify and the backend have:
+
+```
+ok  a grammar-valid registration was chosen — KA25A6156
+ok  the trace ran without a second click — 4 hops · 413.4 km · 340.0 min
+ok  exactly one journey request was made — 1: [200]
+ok  three-tier legend · signed export · 3D control all present
+ok  editing the form does not re-fire the search — 0 extra
+```
+
+The lesson is finding 38's, again and in a new costume: **a symptom observed under a
+development-only behaviour is not evidence about the shipped artefact.** First it was an
+unauthenticated 404 read as a missing file; then a dev server pointed at a dead port;
+now StrictMode's double-mount read as a hung mutation. Three times in one session the
+harness was the defect, and each time the way out was to test the thing that actually
+ships.
 
 Worth recording as a method note: the first three attempts to verify this reported
 failures that were all the harness's. The walkthrough pressed "Trace vehicle" with no
