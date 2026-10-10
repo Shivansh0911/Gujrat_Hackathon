@@ -1372,6 +1372,62 @@ not return watch time. The control plane and the media plane fail independently,
 other screen reads from the database, and the demonstration runbook already leads with
 those.
 
+## Finding 40 - a general ImageNet backbone beats the handcrafted descriptor on precision
+
+**2026-10-11.** §3.2 asks for an MIT/Apache ONNX re-identification or general embedding
+model to be evaluated beside the handcrafted descriptor and the comparison recorded.
+Finding 37 reported this as unanswerable from stored data, because `vehicle_sighting`
+keeps one row per fused pass and so holds no two views of one vehicle.
+
+That was a limit of the *stored data*, not of the question. `compare_appearance_models.py`
+now runs the shipped detector and the shipped tracker over footage itself and keeps every
+frame's crop with the track that owns it -- the ingest pipeline with its retention
+changed and nothing else. Over 1,501 frames of the own-feed clip: 29 tracks, 25 of them
+more than one frame, **1,471 same-vehicle pairs against 21,749 different-vehicle pairs**.
+Comparable in size to finding 25's 1,070 / 24,581, and the shipped descriptor's numbers
+land in the same place, which is the harness corroborating itself.
+
+Two Apache-2.0 graphs from the ONNX Model Zoo, penultimate activations, L2-normalised,
+cosine distance -- the same metric the descriptor is judged under, so nothing is flattered
+by a different measure.
+
+| | same-vehicle median | different median | best operating point |
+|---|---:|---:|---|
+| **shipped** 76-d CIELAB + edge | 0.0618 | 0.1995 | gate 0.02 → recall 0.311, false-link **0.007**, precision **0.737** |
+| **mobilenetv2** 1000-d | 0.2465 | 0.4420 | gate 0.20 → recall **0.415**, false-link **0.014**, precision **0.672** |
+| **squeezenet1.1** 1000-d | 0.0225 | 0.0497 | nothing usable |
+
+**MobileNetV2 is the better descriptor on this footage**, and not marginally. At its own
+best gate it reaches recall 0.415 at precision 0.672; the shipped descriptor needs gate
+0.05 to reach a comparable recall of 0.455 and gets precision 0.357 there. Roughly double
+the precision at the same recall. At gate 0.10 MobileNetV2 is at **precision 0.983 with a
+false-link rate of 0.000** over 21,749 negative pairs, which no setting of the handcrafted
+descriptor approaches.
+
+SqueezeNet is the measured negative the brief allows for. Its distances collapse into a
+band 0.02 wide: p10 of the different-vehicle set (0.0274) sits *below* the p90 of the
+same-vehicle set, so every gate either rejects nearly everything or links nearly
+everything. It is recorded because "we tried two and one was useless" is the honest shape
+of a model comparison.
+
+### Why the handcrafted descriptor still ships
+
+Not because it is better. Three reasons, in order:
+
+1. **Every stored vector is a 76-dimension one.** The pgvector column is typed to it and
+   the HNSW index is built over it. Changing the descriptor means a migration, a
+   re-ingest of every sighting and a rebuilt index -- not a configuration change.
+2. **Gates and weights are tuned to its distance scale.** MobileNetV2's useful gate is
+   0.20 where the shipped one's is 0.02; the composite scorer's weights assume the
+   latter. Swapping the vector without re-tuning would be worse than either.
+3. **One clip is one clip.** This is a bus depot. The finding is strong enough to act on
+   and not strong enough to act on *untested*, four days before a demonstration.
+
+So the recommendation is recorded rather than executed: **MobileNetV2 features, gate
+re-swept, is the next change to the appearance search**, and the measurement above is the
+evidence for it. The handcrafted descriptor remains interpretable and cheap, which is why
+it was never a bad choice -- only, now, a measurably beaten one.
+
 ## Local evaluation hardware
 
 Python 3.12.5, Docker 29.7.2, Node 20.14, **NVIDIA RTX 4050 Laptop, 6 GB VRAM**.

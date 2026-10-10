@@ -29,9 +29,26 @@ Embeddings are the model's penultimate activations, L2-normalised, compared by c
 distance -- the same metric the handcrafted descriptor is compared under, so no candidate
 is flattered by a different measure.
 
+Where the pairs come from
+--------------------------
+Not from the database. `vehicle_sighting` stores **one row per fused pass** -- 489
+sightings over 489 distinct `track_id`s on the development instance -- so no two rows are
+two views of one vehicle and the pair this method rests on cannot be formed from stored
+data. The per-frame crops that finding 25 used existed only inside the ingest run; one
+crop survives per pass.
+
+The replay cameras are not a way around it either: they replay one recording, so a crop
+at the same stream position on two cameras is the same image byte for byte, distance zero
+for anything, and no appearance variation at all.
+
+So this does its own pass. It runs the shipped vehicle detector and the shipped tracker
+over footage and keeps **every** frame's crop with the track that owns it, which is what
+the ingest throws away. Same detector, same tracker, same association rules -- only the
+retention differs.
+
 Usage
 -----
-    python scripts/compare_appearance_models.py --model mobilenetv2=path/to/model.onnx
+    python scripts/compare_appearance_models.py         --video ../data/own_feed/commons_traffic_clip.mp4         --model mobilenetv2=path/to/model.onnx
 """
 
 from __future__ import annotations
@@ -137,6 +154,100 @@ def _embed_onnx(model_path: Path, crops: list[Any]) -> list[Any] | None:
     return out
 
 
+def _crops_from_footage(
+    video: Path, analytic_fps: float, max_frames: int
+) -> tuple[list[Any], list[int]]:
+    """Every frame's crop, labelled by the track that owns it.
+
+    This is the ingest pipeline with one thing changed: it keeps each frame's crop
+    instead of choosing one per pass. The detector, the tracker and the sampling interval
+    are the shipped ones, so a pair formed here is a pair the deployed system would have
+    formed.
+
+    Single-frame tracks are dropped. One frame contributes no same-vehicle pair and is as
+    likely to be a detector blink as a vehicle, which is why the pipeline will not record
+    one either.
+    """
+    from services.analytics.sighting import VehicleTracker
+    from services.analytics.vehicle_detect import YoloxVehicleDetector
+    from services.ingest.file_source import FileSource
+
+    detector = YoloxVehicleDetector()
+    tracker = VehicleTracker()
+    source = FileSource(video, camera_ref="COMPARE", realtime=False, loop=False)
+
+    interval = 1000.0 / analytic_fps if analytic_fps > 0 else 0.0
+    last = -1e18
+    per_track: dict[int, list[Any]] = {}
+    frames = 0
+
+    for frame in source.open():
+        frames += 1
+        if max_frames and frames > max_frames:
+            break
+        if frame.pts_ms - last < interval:
+            continue
+        last = frame.pts_ms
+
+        for track, box in tracker.update(
+            detector.detect(frame.image),
+            frame.pts_ms,
+            frame.session_id,
+            source.observed_at(frame),
+        ):
+            x1, y1, x2, y2 = box.bbox
+            crop = frame.image[max(0, y1) : max(0, y2), max(0, x1) : max(0, x2)]
+            # Below this the descriptor is noise, and the pipeline would not fingerprint
+            # it either.
+            if crop.size == 0 or crop.shape[0] < 24 or crop.shape[1] < 24:
+                continue
+            per_track.setdefault(track.track_id, []).append(crop)
+
+    crops: list[Any] = []
+    labels: list[int] = []
+    multi = [(k, v) for k, v in sorted(per_track.items()) if len(v) > 1]
+    for label, (_, images) in enumerate(multi):
+        for image in images:
+            crops.append(image)
+            labels.append(label)
+
+    print(
+        f"{frames} frames decoded, {len(per_track)} tracks, "
+        f"{len(crops)} crops over {len(multi)} multi-frame tracks"
+    )
+    return crops, labels
+
+
+def _compare(crops: list[Any], labels: list[int], args: argparse.Namespace) -> int:
+    """Score the shipped descriptor and every candidate over the same crops."""
+    from services.analytics import appearance
+
+    if len(crops) < 10:
+        print("too few crops to compare anything", file=sys.stderr)
+        return 1
+
+    # The shipped descriptor first, so every model is read against it rather than against
+    # an abstract expectation.
+    handcrafted: list[Any] = []
+    kept: list[int] = []
+    for crop, label in zip(crops, labels):
+        described = appearance.describe(crop)
+        if described is None:
+            continue
+        handcrafted.append(described.vector)
+        kept.append(label)
+    _report("shipped: 76-dimension CIELAB + edge descriptor", handcrafted, kept)
+
+    for spec in args.model:
+        name, _, path = spec.partition("=")
+        vectors = _embed_onnx(Path(path), crops)
+        if vectors is not None:
+            _report(f"candidate: {name}", vectors, labels)
+
+    print("\n" + "=" * 66)
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument(
@@ -147,13 +258,24 @@ def main() -> int:
         help="an ONNX model to compare; repeatable",
     )
     ap.add_argument("--max-crops", type=int, default=MAX_CROPS)
+    ap.add_argument(
+        "--video",
+        type=Path,
+        help="run detection and tracking over this footage, keeping every frame's crop; "
+        "without it the stored sightings are used, which cannot form same-vehicle pairs",
+    )
+    ap.add_argument("--analytic-fps", type=float, default=5.0)
+    ap.add_argument("--max-frames", type=int, default=2700)
     args = ap.parse_args()
+
+    if args.video:
+        crops, labels = _crops_from_footage(args.video, args.analytic_fps, args.max_frames)
+        return _compare(crops, labels, args)
 
     import cv2
     from sqlalchemy import create_engine, text
     from sqlalchemy.orm import sessionmaker
 
-    from services.analytics import appearance
     from services.api.tenancy import set_admin_context
     from services.common.dburl import normalise_pg_url
     from services.common.paths import CROPS_DIR
@@ -196,32 +318,8 @@ def main() -> int:
         labels.append(keys.setdefault(key, len(keys)))
         crops.append(image)
 
-    tracks = len(set(labels))
-    print(f"{len(crops)} crops over {tracks} tracks")
-    if len(crops) < 10:
-        print("too few crops to compare anything", file=sys.stderr)
-        return 1
-
-    # The shipped descriptor first, so every model is read against it rather than against
-    # an abstract expectation.
-    handcrafted: list[Any] = []
-    kept: list[int] = []
-    for crop, label in zip(crops, labels):
-        described = appearance.describe(crop)
-        if described is None:
-            continue
-        handcrafted.append(described.vector)
-        kept.append(label)
-    _report("shipped: 76-dimension CIELAB + edge descriptor", handcrafted, kept)
-
-    for spec in args.model:
-        name, _, path = spec.partition("=")
-        vectors = _embed_onnx(Path(path), crops)
-        if vectors is not None:
-            _report(f"candidate: {name}", vectors, labels)
-
-    print("\n" + "=" * 66)
-    return 0
+    print(f"{len(crops)} crops over {len(set(labels))} tracks")
+    return _compare(crops, labels, args)
 
 
 if __name__ == "__main__":
