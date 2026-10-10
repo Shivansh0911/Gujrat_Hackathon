@@ -14,6 +14,9 @@ as one:
 
 from __future__ import annotations
 
+import os
+from collections.abc import Iterator
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -40,10 +43,51 @@ from services.api.versioning import (
 
 
 @pytest.fixture(scope="module")
-def client() -> TestClient:
-    from services.api.main import app
+def client() -> Iterator[TestClient]:
+    """A client over the real app, importable without a deployment's configuration.
 
-    return TestClient(app, raise_server_exceptions=False)
+    Importing the app builds `ApiSettings`, which requires a database URL and a JWT
+    secret. CI has neither, so these nine tests errored on every run since they were
+    added -- the suite was green locally, where a `.env` exists, and red everywhere
+    else. `test_health_head.py` had already met this and solved it the same way.
+
+    `setdefault`, not `setenv`: a real configuration still wins, so a developer's own
+    database is used when there is one. The cache is cleared on both sides, or a dummy
+    settings object leaks into whatever runs next.
+    """
+    from services.api.config import ApiSettings, get_api_settings
+
+    # Only stand in for configuration that is genuinely absent.
+    #
+    # `setdefault` alone is not that test: pydantic-settings reads `.env` when it
+    # builds the object and never copies those values into `os.environ`, so on a
+    # developer machine the defaults were not already there and got set -- pointing
+    # the app at a database that does not exist. The settings cache was cleared
+    # afterwards; the *engine* built from them was not, and twenty-one endpoint tests
+    # spent the rest of the session connecting as user "u".
+    try:
+        ApiSettings()  # type: ignore[call-arg]  # every field comes from the environment
+        configured = True
+    except Exception:  # noqa: BLE001 -- any validation failure means "not configured"
+        configured = False
+
+    saved = {k: os.environ.get(k) for k in ("SETU_DATABASE_URL", "SETU_JWT_SECRET")}
+    if not configured:
+        os.environ.setdefault("SETU_DATABASE_URL", "postgresql+psycopg://u:p@127.0.0.1/none")
+        os.environ.setdefault("SETU_JWT_SECRET", "not-a-real-secret-only-for-import")
+
+    get_api_settings.cache_clear()
+    try:
+        from services.api.main import app
+
+        yield TestClient(app, raise_server_exceptions=False)
+    finally:
+        for key, value in saved.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
+        get_api_settings.cache_clear()
 
 
 # ------------------------------------------------------------------ error codes

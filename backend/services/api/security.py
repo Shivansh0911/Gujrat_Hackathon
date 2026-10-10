@@ -24,7 +24,20 @@ from typing import Annotated, Any
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from jose import JWTError, jwt
+# PyJWT, not python-jose.
+#
+# GHSA-3qf3-8w2g-rqmx is a critical algorithm-confusion bypass in python-jose: a
+# DER-encoded public key gets past the guard that is supposed to stop a token
+# declaring its own algorithm. It affects every version up to and including 3.5.0 and
+# there is no patched release -- the advisory's fixed version is null. An
+# unreachable-code argument does not apply here the way it did to the earlier `ecdsa`
+# advisory: this one is in the verification path, which is the path we are on.
+#
+# SECURITY.md already named this swap as the first security task after submission.
+# PyJWT also drops the transitive `ecdsa` dependency that the other suppression
+# existed for, so both advisories go with one change.
+import jwt
+from jwt import PyJWTError
 
 # passlib 1.7.4 reads `bcrypt.__about__.__version__` purely to log which backend it
 # found. bcrypt 4.1 removed `__about__`, so that lookup raises, passlib catches it, and
@@ -178,9 +191,13 @@ def decode_token(token: str, settings: ApiSettings) -> dict[str, Any]:
             settings.jwt_secret,
             algorithms=[ALGORITHM],  # allowlist, never the token's own claim
             issuer=settings.jwt_issuer,
-            options={"require_exp": True, "require_sub": True, "verify_aud": False},
+            # PyJWT spells the required-claim check as a list rather than as
+            # `require_exp` / `require_sub` flags. Getting this wrong fails open --
+            # a token with no `exp` would simply never expire -- so it is covered by
+            # a test rather than left to the reader.
+            options={"require": ["exp", "sub"], "verify_aud": False},
         )
-    except JWTError as exc:
+    except PyJWTError as exc:
         raise unauthorised from exc
 
 
