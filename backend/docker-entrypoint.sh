@@ -296,11 +296,31 @@ seed_sightings() {
   log "sighting ingest finished"
 }
 
+# Keep the demonstration inside the windows the console opens on.
+#
+# `seed_demo.py` places the replay timeline seven hours before the moment it runs, and
+# the sighting seed anchors to that. Both are relative to their run, and a seed is only
+# written once -- so a deployment seeded six weeks ago serves a demonstration dated six
+# weeks ago, while the dashboard opens on 24 hours and "Find a vehicle" on two days.
+# Every row is present and every query is correct, and the console shows zeroes, which
+# on screen is indistinguishable from a platform that does not work.
+#
+# So this runs on every start, not only on a first seed: it re-anchors the rows the seed
+# itself placed and no others, and it is a no-op when they are already in place.
+rebase_demo_timeline() {
+  if [ "${SETU_SEED_DEMO:-1}" != "1" ]; then
+    log "demo seeding disabled; leaving the timeline where it is"
+    return 0
+  fi
+  log "re-anchoring the demonstration timeline"
+  python scripts/rebase_demo_timeline.py >> /tmp/rebase-timeline.log 2>&1     || log "timeline rebase failed; see /tmp/rebase-timeline.log"
+}
+
 # `set -e` does not apply inside a backgrounded job, so a seeding failure degrades the
 # demonstration data without ever taking down a service that is already serving.
 # Sequenced, not parallel: the sighting timeline anchors itself to the plate reads, so
-# it has to run after they exist.
-{ seed_demo_data; seed_sightings; } &
+# it has to run after they exist, and the rebase has to run after both.
+{ seed_demo_data; seed_sightings; rebase_demo_timeline; } &
 
 log "starting API on port ${PORT:-8000}"
 exec uvicorn services.api.main:app \
