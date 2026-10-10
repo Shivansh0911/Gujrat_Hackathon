@@ -12,7 +12,8 @@ so the Control Room tiles render black in it and every screenshot of it would li
 |---|---|---|
 | 01 | Login | Role selection, and Judge Mode — the scored path one click from here |
 | 02 | Signed in | The guided tour opening itself on a first visit |
-| 03 | Coverage | The login destination. Every placed camera as the ground it can see |
+| 03 | Find a vehicle | **The capability nobody else will have.** Browse every vehicle the detector recorded — 48 here, of which 1 has a readable plate — and search the estate by appearance alone |
+| 04 | Coverage | The login destination. Every placed camera as the ground it can see |
 | 00 | Coverage, domes | Why they are domes: no camera in this estate publishes a heading |
 | 04 | Coverage, dark | The same screen in the other theme |
 | 05 | Dashboard | Estate activity, readiness mix, camera health, anomalies with their limits |

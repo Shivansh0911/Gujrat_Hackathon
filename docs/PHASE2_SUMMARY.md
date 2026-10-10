@@ -21,6 +21,8 @@ estate-wide figure. That reframe is what the work below delivers.
 | **The ceiling turned into a deliverable** | Per-camera ANPR readiness grading from measured pixel budget. Analytics assigned by capability rather than configuration. A Scale Planner that extrapolates measured per-camera cost to 80,000. |
 | **Onboarding that shows its working** | A live staged probe: SSRF validation, timed TCP handshake, transport negotiation with its reason, codec and resolution, **declared against measured frame rate**, the first decoded frame, a readiness grade with reasoning. A stage never reached is drawn as skipped, not omitted. Plus a real ONVIF adapter. |
 | **Integration surface** | Scoped service-account API keys, HMAC-signed webhooks with timestamp binding, idempotency keys, cursor pagination, API versioning, Prometheus metrics, structured logs with correlation IDs, AES-256-GCM sealed camera credentials. |
+| **Finding a vehicle with no plate at all** | Browse every vehicle the detector recorded and search the estate by appearance alone. On two days of footage that is 48 vehicles of which **1** has a readable registration — the other 47 were invisible to every plate-based search. Everything it returns is a Candidate and nothing can promote it. |
+| **Traffic counted honestly** | `/analytics/traffic` counts vehicle passes rather than plate reads: 402 where the plate pipeline identified 20, with class mix, per-camera rates and the peak bucket. Means are taken over the hours a camera actually reported, not the hours requested. |
 | **Analytics beyond ANPR** | Cloned-plate, convoy and dwell detection; corridor flow analytics; an operational dashboard. Each ships its limits in the response body beside its results. |
 | **Forensic 3D** | Coverage as viewsheds. A time-as-altitude journey plot where loitering, convoy and impossible travel are shapes rather than computations. |
 | **Operational readiness** | A tested backup/restore drill with audit-chain verification, and an on-call runbook for gateway down, camera flapping, database failover and disk pressure. |
@@ -47,23 +49,44 @@ and records host and port rather than a URL that may carry credentials.
 strongest sixty seconds available: a camera declaring 25 fps and delivering 15, on screen,
 is a more credible answer to the integration guide's own warning than any slide.
 
-**5. Video analytics output.** ANPR, vehicle detection and classification, counting, flow,
-dwell, intrusion zones, cloned-plate and convoy detection, appearance-based cross-camera
-correlation. The appearance gate ships at a **measured false-link rate of 0.055**; a looser
-gate measured **0.834** and was rejected (`DISCOVERY.md` finding 25).
+**5. Video analytics output.** ANPR, vehicle detection and classification, traffic counting
+with class mix, flow, dwell, intrusion zones, cloned-plate and convoy detection, and
+appearance-based cross-camera correlation in both directions — from a plate outwards, and
+from a picture when there is no plate at all. The appearance gate ships at a **measured
+false-link rate of 0.055**; a looser gate measured **0.834** and was rejected
+(`DISCOVERY.md` finding 25).
+
+The counting figure is the one to look at twice. `/vehicle-counts` reports plate reads and
+says in its own docstring that every number is a floor on traffic; `/analytics/traffic`
+counts the vehicles the detector saw. On the same window those are 20 and 402. The second
+is the number a control room is asking for, and it only exists because sightings were
+decoupled from plate reads.
 
 **6. Scalability and PoC readiness.** The Scale Planner is arithmetic on measurements taken
-on the stated hardware, with assumptions adjustable on screen. Readiness grading answers the
-procurement question the ceiling actually raises: which cameras to re-aim, which to replace,
-and which are fine for everything except plates.
+on the stated hardware, with assumptions adjustable on screen and the provenance of every
+constant on the same page — measured, published, or assumption. It now also covers the
+operational half the brief asks for: horizontal scaling, load balancing, health checks,
+monitoring, logging, backup, disaster recovery and cybersecurity, each naming what exists
+and where to check it. The two things not demonstrated at scale — an edge node and a
+database failover — are listed as unproven rather than implied to be done.
+
+Readiness grading answers the procurement question the ceiling actually raises: which
+cameras to re-aim, which to replace, and which are fine for everything except plates.
 
 **7. Submission completeness.** README, HLD and DISCOVERY are current; DISCOVERY carries
 twenty-seven dated findings. A refreshed demonstration script, an on-call runbook, and a
 recorded backup/restore drill result.
 
-**Bonus.** Cross-camera correlation without plates; analytics beyond the mandate; auditability
-extended to cover every accept/reject decision; integration-ready APIs with metrics and
-runbooks.
+**Bonus**, against the six listed criteria:
+
+| Criterion | Where |
+|---|---|
+| Innovative hybrid or customised architecture | Model 1+2+3 hybrid, with analytics assigned per camera from measured pixel budget rather than configuration |
+| Advanced cross-camera tracking or multi-camera correlation | Candidate journeys from a plate, **and appearance search with no plate at all** — the capability that works on the 47 vehicles in 48 that ANPR cannot see |
+| Additional reliable analytics beyond ANPR | Traffic counting with class mix, flow, dwell, intrusion zones, cloned-plate and convoy detection, corridor analytics |
+| Edge processing, bandwidth optimisation, low connectivity | Measured 86.3% frame filtering before the detector; a 5× bandwidth reduction at the centre, sized on screen |
+| Cybersecurity, privacy, auditability, RBAC | Forced row-level security with a role that cannot bypass it, hash-chained append-only ledger, Ed25519-signed exports, SSRF guard, sealed credentials, scoped keys — and every appearance search written to the ledger with its purpose before it runs |
+| Operational dashboards, alerts, health monitoring, integration-ready APIs | Dashboard, Alert Desk, per-camera readiness and health, 18 Prometheus series, signed webhooks, idempotency, cursor pagination, API versioning |
 
 ## What is still not true, stated here rather than found later
 
@@ -75,6 +98,10 @@ runbooks.
   is the largest gap between the scale model and the running system.
 - **The ONVIF adapter has not met a physical ONVIF camera.** It is implemented and unit-tested
   against recorded device responses; no device was available.
+- **The government feed's watch budget is smaller than one pass over the estate.** Thirty
+  cameras at twenty seconds exhausted the whole allowance and returned zero frames
+  (`DISCOVERY.md` finding 30). Every screen except the Control Room reads from the database
+  and is unaffected, which is why the demonstration leads with those.
 - **The gateway media plane is third-party and intermittent, and its quota is per account.**
   A newly issued access code restores catalogue access and does not return watch time; the
   cooldown still has to elapse (`DISCOVERY.md` finding 28). Nothing in this repository can fix
