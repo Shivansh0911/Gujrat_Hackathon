@@ -264,71 +264,35 @@ seed_sightings() {
     return 0
   fi
 
-  log "no vehicle sightings yet; running vehicle detection over the demo clip..."
-  python scripts/ingest_sightings.py \
-    --file "$CLIP" --camera-ref REPLAY-01 --offset-min 0 \
-    --file "$CLIP" --camera-ref REPLAY-02 --offset-min 100 \
-    --file "$CLIP" --camera-ref REPLAY-03 --offset-min 300 \
-    --file "$CLIP" --camera-ref REPLAY-04 --offset-min 340 \
-    --align-to-reads \
-    --max-frames "${SETU_SIGHTING_FRAMES:-80}" \
-    --analytic-fps 5 \
-    > /tmp/sighting-ingest.log 2>&1 || true
+  # The fixture first, the detector second, and that order is the whole lesson.
+  #
+  # It used to be the other way round: run detection, fall back to the fixture if it
+  # produced nothing. On this instance detection never produced anything -- a fraction
+  # of a CPU and 512 MB shared with the API -- and because the job was killed rather
+  # than returning, it took the shell that would have run the fallback with it. The
+  # fallback never executed, through four deployments, and the only symptom available
+  # from outside was a sighting count of zero.
+  #
+  # So the cheap, deterministic thing runs first and the screen works everywhere. A
+  # deployment with capacity sets SETU_SIGHTING_INGEST=1 and gets detection over its
+  # own footage on top; the fixture is idempotent, so the two do not fight.
+  log "loading the committed sighting fixture..."
+  python scripts/seed_sighting_fixture.py >> /tmp/sighting-ingest.log 2>&1 \
+    || log "fixture load failed; the appearance search will have nothing to search"
 
-  # Record what happened where it can be read without container logs.
-  #
-  # The first deployment of this seed produced nothing and said nothing: the only
-  # evidence available from outside was a sighting count of zero, which is the same
-  # answer whether the job was skipped, crashed, or is still running. An entry in the
-  # ledger distinguishes them, and the ledger is already the place this platform puts
-  # things that have to be checkable afterwards.
-  # Fall back to the committed fixture when detection produced nothing.
-  #
-  # On this instance it repeatedly produced nothing: a fraction of a CPU and 512 MB
-  # shared with the API, and the job was killed before it finished every time. The
-  # appearance search was deployed, correct, and empty -- which is the one state worse
-  # than not shipping it.
-  #
-  # The fixture is the same pipeline's real output, computed once on a machine that
-  # could do it. What moved is where the arithmetic ran. A deployment with capacity
-  # runs the ingest above and never reaches this line.
-  AFTER_INGEST="$(count_rows vehicle_sighting || echo 0)"
-  if [ "$AFTER_INGEST" = "0" ]; then
-    log "detection produced no sightings here; loading the committed fixture instead"
-    python scripts/seed_sighting_fixture.py >> /tmp/sighting-ingest.log 2>&1       || log "fixture load failed too; the appearance search will have nothing to search"
+  if [ "${SETU_SIGHTING_INGEST:-0}" = "1" ]; then
+    log "SETU_SIGHTING_INGEST=1; also running vehicle detection over the demo clip..."
+    python scripts/ingest_sightings.py \
+      --file "$CLIP" --camera-ref REPLAY-01 --offset-min 0 \
+      --file "$CLIP" --camera-ref REPLAY-02 --offset-min 100 \
+      --file "$CLIP" --camera-ref REPLAY-03 --offset-min 300 \
+      --file "$CLIP" --camera-ref REPLAY-04 --offset-min 340 \
+      --align-to-reads \
+      --max-frames "${SETU_SIGHTING_FRAMES:-80}" \
+      --analytic-fps 5 \
+      >> /tmp/sighting-ingest.log 2>&1 || true
   fi
 
-  python - <<'PYEOF' || log "could not record the sighting ingest outcome"
-import os, sys
-sys.path.insert(0, ".")
-from sqlalchemy import text
-from services.api import audit
-from services.api.db import get_sessionmaker
-from services.api.tenancy import set_admin_context
-
-tail = ""
-try:
-    with open("/tmp/sighting-ingest.log", encoding="utf-8", errors="replace") as handle:
-        tail = handle.read()[-1500:]
-except OSError as exc:
-    tail = f"(log unreadable: {exc})"
-
-s = get_sessionmaker()()
-set_admin_context(s)
-count = s.execute(text("SELECT count(*) FROM vehicle_sighting")).scalar_one()
-audit.append(
-    s,
-    action="SIGHTING_SEED_RAN",
-    subject_type="deployment",
-    subject_id="sighting-seed",
-    actor_id="entrypoint",
-    actor_role="system",
-    detail={"sightings_after": int(count), "tail": tail},
-)
-s.commit()
-s.close()
-print(f"[entrypoint] sighting seed finished with {count} sighting(s)", file=sys.stderr)
-PYEOF
   log "sighting ingest finished"
 }
 
