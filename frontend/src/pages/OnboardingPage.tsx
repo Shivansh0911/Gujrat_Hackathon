@@ -24,7 +24,7 @@
  */
 
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api, type ProbeResult, type ProbeStep } from "../lib/api";
 import { GradeBadge, type Grade } from "../components/tiers";
@@ -123,6 +123,20 @@ export default function OnboardingPage() {
   const [url, setUrl] = useState("");
   const [gradeReadiness, setGradeReadiness] = useState(true);
   const [csv, setCsv] = useState<File | null>(null);
+  const [deptCode, setDeptCode] = useState("");
+  const [deptName, setDeptName] = useState("");
+  const queryClient = useQueryClient();
+
+  const departments = useQuery({ queryKey: ["departments"], queryFn: () => api.departments() });
+
+  const createDepartment = useMutation({
+    mutationFn: () => api.createDepartment({ code: deptCode.trim(), name: deptName.trim() }),
+    onSuccess: () => {
+      setDeptCode("");
+      setDeptName("");
+      void queryClient.invalidateQueries({ queryKey: ["departments"] });
+    },
+  });
 
   const probe = useMutation({
     mutationFn: () => api.probeSource(url.trim(), gradeReadiness),
@@ -282,10 +296,72 @@ export default function OnboardingPage() {
         {/* --- A whole department --------------------------------------------- */}
         <section className="panel p-3">
           <h2 className="t-section mb-2">Onboard a department</h2>
+
+          {/* The problem statement is twenty-six departments with heterogeneous
+              systems, so "a new department joins" has to be something an operator can
+              do on screen rather than a seed script somebody runs on the server. The
+              department is the tenant boundary row-level security is enforced against,
+              which is why creating one is admin-only and written to the ledger. */}
+          <div className="flex flex-wrap gap-2 items-end mb-3 pb-3 border-b border-edge">
+            <label className="flex flex-col">
+              <span className="t-micro uppercase tracking-wider text-muted">Code</span>
+              <input
+                className="input mono w-28"
+                value={deptCode}
+                onChange={(event) => setDeptCode(event.target.value)}
+                placeholder="RTO"
+                maxLength={32}
+              />
+            </label>
+            <label className="flex flex-col flex-1 min-w-[14rem]">
+              <span className="t-micro uppercase tracking-wider text-muted">
+                Department name
+              </span>
+              <input
+                className="input"
+                value={deptName}
+                onChange={(event) => setDeptName(event.target.value)}
+                placeholder="Regional Transport Office, Gandhinagar"
+              />
+            </label>
+            <button
+              type="button"
+              className="btn h-[34px]"
+              disabled={
+                deptCode.trim().length < 2 ||
+                deptName.trim().length < 2 ||
+                createDepartment.isPending
+              }
+              onClick={() => createDepartment.mutate()}
+            >
+              {createDepartment.isPending ? "Adding…" : "Add department"}
+            </button>
+          </div>
+
+          {createDepartment.error ? <ErrorBox error={createDepartment.error} /> : null}
+
+          {departments.data?.length ? (
+            <div className="flex flex-wrap gap-1.5 mb-3">
+              {departments.data.map((d) => (
+                <span
+                  key={d.id}
+                  className="badge"
+                  title={d.contact_email ?? undefined}
+                >
+                  <span className="mono">{d.code}</span>
+                  <span className="text-muted ml-1 num">{d.cameras}</span>
+                </span>
+              ))}
+            </div>
+          ) : null}
+
           <p className="t-small text-muted mb-2">
             A departmental CSV, validated row by row. Rows that fail validation are
             rejected individually with a reason and the rest still import &mdash; a
-            spreadsheet with four bad rows should onboard the other four hundred.
+            spreadsheet with four bad rows should onboard the other four hundred. A
+            <span className="mono"> department_code</span> column files each camera
+            under its owner; an unknown code falls back to the default and is reported
+            rather than silently accepted.
           </p>
           <div className="flex flex-wrap gap-2 items-center">
             <input

@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+from pydantic import BaseModel, Field
 from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
@@ -267,6 +268,110 @@ def list_cameras(
     cameras = session.execute(stmt.order_by(Camera.camera_ref).limit(limit)).scalars().all()
     counts = _detection_counts(session, [c.id for c in cameras])
     return [_to_out(session, c, counts.get(c.id, 0)) for c in cameras]
+
+
+# Declared before `/{camera_id}`, and that ordering is load-bearing.
+#
+# FastAPI matches routes in declaration order, so a parameterised path declared first
+# swallows every static sibling underneath it. With these below, GET /cameras/departments
+# was being handled by the camera-by-id route and rejected with "departments is not a
+# valid UUID" -- a 422 that names the wrong thing entirely and sends the reader looking
+# for a malformed id.
+class DepartmentCreate(BaseModel):
+    """A department joining the platform."""
+
+    code: str = Field(min_length=2, max_length=32, pattern=r"^[A-Za-z0-9_-]+$")
+    name: str = Field(min_length=2, max_length=200)
+    contact_email: str | None = Field(default=None, max_length=320)
+
+
+class DepartmentOut(BaseModel):
+    id: str
+    code: str
+    name: str
+    contact_email: str | None
+    cameras: int
+
+
+@router.get("/departments", response_model=list[DepartmentOut])
+def list_departments(session: SessionDep, actor: CurrentActor) -> list[DepartmentOut]:
+    """Departments on the platform, with how many cameras each has brought.
+
+    Readable by any authenticated operator. Which departments exist is not sensitive --
+    it is the organisation chart -- and the Onboarding Studio needs it to offer a
+    destination for an import.
+    """
+    rows = session.execute(
+        text(
+            "SELECT d.id, d.code, d.name, d.contact_email, count(c.id) AS cameras"
+            " FROM department d LEFT JOIN camera c ON c.department_id = d.id"
+            " GROUP BY d.id, d.code, d.name, d.contact_email"
+            " ORDER BY d.code"
+        )
+    ).mappings()
+    return [
+        DepartmentOut(
+            id=str(r["id"]),
+            code=r["code"],
+            name=r["name"],
+            contact_email=r["contact_email"],
+            cameras=int(r["cameras"]),
+        )
+        for r in rows
+    ]
+
+
+@router.post("/departments", response_model=DepartmentOut, status_code=201)
+def create_department(
+    body: DepartmentCreate, session: SessionDep, actor: AdminActor
+) -> DepartmentOut:
+    """Bring a department onto the platform.
+
+    The problem statement is twenty-six departments with heterogeneous systems, and
+    until now a department could only be created by running a seed script on the
+    server. A bulk import naming a department the registry had never heard of fell
+    back to the default and said so in a note -- honest, and still the wrong outcome
+    for an import whose entire premise is a departmental spreadsheet.
+
+    Admin-only and audited: a department is the tenant boundary row-level security is
+    enforced against, so creating one creates a compartment that data can be filed
+    into and, from then on, hidden behind.
+
+    The code is uppercased on the way in. `rto`, `RTO` and `Rto` naming three different
+    tenants is a mistake nobody would make deliberately and everybody makes eventually.
+    """
+    code = body.code.strip().upper()
+    existing = session.execute(
+        select(Department).where(Department.code == code)
+    ).scalar_one_or_none()
+    if existing is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"a department with code {code} already exists",
+        )
+
+    department = Department(code=code, name=body.name.strip(), contact_email=body.contact_email)
+    session.add(department)
+    session.flush()
+
+    audit.append(
+        session,
+        action="DEPARTMENT_CREATED",
+        subject_type="department",
+        subject_id=str(department.id),
+        actor_id=actor.subject,
+        actor_role=actor.role,
+        detail={"code": code, "name": department.name},
+    )
+    session.flush()
+
+    return DepartmentOut(
+        id=str(department.id),
+        code=department.code,
+        name=department.name,
+        contact_email=department.contact_email,
+        cameras=0,
+    )
 
 
 @router.get("/{camera_id}", response_model=CameraOut)

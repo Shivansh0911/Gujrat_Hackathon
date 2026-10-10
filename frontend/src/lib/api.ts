@@ -36,6 +36,7 @@ export type DemoFeed = components["schemas"]["DemoFeed"];
 export type DemoRead = components["schemas"]["DemoRead"];
 export type ProbeResult = components["schemas"]["ProbeResult"];
 export type BestTrace = components["schemas"]["BestTrace"];
+export type DepartmentOut = components["schemas"]["DepartmentOut"];
 export type SightingBrief = components["schemas"]["SightingOut"];
 export type VehicleMatch = components["schemas"]["MatchOut"];
 export type VehicleSearchResult = components["schemas"]["SearchResultOut"];
@@ -400,6 +401,16 @@ export const api = {
   syncCatalogue: () => request<SyncResult>("/cameras/sync-catalogue", { method: "POST" }),
   createCamera: (body: CameraCreate) =>
     request<Camera>("/cameras", { method: "POST", body: JSON.stringify(body) }),
+  /** Departments on the platform, with how many cameras each has brought. */
+  departments: () => request<DepartmentOut[]>("/cameras/departments"),
+  /** Bring a department onto the platform. Admin-only and audited: a department is
+      the tenant boundary row-level security is enforced against. */
+  createDepartment: (body: { code: string; name: string; contact_email?: string }) =>
+    request<DepartmentOut>("/cameras/departments", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
   /** Vehicles the detector recorded, to pick a search anchor out of. */
   browseSightings: (params: {
     from: string;

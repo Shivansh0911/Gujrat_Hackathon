@@ -203,6 +203,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/cameras/departments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Departments
+         * @description Departments on the platform, with how many cameras each has brought.
+         *
+         *     Readable by any authenticated operator. Which departments exist is not sensitive --
+         *     it is the organisation chart -- and the Onboarding Studio needs it to offer a
+         *     destination for an import.
+         */
+        get: operations["list_departments_cameras_departments_get"];
+        put?: never;
+        /**
+         * Create Department
+         * @description Bring a department onto the platform.
+         *
+         *     The problem statement is twenty-six departments with heterogeneous systems, and
+         *     until now a department could only be created by running a seed script on the
+         *     server. A bulk import naming a department the registry had never heard of fell
+         *     back to the default and said so in a note -- honest, and still the wrong outcome
+         *     for an import whose entire premise is a departmental spreadsheet.
+         *
+         *     Admin-only and audited: a department is the tenant boundary row-level security is
+         *     enforced against, so creating one creates a compartment that data can be filed
+         *     into and, from then on, hidden behind.
+         *
+         *     The code is uppercased on the way in. `rto`, `RTO` and `Rto` naming three different
+         *     tenants is a mistake nobody would make deliberately and everybody makes eventually.
+         */
+        post: operations["create_department_cameras_departments_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/cameras/{camera_id}": {
         parameters: {
             query?: never;
@@ -1962,6 +2003,31 @@ export interface components {
             /** Corrections */
             corrections: Record<string, never>[];
         };
+        /**
+         * DepartmentCreate
+         * @description A department joining the platform.
+         */
+        DepartmentCreate: {
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+            /** Contact Email */
+            contact_email?: string | null;
+        };
+        /** DepartmentOut */
+        DepartmentOut: {
+            /** Id */
+            id: string;
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+            /** Contact Email */
+            contact_email: string | null;
+            /** Cameras */
+            cameras: number;
+        };
         /** DependencyOut */
         DependencyOut: {
             /** Name */
@@ -3232,6 +3298,59 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CameraOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_departments_cameras_departments_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DepartmentOut"][];
+                };
+            };
+        };
+    };
+    create_department_cameras_departments_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DepartmentCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DepartmentOut"];
                 };
             };
             /** @description Validation Error */

@@ -245,3 +245,115 @@ def test_creation_is_written_to_the_audit_ledger(client) -> None:
     assert latest is not None
     assert latest["actor_role"] == "admin"
     assert latest["detail"]["camera_ref"] == body["camera_ref"]
+
+
+@pytest.fixture
+def scratch_departments():  # type: ignore[no-untyped-def]
+    """Codes created by a test, removed afterwards.
+
+    Added because the earlier fixtures in this suite did not do this reliably and left
+    fifty-three orphaned departments in the development registry -- which pushed the
+    six real ones off the bottom of the Onboarding Studio's list. Test rows that
+    outlive the test are not a tidiness problem; they are a demo that looks broken.
+    """
+    codes: list[str] = []
+    yield codes
+    if not codes or not _URL:
+        return
+    engine = create_engine(_URL, future=True)
+    with engine.begin() as conn:
+        conn.execute(text("SELECT set_config('setu.is_admin', 'on', false)"))
+        conn.execute(
+            text("DELETE FROM department WHERE upper(code) = ANY(:codes)"),
+            {"codes": [c.upper() for c in codes]},
+        )
+    engine.dispose()
+
+
+# --- Departments ---------------------------------------------------------------
+#
+# A department is the tenant boundary row-level security is enforced against, so
+# creating one creates a compartment data can be filed into and then hidden behind.
+# These pin the two rules that make that safe to expose -- the code is normalised and
+# a duplicate is refused rather than merged -- plus the route ordering, which is the
+# kind of thing that breaks silently and reports the wrong cause.
+
+
+@endpoint
+def test_a_department_code_is_uppercased(client, scratch_departments) -> None:  # type: ignore[no-untyped-def]
+    """`rto`, `RTO` and `Rto` naming three tenants is a mistake nobody makes
+    deliberately and everybody makes eventually."""
+    token = _token(client, "admin")
+    if not token:
+        pytest.skip("no admin password configured")
+    headers = {"Authorization": f"Bearer {token}"}
+
+    code = f"dep{uuid.uuid4().hex[:6]}"
+    scratch_departments.append(code)
+    response = client.post(
+        "/cameras/departments",
+        json={"code": code, "name": "Lower Case Department"},
+        headers=headers,
+    )
+    assert response.status_code == 201, response.text
+    assert response.json()["code"] == code.upper()
+
+
+@endpoint
+def test_a_duplicate_department_is_refused_not_merged(client, scratch_departments) -> None:  # type: ignore[no-untyped-def]
+    token = _token(client, "admin")
+    if not token:
+        pytest.skip("no admin password configured")
+    headers = {"Authorization": f"Bearer {token}"}
+
+    code = f"dup{uuid.uuid4().hex[:6]}"
+    scratch_departments.append(code)
+    first = client.post(
+        "/cameras/departments", json={"code": code, "name": "First"}, headers=headers
+    )
+    assert first.status_code == 201, first.text
+
+    second = client.post(
+        "/cameras/departments",
+        json={"code": code.upper(), "name": "Second, with a different name"},
+        headers=headers,
+    )
+    assert second.status_code == 409, (
+        "a second department under an existing code must be refused -- silently "
+        "merging two tenants is how one department reads another's cameras"
+    )
+
+
+@endpoint
+def test_departments_resolve_before_the_camera_by_id_route(client) -> None:  # type: ignore[no-untyped-def]
+    """Route ordering, pinned.
+
+    FastAPI matches in declaration order, so `/cameras/{camera_id}` declared first
+    swallows `/cameras/departments` and rejects it as a malformed UUID -- a 422 that
+    names the wrong thing and sends the reader hunting for a bad id.
+    """
+    token = _token(client, "admin")
+    if not token:
+        pytest.skip("no admin password configured")
+
+    response = client.get("/cameras/departments", headers={"Authorization": f"Bearer {token}"})
+    assert response.status_code == 200, response.text
+    assert isinstance(response.json(), list)
+
+
+@endpoint
+def test_creating_a_department_requires_admin(client) -> None:  # type: ignore[no-untyped-def]
+    """An operator can read the organisation chart and cannot redraw it."""
+    token = _token(client, "operator")
+    if not token:
+        pytest.skip("no operator password configured")
+    headers = {"Authorization": f"Bearer {token}"}
+
+    response = client.post(
+        "/cameras/departments",
+        json={"code": f"op{uuid.uuid4().hex[:6]}", "name": "Operator attempt"},
+        headers=headers,
+    )
+    assert response.status_code in (401, 403), response.text
+
+    assert client.get("/cameras/departments", headers=headers).status_code == 200
