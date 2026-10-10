@@ -975,6 +975,72 @@ means "nothing matched" and a zero that means "nothing was looked at" are differ
 facts, and code that renders them identically will hide the second one for as long as
 nobody runs the path end to end.
 
+## Finding 30 - a thirty-camera sweep is the whole watch-time budget
+
+Measured 2026-10-10, on a newly issued access code with the quota freshly recovered.
+
+An attempt to record vehicle sightings from the government feeds ran
+`ingest_sightings.py --gateway --seconds 20`, which opens each of the thirty catalogue
+cameras in turn for twenty seconds. The result:
+
+```
+30 cameras, 0 frames decoded, 0 vehicles, 0 sightings
+```
+
+and immediately afterwards the catalogue itself went from reachable to:
+
+```
+GatewayQuotaExhausted: watch time limit reached - please wait for your cooldown
+```
+
+So the sweep consumed the account's entire watch-time allowance and returned nothing
+for it. Two things follow, and both matter more than the failed ingest:
+
+**The budget is smaller than one pass over the estate.** Thirty cameras at twenty
+seconds is ten minutes of requested video. That is not a stress test; it is the
+smallest useful sample of the whole estate, and it does not fit. Any plan that assumes
+the government feed can be swept on the day is wrong. The demonstration runbook's
+existing instruction -- lead with the screens that read from the database -- is not
+defensive framing, it is the only thing that survives.
+
+**Exhausting it also takes the catalogue down.** The control plane and the media plane
+authenticate against the same account, so spending the watch time removes camera
+metadata as well as video. `/health/gateway` reports `reachable: false` for a reason
+that has nothing to do with the catalogue endpoint. Finding 28 recorded that a new
+access code restores the first and not the second; this is the same coupling seen from
+the other side.
+
+The honest accounting: this quota was spent by us, deliberately, to find out whether
+the feeds would yield sightings. They yielded none before the budget ran out, so the
+question is still open. It is recorded here rather than quietly retried.
+
+## Finding 31 - thirty cameras reported ok, and not one of them produced a frame
+
+The sweep above surfaced a reporting defect worth more than the sweep.
+
+Every camera came back `ok=True, error=None, frames_decoded=0`, and the run summary
+counted **thirty successes**. Nothing had raised an exception, so nothing was recorded
+as a failure -- and nothing had worked either.
+
+```
+[ok ] cam11  frames=0  vehicles=0  sightings=0
+[ok ] cam12  frames=0  vehicles=0  sightings=0
+   ... thirty times
+```
+
+A total feed outage presented as a clean run. That is the most expensive way for this
+particular failure to present, because the next person reads the summary line and
+concludes the feeds are fine.
+
+"Did not raise" and "produced data" are different claims, and only the second is what
+a caller means by `ok`. A source that opens without error and delivers no decodable
+frame is now reported as failed, with that sentence as its error.
+
+This is the third instance of the same shape in this document -- finding 23's zero
+detections, finding 29's zero links, and now thirty zero-frame successes. The pattern
+is always a zero that could mean "nothing was there" or "nothing was looked at", and
+code that renders the two identically. It is worth watching for deliberately.
+
 ## Local evaluation hardware
 
 Python 3.12.5, Docker 29.7.2, Node 20.14, **NVIDIA RTX 4050 Laptop, 6 GB VRAM**.

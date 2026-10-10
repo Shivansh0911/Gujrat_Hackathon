@@ -82,8 +82,18 @@ def _ingest_source(
             if writer is not None:
                 writer.add(record)
         stats = pipeline.stats
+        # A source that raised nothing and delivered nothing is not ok.
+        #
+        # Sweeping all thirty government cameras returned `ok=True, error=None,
+        # frames_decoded=0` for every one of them, and the summary line counted thirty
+        # successes. Nothing had failed, in the sense that nothing threw -- and nothing
+        # had worked either. That reads as a healthy run in a log and as a healthy run
+        # in a report, which is the most expensive way for a feed outage to present.
+        #
+        # "Did not raise" and "produced data" are different claims, and only the second
+        # one is what a caller means by ok.
         result.update(
-            ok=True,
+            ok=stats.frames_decoded > 0,
             records=count,
             fingerprinted=stats.fingerprinted,
             below_quality_gate=stats.below_quality_gate,
@@ -91,6 +101,12 @@ def _ingest_source(
             frames_analysed=stats.frames_analysed,
             vehicles_detected=stats.vehicles_detected,
         )
+        if stats.frames_decoded == 0:
+            result["error"] = "the source was opened without error and delivered no decodable frame"
+            log.warning(
+                "source %s delivered no frames; the stream opened but produced nothing",
+                result["camera_ref"],
+            )
     except Exception as exc:  # noqa: BLE001 -- a camera failing is data, not a crash
         result["error"] = f"{type(exc).__name__}: {exc}"
         log.warning("source %s failed: %s", result["camera_ref"], result["error"])

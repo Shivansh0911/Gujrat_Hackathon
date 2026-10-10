@@ -351,6 +351,55 @@ export function Journey3D({
       ribbon.push(a, b, c, b, d, c);
     });
 
+    // A time scale, because altitude without one is a shape and not a measurement.
+    //
+    // The plot's whole claim is that height is time, and until now a reader could see
+    // that one segment rose more steeply than another without being able to say
+    // whether that was four minutes or four hours. These are faint horizontal squares
+    // at round clock intervals -- the same role gridlines play on any chart, drawn in
+    // the plane the axis actually runs in.
+    //
+    // The interval is chosen so a journey gets roughly four to eight lines whatever
+    // its duration: a ten-minute trace is ruled in minutes and a two-day one in hours,
+    // and neither ends up with one line or two hundred.
+    if (threeD && span > 0) {
+      const lats = placed.map((h) => h.lat);
+      const lons = placed.map((h) => h.lon);
+      const pad = 0.12;
+      const latSpan = Math.max(Math.max(...lats) - Math.min(...lats), 0.01);
+      const lonSpan = Math.max(Math.max(...lons) - Math.min(...lons), 0.01);
+      const south = Math.min(...lats) - latSpan * pad;
+      const north = Math.max(...lats) + latSpan * pad;
+      const west = Math.min(...lons) - lonSpan * pad;
+      const east = Math.max(...lons) + lonSpan * pad;
+
+      const minutes = span / 60000;
+      const stepMin =
+        minutes <= 20 ? 5 : minutes <= 90 ? 15 : minutes <= 360 ? 60 : minutes <= 1440 ? 240 : 720;
+      const stepMs = stepMin * 60000;
+
+      // Start at the first round interval at or after the journey's own start, so the
+      // lines land on readable clock times rather than on an offset from hop one.
+      const first = Math.ceil(t0 / stepMs) * stepMs;
+      const faint: Rgba = [muted[0], muted[1], muted[2], 0.22];
+
+      for (let ms = first; ms <= t0 + span * cursor; ms += stepMs) {
+        const altitude = ((ms - t0) / span) * maxAltitudeM;
+        const corners = [
+          [west, south],
+          [east, south],
+          [east, north],
+          [west, north],
+        ].map(([lon, lat]) => {
+          const c = maplibregl.MercatorCoordinate.fromLngLat([lon, lat], altitude);
+          return { x: c.x, y: c.y, z: c.z, colour: faint };
+        });
+        for (let i = 0; i < 4; i += 1) {
+          lines.push(corners[i], corners[(i + 1) % 4]);
+        }
+      }
+    }
+
     // Coverage gaps as spurs, which is what they are and what the 2D map already
     // draws: a camera on the corridor that produced no detection, reached from the hop
     // it follows. The first version of this treated a gap as a break in the route and
@@ -549,11 +598,14 @@ export function Journey3D({
         distance crossed with almost no time spent &mdash; the signature of a misread or
         cloned plate, not of a fast car. Two routes running{" "}
         <span className="text-fg3">parallel at the same altitude</span> were travelling
-        together. The line between two hops is a connector drawn so the eye can read
-        order, not a path anybody observed. The faint spurs reach out to cameras on the
-        corridor that recorded nothing &mdash; {gaps.length} of them on this route. A
-        spur is a camera that could have seen this vehicle and did not; it qualifies the
-        leg it hangs from rather than breaking it.
+        together. The <span className="text-fg3">faint squares</span> are the time
+        scale: one at each round clock interval, so the height of a climb can be read
+        as a duration instead of only compared with another climb. The line between two
+        hops is a connector drawn so the eye can read order, not a path anybody
+        observed. The faint spurs reach out to cameras on the corridor that recorded
+        nothing &mdash; {gaps.length} of them on this route. A spur is a camera that
+        could have seen this vehicle and did not; it qualifies the leg it hangs from
+        rather than breaking it.
       </p>
     </section>
   );
