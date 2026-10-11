@@ -1459,6 +1459,39 @@ re-swept, is the next change to the appearance search**, and the measurement abo
 evidence for it. The handcrafted descriptor remains interpretable and cheap, which is why
 it was never a bad choice -- only, now, a measurably beaten one.
 
+## Finding 41 - an UPDATE cannot move a row between hypertable chunks
+
+The timeline rebase ran on the deployment and the timeline did not move. It was not
+skipped and it did not silently no-op: it raised, and the entrypoint caught it into a log
+line nobody reads.
+
+```
+psycopg.errors.CheckViolation: new row for relation "_hyper_1_1_chunk"
+violates check constraint "constraint_1"
+[SQL: UPDATE detection SET observed_at_utc = observed_at_utc + %(off)s ...]
+```
+
+`observed_at_utc` is the hypertable's partitioning column, and every chunk carries a CHECK
+constraint bounding it to that chunk's range. An UPDATE that moves a row out of its chunk
+does not relocate the row -- it fails the constraint. An offset of six weeks moves **every**
+row out of its chunk by definition, so the UPDATE this was written as could never have
+worked for the case it exists to serve.
+
+Copy to a temporary table, shift there, delete, insert back. A temp table has no chunk
+constraint, and the insert lets the hypertable route each row to the chunk it now belongs
+in. One transaction, so a failure leaves the timeline where it was rather than half-moved.
+
+Run against the deployment: 20 detections, 40 sightings and 16 alerts moved 42 days
+forward, and the console went from zeroes to **40 vehicles seen, 20 plate reads, 20
+distinct plates, 17 open alerts, Cars 85% / Motorcycles 15%**, with all four replay
+cameras in "busiest cameras" and 40 evidence crops decoding on Find a vehicle.
+
+The shape to carry forward: **a failure path that logs and continues is a failure path
+nobody sees.** The entrypoint deliberately degrades rather than refusing to boot, which is
+right for a seed -- and it meant this bug survived a deploy, a verification run and two
+rounds of reporting the symptom as "the deploy has not landed". The symptom was real; the
+diagnosis was wrong for as long as nobody read the log.
+
 ## Local evaluation hardware
 
 Python 3.12.5, Docker 29.7.2, Node 20.14, **NVIDIA RTX 4050 Laptop, 6 GB VRAM**.

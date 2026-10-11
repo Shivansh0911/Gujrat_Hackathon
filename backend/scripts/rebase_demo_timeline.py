@@ -138,30 +138,46 @@ def main() -> int:
         print("\nalready in place; nothing to do")
         return 0
 
-    # One offset, every table, one transaction. `observed_at_utc` is the hypertable's
-    # partitioning column, so these rows move between chunks -- supported, and the reason
-    # this is an UPDATE of a few hundred rows rather than anything cleverer.
-    session.execute(
-        text(
-            "UPDATE detection SET observed_at_utc = observed_at_utc + :off"
-            " WHERE camera_id = ANY(:ids)"
-        ),
-        {"off": offset, "ids": camera_ids},
-    )
-    session.execute(
-        text(
-            "UPDATE vehicle_sighting SET observed_at_utc = observed_at_utc + :off,"
-            " plate_detection_at = plate_detection_at + :off"
-            " WHERE camera_id = ANY(:ids)"
-        ),
-        {"off": offset, "ids": camera_ids},
-    )
-    session.execute(
-        text(
-            "UPDATE alert SET observed_at_utc = observed_at_utc + :off WHERE camera_id = ANY(:ids)"
-        ),
-        {"off": offset, "ids": camera_ids},
-    )
+    # Copy out, shift, delete, put back -- not an UPDATE, and the reason is the whole
+    # point of this comment.
+    #
+    # `observed_at_utc` is the hypertable's partitioning column. Every chunk carries a
+    # CHECK constraint bounding it to that chunk's time range, so an UPDATE that moves a
+    # row out of its chunk does not relocate the row: it fails the constraint.
+    #
+    #     psycopg.errors.CheckViolation: new row for relation "_hyper_1_1_chunk"
+    #     violates check constraint "constraint_1"
+    #
+    # An offset of six weeks moves every row out of its chunk by definition, so the
+    # UPDATE this used to be could never have worked -- and in the entrypoint it failed
+    # into a log line, which is why a deployment ran it and the timeline did not move.
+    #
+    # A temporary table has no such constraint. Shifting there and re-inserting lets the
+    # hypertable route each row to the chunk it now belongs in, which is what the
+    # partitioning column being part of the key means. One transaction, so a failure
+    # leaves the timeline exactly where it was rather than half-moved.
+    for table, extra in (
+        ("detection", ""),
+        ("vehicle_sighting", ", plate_detection_at = plate_detection_at + :off"),
+        ("alert", ""),
+    ):
+        session.execute(
+            text(
+                f"CREATE TEMP TABLE _rebase ON COMMIT DROP AS"  # noqa: S608
+                f" SELECT * FROM {table} WHERE camera_id = ANY(:ids)"
+            ),
+            {"ids": camera_ids},
+        )
+        session.execute(
+            text(f"UPDATE _rebase SET observed_at_utc = observed_at_utc + :off{extra}"),  # noqa: S608
+            {"off": offset},
+        )
+        session.execute(
+            text(f"DELETE FROM {table} WHERE camera_id = ANY(:ids)"),  # noqa: S608
+            {"ids": camera_ids},
+        )
+        session.execute(text(f"INSERT INTO {table} SELECT * FROM _rebase"))  # noqa: S608
+        session.execute(text("DROP TABLE _rebase"))
     session.commit()
 
     span = session.execute(
