@@ -1492,6 +1492,48 @@ right for a seed -- and it meant this bug survived a deploy, a verification run 
 rounds of reporting the symptom as "the deploy has not landed". The symptom was real; the
 diagnosis was wrong for as long as nobody read the log.
 
+## Finding 42 - the deployed console, end to end, every assertion holding
+
+**2026-10-11.** The complete chronological pass, against the deployed console after both
+remaining fixes were live: the bundle that makes Judge Mode one click, and the rebase that
+moved the demonstration data back inside the windows the console opens on. Twenty-four
+screens, asserting content and counting evidence images that decoded rather than `img`
+tags that exist.
+
+```
+EVERY ASSERTION HELD
+failing requests: none
+screenshots: 24
+```
+
+The scored path, from the login screen:
+
+```
+one click traced a route     4 hops · 413.4 km · 340.0 min
+three-tier evidence model    on screen, Candidate never in the Confirmed style
+signed evidence export       offered
+evidence crops               4 decoded on the hops, 40 in the search grid
+coverage gaps                reported, not hidden
+3D time-as-altitude          names its axis, ruled scale, WebGL drawing,
+                             survives rotation and pitch, scrubs, returns intact
+dashboard                    40 vehicles seen against 20 plate reads, hourly rate,
+                             class mix, busiest cameras, health, anomalies with limits
+find a vehicle               40 vehicles, purpose declared before the search
+coverage · registry · journey empty state · alert desk · control room ·
+onboarding · scale planner · health · blind spots · watchlist · zones ·
+audit ledger · own-feed demo · command palette · shortcuts · dark theme
+```
+
+Worth noting what the search screen now says on this estate: **40 vehicles, of which 0
+produced a readable registration.** Not one. Every vehicle on that screen is invisible to
+every plate-based system, which is a blunter statement of the argument than the
+development instance's one-in-forty-eight.
+
+This is the fifth full run in this document, and the first where nothing failed. The four
+before it each failed on something, and in three of those the failure was the harness --
+an unauthenticated 404 read as a missing file, a dev server proxying to a dead port, and
+StrictMode's double-mount read as a hung mutation. The fourth was real and was finding 41.
+
 ## Local evaluation hardware
 
 Python 3.12.5, Docker 29.7.2, Node 20.14, **NVIDIA RTX 4050 Laptop, 6 GB VRAM**.
