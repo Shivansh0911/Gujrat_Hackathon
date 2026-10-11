@@ -1,6 +1,6 @@
 # The deployed console, in the order a judge meets it
 
-Captured **2026-10-11** against `https://setu-gujarat.netlify.app` and
+Captured **2026-10-11**, re-captured after the gateway came back against `https://setu-gujarat.netlify.app` and
 `https://setu-api-8m2h.onrender.com` — the live deployment, not a development
 instance — by a scripted walkthrough that asserted the **content** of each screen
 rather than that it rendered. A screenshot proves a page drew; an empty panel
@@ -27,7 +27,7 @@ screen would lie.
 | 10 | GIS Map | The camera registry — Model 1, the mandatory foundation |
 | 11 | Journey, empty | The designed empty state, and the form that refuses to run without a stated purpose |
 | 12 | Alert Desk | Watchlist matches, including the fuzzy match an exact system misses |
-| 13 | Control Room | The multi-camera wall. See the note below |
+| 09 | Control Room | The multi-camera wall, **with live government feeds decoding** |
 | 14 | Onboarding Studio | Paste a source, or import a department |
 | 15 | Scale Planner | 80,000 cameras, every constant's provenance, and the operational half |
 | 16 | Health | Declared against measured frame rate |
@@ -42,14 +42,12 @@ screen would lie.
 
 ## Three things in these images that are not defects
 
-**The Control Room tiles.** Live playback depends on the organiser's gateway, which
-carries a watch-time quota tied to the account rather than to the access code — a
-freshly issued code answers *"watch time limit reached"* just as an exhausted one
-does (`DISCOVERY.md` finding 28). The control plane and the media plane fail
-independently, and the screen says so on each tile: the registry entry, coordinates
-and recorded detections for that camera remain available, and only live playback is
-affected. Every other screen in this pack reads from the database and is unaffected,
-which is why the demonstration runbook leads with them.
+**The Control Room now plays.** The government gateway was down for most of this
+project and these tiles showed the failure state. With a current access code set on the
+API and the organiser's quota unspent, they decode live footage carrying the camera's own
+timestamp. Both conditions have to hold; if the wall is down on the day, each tile still
+names the error and states that the registry, coordinates and recorded detections remain
+available.
 
 **"0 of 40 produced a readable registration" on Find a vehicle.** That is not a
 failure of the screen; it is the argument the screen exists to make. Not one vehicle

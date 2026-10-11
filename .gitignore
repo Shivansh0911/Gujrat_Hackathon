@@ -103,3 +103,7 @@ data/evidence/crops/*.jpg
 # pg_dump output from the backup/restore drill. The drill is the artefact; the dump is
 # a database-sized file that must never reach a public remote.
 backups/
+
+# Presentation video. Recorded from the deployed console; large, and not source.
+clips/*.mp4
+_fullrun2.log
